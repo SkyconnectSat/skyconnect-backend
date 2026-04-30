@@ -1,5 +1,24 @@
 // SkyConnect Platform — Zero-dependency Node.js Server
 // Uses only built-in modules: http, fs, path, crypto, url, querystring
+//
+// =====================================================
+// SMTP / EMAIL CONFIGURATION (optional)
+// =====================================================
+// To enable real email notifications, install nodemailer:
+//   npm install nodemailer
+//
+// Then set the following environment variables:
+//   SMTP_HOST=smtp.gmail.com        (or your SMTP server)
+//   SMTP_PORT=587                   (or 465 for SSL)
+//   SMTP_SECURE=false               (true for port 465)
+//   SMTP_USER=you@gmail.com
+//   SMTP_PASS=your-app-password
+//   SMTP_FROM="SkyConnect <noreply@skyconnectsat.com>"
+//
+// The sendNotification function below will automatically use
+// nodemailer when it is installed and SMTP_HOST is set.
+// =====================================================
+
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -78,6 +97,39 @@ function uuid() {
   return crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex');
 }
 
+function createDefaultSim(overrides = {}) {
+  return {
+    id: 'sim_' + uuid().slice(0, 8),
+    serial: '',
+    clientId: '',
+    status: 'inactive',
+    iccid: '',
+    imei: '',
+    msisdn: '',
+    puk: '',
+    pin: '',
+    balance: 0,
+    dataUsed: 0,
+    dataTotal: 0,
+    lastLocation: '',
+    expiryDate: '',
+    activationDate: '',
+    lastConnection: '',
+    planType: '',
+    serviceType: '',
+    cardType: '',
+    minutesActive: 0,
+    monthlyCharge: 0,
+    name: '',
+    reference: '',
+    subClient: '',
+    vessel: '',
+    lastUpdated: new Date().toISOString(),
+    operations: [],
+    ...overrides
+  };
+}
+
 function createDefaultDB() {
   return {
     users: [
@@ -87,7 +139,13 @@ function createDefaultDB() {
         password: hashPassword('admin2026'),
         name: 'Vanessa Admin',
         company: 'SkyConnect',
-        role: 'admin'
+        role: 'admin',
+        phone: '',
+        countryCode: '',
+        address: '',
+        city: '',
+        country: '',
+        postalCode: ''
       },
       {
         id: 'usr_demo1',
@@ -95,7 +153,13 @@ function createDefaultDB() {
         password: hashPassword('demo123'),
         name: 'Carlos Rodriguez',
         company: 'Minera del Norte',
-        role: 'client'
+        role: 'client',
+        phone: '',
+        countryCode: '',
+        address: '',
+        city: '',
+        country: '',
+        postalCode: ''
       }
     ],
     sims: [
@@ -106,7 +170,8 @@ function createDefaultDB() {
         expiryDate: '', activationDate: '', lastConnection: '',
         planType: '', serviceType: '', cardType: 'Iridium 9555',
         minutesActive: 0, monthlyCharge: 0, name: '', reference: '',
-        subClient: '', vessel: ''
+        subClient: '', vessel: '',
+        lastUpdated: new Date().toISOString(), operations: []
       },
       {
         id: 'sim_002', serial: '8988169328001000002', clientId: 'usr_demo1',
@@ -115,7 +180,8 @@ function createDefaultDB() {
         expiryDate: '', activationDate: '', lastConnection: '',
         planType: '', serviceType: '', cardType: 'Iridium 9575',
         minutesActive: 0, monthlyCharge: 0, name: '', reference: '',
-        subClient: '', vessel: ''
+        subClient: '', vessel: '',
+        lastUpdated: new Date().toISOString(), operations: []
       },
       {
         id: 'sim_003', serial: '8988169328001000003', clientId: 'usr_demo1',
@@ -130,27 +196,71 @@ function createDefaultDB() {
         serviceType: 'Pre-Pago', cardType: 'Iridium 9555',
         minutesActive: 15, monthlyCharge: 0,
         name: 'Unidad Planta Norte', reference: 'PN-001',
-        subClient: '', vessel: ''
+        subClient: '', vessel: '',
+        lastUpdated: new Date().toISOString(), operations: []
       }
     ],
     subusers: [],
     requests: [],
-    activityLog: []
+    activityLog: [],
+    accounts: []
   };
 }
 
 // =====================================================
-// NOTIFICATION (console log + optional email)
+// NOTIFICATION (console log + optional nodemailer)
 // =====================================================
 function sendNotification(subject, details, toClient) {
   const to = toClient || ADMIN_EMAIL;
   console.log(`\n📧 NOTIFICATION → ${to}\n   Subject: ${subject}\n   ${details}\n`);
-  // To enable real email, configure SMTP and use nodemailer (npm install nodemailer)
+
+  // Attempt to send real email via nodemailer if installed and configured
+  try {
+    const nodemailer = require('nodemailer');
+    const smtpHost = process.env.SMTP_HOST;
+    if (smtpHost) {
+      const transporter = nodemailer.createTransport({
+        host: smtpHost,
+        port: parseInt(process.env.SMTP_PORT || '587', 10),
+        secure: process.env.SMTP_SECURE === 'true',
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS
+        }
+      });
+      transporter.sendMail({
+        from: process.env.SMTP_FROM || `"SkyConnect" <${process.env.SMTP_USER}>`,
+        to,
+        subject,
+        text: details
+      }).then(() => {
+        console.log(`   ✅ Email sent successfully to ${to}`);
+      }).catch((err) => {
+        console.log(`   ⚠️  Email send failed: ${err.message}`);
+      });
+    }
+  } catch (e) {
+    // nodemailer not installed — that's fine, console.log above already logged it
+  }
 }
 
 function logActivity(db, clientId, action, details) {
   db.activityLog.unshift({ id: uuid(), clientId, action, details, timestamp: new Date().toISOString() });
   if (db.activityLog.length > 500) db.activityLog = db.activityLog.slice(0, 500);
+}
+
+// Helper: push an operation to a SIM's operations array (keep last 20)
+function pushSimOperation(sim, op) {
+  if (!sim.operations) sim.operations = [];
+  sim.operations.unshift(op);
+  if (sim.operations.length > 20) sim.operations = sim.operations.slice(0, 20);
+}
+
+// Helper: update a SIM operation status by request id
+function updateSimOperationStatus(sim, requestId, newStatus) {
+  if (!sim.operations) return;
+  const op = sim.operations.find(o => o.id === requestId);
+  if (op) op.status = newStatus;
 }
 
 // =====================================================
@@ -186,6 +296,10 @@ const PLANS = {
     ]
   }
 };
+
+function getPlans(db) {
+  return db.plans || PLANS;
+}
 
 // =====================================================
 // HTTP HELPERS
@@ -270,16 +384,90 @@ const server = http.createServer(async (req, res) => {
   if (method === 'GET' && pathname === '/api/me') {
     const s = getSession(req);
     if (!s) return json(res, { error: 'No autorizado' }, 401);
-    return json(res, { id: s.userId, name: s.name, email: s.email, company: s.company, role: s.role });
+    const db = loadDB();
+    const user = db.users.find(u => u.id === s.userId);
+    if (!user) return json(res, { error: 'Usuario no encontrado' }, 404);
+    return json(res, {
+      id: user.id, name: user.name, email: user.email, company: user.company, role: user.role,
+      phone: user.phone || '', countryCode: user.countryCode || '',
+      address: user.address || '', city: user.city || '', country: user.country || '',
+      postalCode: user.postalCode || '', notifEmail: user.notifEmail || '', contactPerson: user.contactPerson || ''
+    });
+  }
+
+  // PATCH /api/me — client self-update (no name/company changes)
+  if (method === 'PATCH' && pathname === '/api/me') {
+    const s = getSession(req);
+    if (!s) return json(res, { error: 'No autorizado' }, 401);
+    const db = loadDB();
+    const user = db.users.find(u => u.id === s.userId);
+    if (!user) return json(res, { error: 'Usuario no encontrado' }, 404);
+    const body = await parseBody(req);
+    const allowed = ['email', 'phone', 'countryCode', 'address', 'city', 'country', 'postalCode', 'notifEmail', 'contactPerson'];
+    for (const f of allowed) {
+      if (body[f] !== undefined) user[f] = body[f];
+    }
+    // Update session email if changed
+    if (body.email) {
+      s.email = body.email;
+    }
+    saveDB(db);
+    return json(res, {
+      ok: true,
+      user: {
+        id: user.id, name: user.name, email: user.email, company: user.company, role: user.role,
+        phone: user.phone || '', countryCode: user.countryCode || '',
+        address: user.address || '', city: user.city || '', country: user.country || '',
+        postalCode: user.postalCode || '', notifEmail: user.notifEmail || '', contactPerson: user.contactPerson || ''
+      }
+    });
   }
 
   // GET /api/plans
   if (method === 'GET' && pathname === '/api/plans') {
-    return json(res, PLANS);
+    const db = loadDB();
+    return json(res, getPlans(db));
   }
 
   // --- AUTH REQUIRED FROM HERE ---
   const session = getSession(req);
+
+  // =====================================================
+  // ACCOUNTS (client side)
+  // =====================================================
+
+  // POST /api/accounts
+  if (method === 'POST' && pathname === '/api/accounts') {
+    if (!session) return json(res, { error: 'No autorizado' }, 401);
+    const body = await parseBody(req);
+    if (!body.name || !body.contact || !body.email) {
+      return json(res, { error: 'Campos requeridos: name, contact, email' }, 400);
+    }
+    const db = loadDB();
+    if (!db.accounts) db.accounts = [];
+    const account = {
+      id: uuid(),
+      userId: session.userId,
+      name: body.name,
+      contact: body.contact,
+      email: body.email,
+      phone: body.phone || '',
+      status: 'approved',
+      createdAt: new Date().toISOString()
+    };
+    db.accounts.push(account);
+    saveDB(db);
+    return json(res, { ok: true, account });
+  }
+
+  // GET /api/accounts
+  if (method === 'GET' && pathname === '/api/accounts') {
+    if (!session) return json(res, { error: 'No autorizado' }, 401);
+    const db = loadDB();
+    if (!db.accounts) db.accounts = [];
+    const accounts = session.role === 'admin' ? db.accounts : db.accounts.filter(a => a.userId === session.userId);
+    return json(res, accounts);
+  }
 
   // GET /api/sims
   if (method === 'GET' && pathname === '/api/sims') {
@@ -319,6 +507,8 @@ const server = http.createServer(async (req, res) => {
     };
     db.requests.unshift(request);
     sim.status = 'processing';
+    sim.lastUpdated = new Date().toISOString();
+    pushSimOperation(sim, { id: request.id, type: 'activation', status: 'pending', createdAt: request.createdAt });
     logActivity(db, session.userId, 'Solicitud de Activación', `SIM ${sim.serial} - ${body.serviceType} - ${body.planType}`);
     saveDB(db);
     sendNotification(`Nueva Activación - ${sim.serial}`, `Cliente: ${session.name} (${session.company}) | Servicio: ${body.serviceType} | Plan: ${body.planType} | Tipo: ${body.activationType}`);
@@ -341,6 +531,8 @@ const server = http.createServer(async (req, res) => {
     };
     db.requests.unshift(request);
     sim.status = 'processing';
+    sim.lastUpdated = new Date().toISOString();
+    pushSimOperation(sim, { id: request.id, type: 'deactivation', status: 'pending', createdAt: request.createdAt });
     logActivity(db, session.userId, 'Solicitud de Desactivación', `SIM ${sim.serial}`);
     saveDB(db);
     sendNotification(`Desactivación - ${sim.serial}`, `Cliente: ${session.name} | SIM: ${sim.serial} (${sim.msisdn})`);
@@ -361,6 +553,7 @@ const server = http.createServer(async (req, res) => {
       company: session.company, status: 'pending', createdAt: new Date().toISOString(), completedAt: null
     };
     db.requests.unshift(request);
+    pushSimOperation(sim, { id: request.id, type: 'balance_update', status: 'pending', createdAt: request.createdAt });
     logActivity(db, session.userId, 'Actualización de Saldo', `SIM ${sim.serial}`);
     saveDB(db);
     sendNotification(`Actualizar Saldo - ${sim.serial}`, `Cliente: ${session.name} | SIM: ${sim.serial} | Saldo actual: ${sim.balance} min`);
@@ -383,6 +576,7 @@ const server = http.createServer(async (req, res) => {
       createdAt: new Date().toISOString(), completedAt: null
     };
     db.requests.unshift(request);
+    pushSimOperation(sim, { id: request.id, type: 'recharge', plan: body.plan, status: 'pending', createdAt: request.createdAt });
     logActivity(db, session.userId, 'Solicitud de Recarga', `SIM ${sim.serial} - ${body.plan}`);
     saveDB(db);
     sendNotification(`Recarga - ${sim.serial}`, `Cliente: ${session.name} | Plan: ${body.plan}`);
@@ -402,6 +596,7 @@ const server = http.createServer(async (req, res) => {
     if (body.reference !== undefined) sim.reference = body.reference;
     if (body.subClient !== undefined) sim.subClient = body.subClient;
     if (body.vessel !== undefined) sim.vessel = body.vessel;
+    sim.lastUpdated = new Date().toISOString();
     logActivity(db, session.userId, 'Asignación Actualizada', `SIM ${sim.serial} - ${sim.name}`);
     saveDB(db);
     return json(res, { ok: true, sim });
@@ -464,6 +659,8 @@ const server = http.createServer(async (req, res) => {
 
     if (request.type === 'activation' && sim) {
       sim.status = 'active';
+      sim.lastUpdated = new Date().toISOString();
+      updateSimOperationStatus(sim, request.id, 'completed');
       logActivity(db, request.clientId, 'SIM Activada', `SIM ${sim.serial} - ${sim.msisdn}`);
       const client = db.users.find(u => u.id === request.clientId);
       if (client) {
@@ -471,10 +668,16 @@ const server = http.createServer(async (req, res) => {
       }
     } else if (request.type === 'deactivation' && sim) {
       sim.status = 'inactive';
+      sim.lastUpdated = new Date().toISOString();
+      updateSimOperationStatus(sim, request.id, 'completed');
       logActivity(db, request.clientId, 'SIM Desactivada', `SIM ${sim.serial}`);
     } else if (request.type === 'balance_update' && sim) {
+      sim.lastUpdated = new Date().toISOString();
+      updateSimOperationStatus(sim, request.id, 'completed');
       logActivity(db, request.clientId, 'Saldo Actualizado', `SIM ${sim.serial} - ${sim.balance} min`);
     } else if (request.type === 'recharge' && sim) {
+      sim.lastUpdated = new Date().toISOString();
+      updateSimOperationStatus(sim, request.id, 'completed');
       logActivity(db, request.clientId, 'Recarga Completada', `SIM ${sim.serial} - ${request.plan}`);
     }
     saveDB(db);
@@ -493,6 +696,10 @@ const server = http.createServer(async (req, res) => {
     const sim = db.sims.find(s => s.id === request.simId);
     if (sim && sim.status === 'processing') {
       sim.status = request.type === 'activation' ? 'inactive' : 'active';
+      sim.lastUpdated = new Date().toISOString();
+    }
+    if (sim) {
+      updateSimOperationStatus(sim, request.id, 'failed');
     }
     logActivity(db, request.clientId, 'Solicitud Rechazada', `${request.type} - SIM ${request.simSerial}`);
     saveDB(db);
@@ -511,6 +718,7 @@ const server = http.createServer(async (req, res) => {
       'lastLocation','expiryDate','activationDate','lastConnection','planType','serviceType',
       'cardType','minutesActive','monthlyCharge','name','reference','subClient','vessel','status','clientId'];
     for (const f of fields) { if (body[f] !== undefined) sim[f] = body[f]; }
+    sim.lastUpdated = new Date().toISOString();
     saveDB(db);
     return json(res, { ok: true, sim });
   }
@@ -520,17 +728,36 @@ const server = http.createServer(async (req, res) => {
     if (!session || session.role !== 'admin') return json(res, { error: 'Acceso denegado' }, 403);
     const body = await parseBody(req);
     const db = loadDB();
-    const sim = {
-      id: 'sim_' + uuid().slice(0, 8), serial: body.serial || '', clientId: body.clientId || '',
-      status: 'inactive', iccid: '', imei: '', msisdn: '', puk: '', pin: '',
-      balance: 0, dataUsed: 0, dataTotal: 0, lastLocation: '', expiryDate: '',
-      activationDate: '', lastConnection: '', planType: '', serviceType: '',
-      cardType: body.cardType || '', minutesActive: 0, monthlyCharge: 0,
-      name: '', reference: '', subClient: '', vessel: ''
-    };
+    const sim = createDefaultSim({
+      serial: body.serial || '',
+      clientId: body.clientId !== undefined ? body.clientId : '',
+      cardType: body.cardType || ''
+    });
     db.sims.push(sim);
     saveDB(db);
     return json(res, { ok: true, sim });
+  }
+
+  // POST /api/admin/sims/bulk (bulk create)
+  if (method === 'POST' && pathname === '/api/admin/sims/bulk') {
+    if (!session || session.role !== 'admin') return json(res, { error: 'Acceso denegado' }, 403);
+    const body = await parseBody(req);
+    if (!body.sims || !Array.isArray(body.sims) || body.sims.length === 0) {
+      return json(res, { error: 'Se requiere un array "sims" con al menos un elemento' }, 400);
+    }
+    const db = loadDB();
+    const created = [];
+    for (const item of body.sims) {
+      const sim = createDefaultSim({
+        serial: item.serial || '',
+        cardType: item.cardType || '',
+        clientId: ''
+      });
+      db.sims.push(sim);
+      created.push(sim);
+    }
+    saveDB(db);
+    return json(res, { ok: true, count: created.length, sims: created });
   }
 
   // DELETE /api/admin/sims/:id
@@ -555,14 +782,67 @@ const server = http.createServer(async (req, res) => {
     const body = await parseBody(req);
     const db = loadDB();
     if (db.users.find(u => u.email === body.email)) return json(res, { error: 'Email ya existe' }, 400);
+    const role = (body.role === 'admin' || body.role === 'client') ? body.role : 'client';
     const user = {
-      id: 'usr_' + uuid().slice(0, 8), email: body.email,
-      password: hashPassword(body.password), name: body.name,
-      company: body.company, role: 'client'
+      id: 'usr_' + uuid().slice(0, 8),
+      email: body.email,
+      password: hashPassword(body.password),
+      name: body.name,
+      company: body.company,
+      role: role,
+      phone: body.phone || '',
+      countryCode: body.countryCode || '',
+      address: body.address || '',
+      city: body.city || '',
+      country: body.country || '',
+      postalCode: body.postalCode || ''
     };
     db.users.push(user);
     saveDB(db);
     return json(res, { ok: true, user: { ...user, password: undefined } });
+  }
+
+  // PATCH /api/admin/users/:id
+  const adminUserMatch = pathname.match(/^\/api\/admin\/users\/([^/]+)$/);
+  if (method === 'PATCH' && adminUserMatch) {
+    if (!session || session.role !== 'admin') return json(res, { error: 'Acceso denegado' }, 403);
+    const db = loadDB();
+    const user = db.users.find(u => u.id === adminUserMatch[1]);
+    if (!user) return json(res, { error: 'Usuario no encontrado' }, 404);
+    const body = await parseBody(req);
+    const fields = ['email', 'name', 'company', 'phone', 'countryCode', 'address', 'city', 'country', 'postalCode'];
+    for (const f of fields) {
+      if (body[f] !== undefined) user[f] = body[f];
+    }
+    if (body.role === 'admin' || body.role === 'client') {
+      user.role = body.role;
+    }
+    if (body.password) {
+      user.password = hashPassword(body.password);
+    }
+    saveDB(db);
+    return json(res, { ok: true, user: { ...user, password: undefined } });
+  }
+
+  // =====================================================
+  // ADMIN PLANS CRUD
+  // =====================================================
+
+  // GET /api/admin/plans
+  if (method === 'GET' && pathname === '/api/admin/plans') {
+    if (!session || session.role !== 'admin') return json(res, { error: 'Acceso denegado' }, 403);
+    const db = loadDB();
+    return json(res, getPlans(db));
+  }
+
+  // PUT /api/admin/plans
+  if (method === 'PUT' && pathname === '/api/admin/plans') {
+    if (!session || session.role !== 'admin') return json(res, { error: 'Acceso denegado' }, 403);
+    const body = await parseBody(req);
+    const db = loadDB();
+    db.plans = body;
+    saveDB(db);
+    return json(res, { ok: true, plans: db.plans });
   }
 
   // POST /api/admin/subusers/:id/approve
