@@ -81,6 +81,7 @@ tr:hover td { background: var(--gray-50); }
 .form-group input:focus, .form-group select:focus { border-color: var(--coral); }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.phone-row { display: grid; grid-template-columns: 120px 1fr; gap: 8px; }
 
 .modal-overlay {
   position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,.5);
@@ -104,6 +105,13 @@ tr:hover td { background: var(--gray-50); }
 .request-card.urgent { border-left: 4px solid var(--coral); }
 .request-meta { display: flex; gap: 16px; flex-wrap: wrap; margin: 8px 0; font-size: 13px; color: var(--gray-500); }
 .request-actions { display: flex; gap: 8px; margin-top: 10px; }
+
+.plan-category { border: 1px solid var(--gray-200); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+.plan-category-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.plan-category-header h3 { font-size: 15px; color: var(--navy); }
+.plan-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--gray-50); border-radius: 6px; margin-bottom: 6px; font-size: 13px; }
+.plan-item button { background: none; border: none; color: var(--red); cursor: pointer; font-size: 16px; font-weight: bold; }
+.btn-header-group { display: flex; gap: 8px; align-items: center; }
 </style>
 </head>
 <body>
@@ -116,8 +124,10 @@ tr:hover td { background: var(--gray-50); }
     <nav class="sidebar-nav">
       <div class="nav-item active" data-page="requests" onclick="navTo('requests')">Solicitudes</div>
       <div class="nav-item" data-page="sims" onclick="navTo('sims')">SIM Cards</div>
+      <div class="nav-item" data-page="accounts" onclick="navTo('accounts')">Cuentas</div>
       <div class="nav-item" data-page="users" onclick="navTo('users')">Usuarios</div>
       <div class="nav-item" data-page="subusers" onclick="navTo('subusers')">Sub-Usuarios</div>
+      <div class="nav-item" data-page="airtime" onclick="navTo('airtime')">Airtime</div>
       <div class="nav-item" data-page="activity" onclick="navTo('activity')">Actividad</div>
       <div class="nav-item" data-page="branding" onclick="navTo('branding')">Logo / Marca</div>
     </nav>
@@ -132,6 +142,16 @@ tr:hover td { background: var(--gray-50); }
 
 <script>
 let page = 'requests';
+
+function formatMadrid(dateStr) {
+  if (!dateStr) return '—';
+  return new Date(dateStr).toLocaleString('es-ES', { timeZone: 'Europe/Madrid' });
+}
+
+function formatMadridDate(dateStr) {
+  if (!dateStr) return '—';
+  return new Date(dateStr).toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' });
+}
 
 async function api(url, opts) {
   const r = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...opts });
@@ -150,8 +170,10 @@ async function render() {
   switch (page) {
     case 'requests': await renderRequests(m); break;
     case 'sims': await renderSims(m); break;
+    case 'accounts': await renderAccounts(m); break;
     case 'users': await renderUsers(m); break;
     case 'subusers': await renderSubUsers(m); break;
+    case 'airtime': await renderAirtime(m); break;
     case 'branding': await renderBranding(m); break;
     case 'activity': await renderActivity(m); break;
   }
@@ -159,21 +181,45 @@ async function render() {
 
 // === REQUESTS ===
 async function renderRequests(el) {
-  const reqs = await api('/api/admin/requests');
+  const [reqs, subs] = await Promise.all([
+    api('/api/admin/requests'),
+    api('/api/subusers')
+  ]);
   if (!reqs) return;
   const pending = reqs.filter(r => r.status === 'pending');
   const completed = reqs.filter(r => r.status !== 'pending');
+  const pendingSubs = (subs || []).filter(s => s.status === 'pending');
 
-  const typeLabel = { activation: 'Activación', deactivation: 'Desactivación', recharge: 'Recarga', balance_update: 'Actualizar Saldo' };
+  const typeLabel = { activation: 'Activación', deactivation: 'Desactivación', recharge: 'Recarga', balance_update: 'Actualizar Saldo', account_creation: 'Creación de Cuenta', subuser_approval: 'Aprobación Sub-Usuario' };
+
+  const totalPending = pending.length + pendingSubs.length;
 
   el.innerHTML = `
-    <div class="page-header"><h1>Solicitudes</h1><p>${pending.length} pendientes</p></div>
+    <div class="page-header"><h1>Solicitudes</h1><p>${totalPending} pendientes</p></div>
     <div class="stats-grid">
-      <div class="stat-card"><div class="label">Pendientes</div><div class="value" style="color:var(--amber)">${pending.length}</div></div>
+      <div class="stat-card"><div class="label">Pendientes</div><div class="value" style="color:var(--amber)">${totalPending}</div></div>
+      <div class="stat-card"><div class="label">Sub-Usuarios Pend.</div><div class="value" style="color:var(--blue)">${pendingSubs.length}</div></div>
       <div class="stat-card"><div class="label">Completadas</div><div class="value" style="color:var(--green)">${completed.filter(r=>r.status==='completed').length}</div></div>
       <div class="stat-card"><div class="label">Total</div><div class="value">${reqs.length}</div></div>
     </div>
-    ${pending.length > 0 ? `<div class="card"><div class="card-header"><h2>Pendientes</h2></div>
+    ${pendingSubs.length > 0 ? `<div class="card"><div class="card-header"><h2>Sub-Usuarios Pendientes de Aprobación</h2></div>
+      ${pendingSubs.map(s => `
+        <div class="request-card urgent">
+          <strong>Aprobación Sub-Usuario</strong> — <span class="badge badge-pending">Pendiente</span>
+          <div class="request-meta">
+            <span>Nombre: ${s.name}</span>
+            <span>Email: ${s.email}</span>
+            <span>Teléfono: ${s.phone || '—'}</span>
+            <span>${formatMadrid(s.createdAt)}</span>
+          </div>
+          <div class="request-actions">
+            <button class="btn btn-green btn-sm" onclick="approveSub('${s.id}')">Aprobar</button>
+            <button class="btn btn-red btn-sm" onclick="rejectSub('${s.id}')">Rechazar</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>` : ''}
+    ${pending.length > 0 ? `<div class="card"><div class="card-header"><h2>Solicitudes Pendientes</h2></div>
       ${pending.map(r => `
         <div class="request-card urgent">
           <strong>${typeLabel[r.type] || r.type}</strong> — <span class="badge badge-pending">Pendiente</span>
@@ -184,7 +230,7 @@ async function renderRequests(el) {
             ${r.planType ? `<span>Plan: ${r.planType}</span>` : ''}
             ${r.plan ? `<span>Recarga: ${r.plan}</span>` : ''}
             ${r.activationType ? `<span>Tipo: ${r.activationType === 'immediate' ? 'Inmediata' : 'Programada: ' + r.scheduledDate}</span>` : ''}
-            <span>${new Date(r.createdAt).toLocaleString('es')}</span>
+            <span>${formatMadrid(r.createdAt)}</span>
           </div>
           <div class="request-actions">
             ${r.type === 'activation' ? `<button class="btn btn-coral btn-sm" onclick="editSimThenComplete('${r.id}','${r.simId}')">Cargar datos y completar</button>` : ''}
@@ -193,7 +239,7 @@ async function renderRequests(el) {
           </div>
         </div>
       `).join('')}
-    </div>` : '<div class="card"><p style="color:var(--gray-500)">No hay solicitudes pendientes</p></div>'}
+    </div>` : (pendingSubs.length === 0 ? '<div class="card"><p style="color:var(--gray-500)">No hay solicitudes pendientes</p></div>' : '')}
     ${completed.length > 0 ? `<div class="card"><div class="card-header"><h2>Historial</h2></div>
       <table>
         <thead><tr><th>Tipo</th><th>SIM</th><th>Cliente</th><th>Estado</th><th>Fecha</th></tr></thead>
@@ -201,7 +247,7 @@ async function renderRequests(el) {
           ${completed.slice(0, 30).map(r => `
             <tr><td>${typeLabel[r.type]||r.type}</td><td style="font-family:monospace;font-size:12px">${r.simSerial}</td>
             <td>${r.clientName}</td><td><span class="badge badge-${r.status}">${r.status}</span></td>
-            <td>${new Date(r.createdAt).toLocaleString('es')}</td></tr>
+            <td>${formatMadrid(r.createdAt)}</td></tr>
           `).join('')}
         </tbody>
       </table>
@@ -290,9 +336,15 @@ async function renderSims(el) {
   el.innerHTML = `
     <div class="page-header"><h1>SIM Cards</h1><p>${sims.length} SIMs en el sistema</p></div>
     <div class="card">
-      <div class="card-header"><h2>Todas las SIMs</h2><button class="btn btn-coral btn-sm" onclick="showAddSim()">+ Nueva SIM</button></div>
+      <div class="card-header">
+        <h2>Todas las SIMs</h2>
+        <div class="btn-header-group">
+          <button class="btn btn-outline btn-sm" onclick="showBulkUpload()">Cargar Excel</button>
+          <button class="btn btn-coral btn-sm" onclick="showAddSim()">+ Nueva SIM</button>
+        </div>
+      </div>
       <table>
-        <thead><tr><th>Serial</th><th>Número</th><th>Cliente</th><th>Plan</th><th>Saldo</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <thead><tr><th>Serial</th><th>Número</th><th>Cliente</th><th>Plan</th><th>Saldo</th><th>Estado</th><th>Última Actualización</th><th>Acciones</th></tr></thead>
         <tbody>
           ${sims.map(s => {
             const usr = users?.find(u => u.id === s.clientId);
@@ -300,10 +352,11 @@ async function renderSims(el) {
             <tr>
               <td style="font-family:monospace;font-size:12px">${s.serial}</td>
               <td>${s.msisdn || '—'}</td>
-              <td>${usr ? usr.name : s.clientId}</td>
+              <td>${usr ? usr.name : (s.clientId ? s.clientId : '<span style="color:var(--gray-300)">Sin asignar</span>')}</td>
               <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.planType || '—'}</td>
               <td>${s.balance} min</td>
               <td><span class="badge badge-${s.status}">${s.status}</span></td>
+              <td style="font-size:12px">${formatMadrid(s.lastUpdated)}</td>
               <td><button class="btn btn-outline btn-sm" onclick="editSim('${s.id}')">Editar</button>
               <button class="btn btn-red btn-sm" onclick="deleteSim('${s.id}')">X</button></td>
             </tr>`;
@@ -312,6 +365,68 @@ async function renderSims(el) {
       </table>
     </div>
   `;
+}
+
+function showBulkUpload() {
+  const mc = document.getElementById('modalContainer');
+  mc.innerHTML = `
+    <div class="modal-overlay">
+      <div class="modal">
+        <h2>Cargar SIMs desde archivo</h2>
+        <p style="color:var(--gray-500);font-size:13px;margin-bottom:16px">Suba un archivo CSV con una SIM por línea en formato: <code>serial,cardType</code></p>
+        <div class="form-group">
+          <label>Archivo CSV / XLSX</label>
+          <input type="file" id="bulkFile" accept=".csv,.xlsx" style="padding:8px">
+        </div>
+        <div id="bulkPreview" style="margin-bottom:12px"></div>
+        <div class="modal-actions">
+          <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+          <button class="btn btn-coral" onclick="processBulkUpload()">Cargar SIMs</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('bulkFile').addEventListener('change', previewBulk);
+}
+
+function previewBulk(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    const text = ev.target.result;
+    const lines = text.trim().split('\\n').filter(l => l.trim());
+    document.getElementById('bulkPreview').innerHTML = `
+      <p style="font-size:13px;color:var(--gray-500)">${lines.length} SIMs detectadas en el archivo</p>
+    `;
+  };
+  reader.readAsText(file);
+}
+
+async function processBulkUpload() {
+  const file = document.getElementById('bulkFile').files[0];
+  if (!file) return toast('Seleccione un archivo', 'error');
+  const reader = new FileReader();
+  reader.onload = async function(ev) {
+    const text = ev.target.result;
+    const lines = text.trim().split('\\n').filter(l => l.trim());
+    const sims = lines.map(line => {
+      const parts = line.split(',').map(p => p.trim());
+      return { serial: parts[0], cardType: parts[1] || '' };
+    }).filter(s => s.serial);
+
+    if (sims.length === 0) return toast('No se encontraron SIMs válidas', 'error');
+
+    const res = await api('/api/admin/sims/bulk', {
+      method: 'POST',
+      body: JSON.stringify({ sims })
+    });
+    if (res?.error) return toast(res.error, 'error');
+    closeModal();
+    toast(`${sims.length} SIMs cargadas correctamente`, 'success');
+    render();
+  };
+  reader.readAsText(file);
 }
 
 async function editSim(simId) {
@@ -324,7 +439,10 @@ async function editSim(simId) {
       <div class="modal">
         <h2>Editar SIM — ${sim.serial}</h2>
         <div class="form-group"><label>Cliente</label>
-          <select id="eClient">${users.filter(u=>u.role==='client').map(u=>`<option value="${u.id}" ${sim.clientId===u.id?'selected':''}>${u.name} (${u.company})</option>`).join('')}</select>
+          <select id="eClient">
+            <option value="">Sin asignar</option>
+            ${users.filter(u=>u.role==='client').map(u=>`<option value="${u.id}" ${sim.clientId===u.id?'selected':''}>${u.name} (${u.company})</option>`).join('')}
+          </select>
         </div>
         <div class="form-group"><label>Estado</label>
           <select id="eStatus"><option value="inactive" ${sim.status==='inactive'?'selected':''}>Inactiva</option><option value="active" ${sim.status==='active'?'selected':''}>Activa</option><option value="processing" ${sim.status==='processing'?'selected':''}>Procesando</option></select>
@@ -404,7 +522,6 @@ async function saveSim(simId) {
 }
 
 async function showAddSim() {
-  const users = await api('/api/admin/users');
   const mc = document.getElementById('modalContainer');
   mc.innerHTML = `
     <div class="modal-overlay">
@@ -412,9 +529,7 @@ async function showAddSim() {
         <h2>Nueva SIM</h2>
         <div class="form-group"><label>Serial</label><input id="nSerial" placeholder="8988169328..."></div>
         <div class="form-group"><label>Tipo de Tarjeta</label><input id="nCard" placeholder="Iridium 9555"></div>
-        <div class="form-group"><label>Asignar a Cliente</label>
-          <select id="nClient">${users.filter(u=>u.role==='client').map(u=>`<option value="${u.id}">${u.name} (${u.company})</option>`).join('')}</select>
-        </div>
+        <p style="color:var(--gray-500);font-size:12px;margin-bottom:12px">La SIM se creará sin cliente asignado. Podrá asignarla después desde la tabla.</p>
         <div class="modal-actions">
           <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
           <button class="btn btn-coral" onclick="addSim()">Crear SIM</button>
@@ -429,8 +544,7 @@ async function addSim() {
     method: 'POST',
     body: JSON.stringify({
       serial: document.getElementById('nSerial').value,
-      cardType: document.getElementById('nCard').value,
-      clientId: document.getElementById('nClient').value
+      cardType: document.getElementById('nCard').value
     })
   });
   closeModal();
@@ -445,6 +559,37 @@ async function deleteSim(id) {
   render();
 }
 
+// === ACCOUNTS (Cuentas) ===
+async function renderAccounts(el) {
+  const accounts = await api('/api/admin/accounts');
+  const users = await api('/api/admin/users');
+  if (!accounts) return;
+
+  el.innerHTML = `
+    <div class="page-header"><h1>Cuentas</h1><p>${accounts.length} cuentas de clientes</p></div>
+    <div class="card">
+      <div class="card-header"><h2>Todas las Cuentas</h2></div>
+      <table>
+        <thead><tr><th>Nombre</th><th>Contacto</th><th>Email</th><th>Teléfono</th><th>Cliente</th><th>Fecha</th></tr></thead>
+        <tbody>
+          ${accounts.map(a => {
+            const usr = users?.find(u => u.id === a.clientId);
+            return `
+            <tr>
+              <td>${a.name || '—'}</td>
+              <td>${a.contact || '—'}</td>
+              <td>${a.email || '—'}</td>
+              <td>${a.phone || '—'}</td>
+              <td>${usr ? usr.name + ' (' + usr.company + ')' : (a.clientId || '—')}</td>
+              <td>${formatMadrid(a.createdAt)}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
 // === USERS ===
 async function renderUsers(el) {
   const users = await api('/api/admin/users');
@@ -452,11 +597,20 @@ async function renderUsers(el) {
   el.innerHTML = `
     <div class="page-header"><h1>Usuarios</h1></div>
     <div class="card">
-      <div class="card-header"><h2>Clientes</h2><button class="btn btn-coral btn-sm" onclick="showAddUser()">+ Nuevo Cliente</button></div>
+      <div class="card-header"><h2>Usuarios</h2><button class="btn btn-coral btn-sm" onclick="showAddUser()">+ Nuevo Usuario</button></div>
       <table>
-        <thead><tr><th>Nombre</th><th>Email</th><th>Empresa</th><th>Rol</th></tr></thead>
+        <thead><tr><th>Nombre</th><th>Email</th><th>Empresa</th><th>Teléfono</th><th>Rol</th><th>Acciones</th></tr></thead>
         <tbody>
-          ${users.map(u => `<tr><td>${u.name}</td><td>${u.email}</td><td>${u.company}</td><td><span class="badge badge-${u.role==='admin'?'processing':'active'}">${u.role}</span></td></tr>`).join('')}
+          ${users.map(u => `
+            <tr>
+              <td>${u.name}</td>
+              <td>${u.email}</td>
+              <td>${u.company}</td>
+              <td>${u.countryCode ? u.countryCode + ' ' : ''}${u.phone || '—'}</td>
+              <td><span class="badge badge-${u.role==='admin'?'processing':'active'}">${u.role}</span></td>
+              <td><button class="btn btn-outline btn-sm" onclick="showEditUser('${u.id}')">Editar</button></td>
+            </tr>
+          `).join('')}
         </tbody>
       </table>
     </div>
@@ -468,14 +622,37 @@ function showAddUser() {
   mc.innerHTML = `
     <div class="modal-overlay">
       <div class="modal">
-        <h2>Nuevo Cliente</h2>
+        <h2>Nuevo Usuario</h2>
+        <div class="form-group"><label>Rol</label>
+          <select id="nuRole">
+            <option value="client">Cliente</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
         <div class="form-group"><label>Nombre</label><input id="nuName"></div>
         <div class="form-group"><label>Email</label><input id="nuEmail" type="email"></div>
         <div class="form-group"><label>Empresa</label><input id="nuCompany"></div>
+        <div class="form-group">
+          <label>Teléfono</label>
+          <div class="phone-row">
+            <select id="nuCountryCode">
+              <option value="+1">+1</option>
+              <option value="+34">+34</option>
+              <option value="+52">+52</option>
+              <option value="+54">+54</option>
+              <option value="+56">+56</option>
+              <option value="+57">+57</option>
+              <option value="+58">+58</option>
+              <option value="+506">+506</option>
+              <option value="+507">+507</option>
+            </select>
+            <input id="nuPhone" placeholder="Número de teléfono">
+          </div>
+        </div>
         <div class="form-group"><label>Contraseña</label><input id="nuPass" type="text"></div>
         <div class="modal-actions">
           <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
-          <button class="btn btn-coral" onclick="addUser()">Crear Cliente</button>
+          <button class="btn btn-coral" onclick="addUser()">Crear Usuario</button>
         </div>
       </div>
     </div>
@@ -489,12 +666,97 @@ async function addUser() {
       name: document.getElementById('nuName').value,
       email: document.getElementById('nuEmail').value,
       company: document.getElementById('nuCompany').value,
-      password: document.getElementById('nuPass').value
+      password: document.getElementById('nuPass').value,
+      role: document.getElementById('nuRole').value,
+      countryCode: document.getElementById('nuCountryCode').value,
+      phone: document.getElementById('nuPhone').value
     })
   });
   if (res?.error) return toast(res.error, 'error');
   closeModal();
-  toast('Cliente creado', 'success');
+  toast('Usuario creado', 'success');
+  render();
+}
+
+async function showEditUser(userId) {
+  const users = await api('/api/admin/users');
+  const u = users?.find(x => x.id === userId);
+  if (!u) return toast('Usuario no encontrado', 'error');
+  const mc = document.getElementById('modalContainer');
+  mc.innerHTML = `
+    <div class="modal-overlay">
+      <div class="modal">
+        <h2>Editar Usuario — ${u.name}</h2>
+        <div class="form-row">
+          <div class="form-group"><label>Nombre</label><input id="euName" value="${u.name || ''}"></div>
+          <div class="form-group"><label>Empresa</label><input id="euCompany" value="${u.company || ''}"></div>
+        </div>
+        <div class="form-group"><label>Email</label><input id="euEmail" type="email" value="${u.email || ''}"></div>
+        <div class="form-group">
+          <label>Teléfono</label>
+          <div class="phone-row">
+            <select id="euCountryCode">
+              <option value="+1" ${u.countryCode==='+1'?'selected':''}>+1</option>
+              <option value="+34" ${u.countryCode==='+34'?'selected':''}>+34</option>
+              <option value="+52" ${u.countryCode==='+52'?'selected':''}>+52</option>
+              <option value="+54" ${u.countryCode==='+54'?'selected':''}>+54</option>
+              <option value="+56" ${u.countryCode==='+56'?'selected':''}>+56</option>
+              <option value="+57" ${u.countryCode==='+57'?'selected':''}>+57</option>
+              <option value="+58" ${u.countryCode==='+58'?'selected':''}>+58</option>
+              <option value="+506" ${u.countryCode==='+506'?'selected':''}>+506</option>
+              <option value="+507" ${u.countryCode==='+507'?'selected':''}>+507</option>
+            </select>
+            <input id="euPhone" value="${u.phone || ''}">
+          </div>
+        </div>
+        <div class="form-group"><label>Rol</label>
+          <select id="euRole">
+            <option value="client" ${u.role==='client'?'selected':''}>Cliente</option>
+            <option value="admin" ${u.role==='admin'?'selected':''}>Admin</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Dirección</label><input id="euAddress" value="${u.address || ''}"></div>
+        <div class="form-row-3">
+          <div class="form-group"><label>Ciudad</label><input id="euCity" value="${u.city || ''}"></div>
+          <div class="form-group"><label>País</label><input id="euCountry" value="${u.country || ''}"></div>
+          <div class="form-group"><label>Código Postal</label><input id="euPostal" value="${u.postalCode || ''}"></div>
+        </div>
+        <div class="form-group">
+          <label>Contraseña (dejar vacío para mantener actual)</label>
+          <input id="euPass" type="text" placeholder="Nueva contraseña...">
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+          <button class="btn btn-coral" onclick="saveUser('${userId}')">Guardar Cambios</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function saveUser(userId) {
+  const data = {
+    name: document.getElementById('euName').value,
+    email: document.getElementById('euEmail').value,
+    company: document.getElementById('euCompany').value,
+    phone: document.getElementById('euPhone').value,
+    countryCode: document.getElementById('euCountryCode').value,
+    role: document.getElementById('euRole').value,
+    address: document.getElementById('euAddress').value,
+    city: document.getElementById('euCity').value,
+    country: document.getElementById('euCountry').value,
+    postalCode: document.getElementById('euPostal').value
+  };
+  const pass = document.getElementById('euPass').value;
+  if (pass) data.password = pass;
+
+  const res = await api(`/api/admin/users/${userId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data)
+  });
+  if (res?.error) return toast(res.error, 'error');
+  closeModal();
+  toast('Usuario actualizado', 'success');
   render();
 }
 
@@ -513,7 +775,7 @@ async function renderSubUsers(el) {
             <tr>
               <td>${s.name}</td><td>${s.email}</td><td>${s.phone||'—'}</td>
               <td><span class="badge badge-${s.status}">${s.status}</span></td>
-              <td>${new Date(s.createdAt).toLocaleDateString('es')}</td>
+              <td>${formatMadridDate(s.createdAt)}</td>
               <td>${s.status === 'pending' ? `<button class="btn btn-green btn-sm" onclick="approveSub('${s.id}')">Aprobar</button> <button class="btn btn-red btn-sm" onclick="rejectSub('${s.id}')">Rechazar</button>` : '—'}</td>
             </tr>
           `).join('')}
@@ -535,6 +797,93 @@ async function rejectSub(id) {
   render();
 }
 
+// === AIRTIME ===
+let airtimeData = null;
+
+async function renderAirtime(el) {
+  airtimeData = await api('/api/admin/plans');
+  if (!airtimeData) airtimeData = {};
+
+  // Ensure it's an object with service types as keys and arrays of plan names as values
+  // Expected format: { "Pre-Pago": ["Plan A", "Plan B"], "Post-Pago": ["Plan C"] }
+
+  el.innerHTML = `
+    <div class="page-header"><h1>Airtime — Planes</h1><p>Gestión de planes disponibles por tipo de servicio</p></div>
+    <div id="airtimeContent"></div>
+    <div style="margin-top:16px;display:flex;gap:10px">
+      <button class="btn btn-outline" onclick="addServiceType()">+ Nuevo Tipo de Servicio</button>
+      <button class="btn btn-coral" onclick="saveAirtime()">Guardar Cambios</button>
+    </div>
+  `;
+  renderAirtimeContent();
+}
+
+function renderAirtimeContent() {
+  const container = document.getElementById('airtimeContent');
+  if (!container) return;
+  const types = Object.keys(airtimeData);
+  container.innerHTML = types.map(type => `
+    <div class="plan-category">
+      <div class="plan-category-header">
+        <h3>${type}</h3>
+        <div class="btn-header-group">
+          <button class="btn btn-outline btn-sm" onclick="renameServiceType('${type}')">Renombrar</button>
+          <button class="btn btn-green btn-sm" onclick="addPlanToType('${type}')">+ Plan</button>
+        </div>
+      </div>
+      ${(airtimeData[type] || []).map((plan, idx) => `
+        <div class="plan-item">
+          <span>${plan}</span>
+          <button onclick="removePlan('${type}', ${idx})" title="Eliminar">&times;</button>
+        </div>
+      `).join('')}
+      ${(airtimeData[type] || []).length === 0 ? '<p style="color:var(--gray-300);font-size:13px;padding:8px">Sin planes</p>' : ''}
+    </div>
+  `).join('');
+
+  if (types.length === 0) {
+    container.innerHTML = '<div class="card"><p style="color:var(--gray-500)">No hay tipos de servicio configurados. Agregue uno para comenzar.</p></div>';
+  }
+}
+
+function addServiceType() {
+  const name = prompt('Nombre del nuevo tipo de servicio:');
+  if (!name || !name.trim()) return;
+  if (airtimeData[name.trim()]) return toast('Ya existe ese tipo de servicio', 'error');
+  airtimeData[name.trim()] = [];
+  renderAirtimeContent();
+}
+
+function renameServiceType(oldName) {
+  const newName = prompt('Nuevo nombre para "' + oldName + '":', oldName);
+  if (!newName || !newName.trim() || newName.trim() === oldName) return;
+  if (airtimeData[newName.trim()]) return toast('Ya existe ese tipo de servicio', 'error');
+  airtimeData[newName.trim()] = airtimeData[oldName];
+  delete airtimeData[oldName];
+  renderAirtimeContent();
+}
+
+function addPlanToType(type) {
+  const plan = prompt('Nombre del nuevo plan para "' + type + '":');
+  if (!plan || !plan.trim()) return;
+  airtimeData[type].push(plan.trim());
+  renderAirtimeContent();
+}
+
+function removePlan(type, idx) {
+  airtimeData[type].splice(idx, 1);
+  renderAirtimeContent();
+}
+
+async function saveAirtime() {
+  const res = await api('/api/admin/plans', {
+    method: 'PUT',
+    body: JSON.stringify(airtimeData)
+  });
+  if (res?.error) return toast(res.error, 'error');
+  toast('Planes guardados', 'success');
+}
+
 // === ACTIVITY ===
 async function renderActivity(el) {
   const logs = await api('/api/activity');
@@ -545,7 +894,7 @@ async function renderActivity(el) {
       <table>
         <thead><tr><th>Acción</th><th>Detalles</th><th>Fecha</th></tr></thead>
         <tbody>
-          ${logs.map(l => `<tr><td><strong>${l.action}</strong></td><td>${l.details}</td><td>${new Date(l.timestamp).toLocaleString('es')}</td></tr>`).join('')}
+          ${logs.map(l => `<tr><td><strong>${l.action}</strong></td><td>${l.details}</td><td>${formatMadrid(l.timestamp)}</td></tr>`).join('')}
         </tbody>
       </table>
     </div>
