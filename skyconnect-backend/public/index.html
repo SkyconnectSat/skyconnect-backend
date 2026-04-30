@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SkyConnect - Satellite SIM Management</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --navy: #0d2137;
+  --navy-light: #142d4a;
+  --navy-dark: #091828;
+  --coral: #e63956;
+  --coral-hover: #d42e4a;
+  --gray-50: #f8f9fb;
+  --gray-100: #eef1f5;
+  --gray-200: #dde2ea;
+  --gray-300: #b8c1ce;
+  --gray-500: #6b7a8d;
+  --gray-700: #374151;
+  --green: #10b981;
+  --amber: #f59e0b;
+  --red: #ef4444;
+  --blue: #3b82f6;
+}
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--gray-50); color: var(--gray-700); }
+a { color: var(--coral); text-decoration: none; }
+
+/* === LOGIN === */
+#loginPage {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--navy-dark) 0%, var(--navy) 50%, var(--navy-light) 100%);
+}
+.login-box {
+  background: #fff;
+  border-radius: 16px;
+  padding: 48px 40px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.3);
+  text-align: center;
+}
+.login-logo { margin-bottom: 8px; }
+.login-logo img, .login-logo svg { max-width: 200px; }
+.login-subtitle { color: var(--gray-500); font-size: 14px; margin-bottom: 32px; }
+.form-group { text-align: left; margin-bottom: 20px; }
+.form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--gray-500); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .5px; }
+.form-group input, .form-group select, .form-group textarea {
+  width: 100%; padding: 12px 16px; border: 2px solid var(--gray-200); border-radius: 10px;
+  font-size: 15px; transition: border-color .2s; outline: none; background: #fff;
+}
+.form-group input:focus, .form-group select:focus { border-color: var(--coral); }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 12px 24px; border-radius: 10px; font-size: 15px; font-weight: 600;
+  border: none; cursor: pointer; transition: all .2s; width: 100%;
+}
+.btn-coral { background: var(--coral); color: #fff; }
+.btn-coral:hover { background: var(--coral-hover); transform: translateY(-1px); }
+.btn-navy { background: var(--navy); color: #fff; }
+.btn-navy:hover { background: var(--navy-light); }
+.btn-outline { background: transparent; border: 2px solid var(--gray-200); color: var(--gray-700); }
+.btn-outline:hover { border-color: var(--coral); color: var(--coral); }
+.btn-sm { padding: 8px 16px; font-size: 13px; width: auto; }
+.btn-green { background: var(--green); color: #fff; }
+.btn-green:hover { opacity: .9; }
+.btn-red { background: var(--red); color: #fff; }
+.btn-red:hover { opacity: .9; }
+.login-error { color: var(--red); font-size: 14px; margin-top: 12px; display: none; }
+
+/* === APP LAYOUT === */
+#appPage { display: none; }
+.app-layout { display: flex; min-height: 100vh; }
+.sidebar {
+  width: 250px; background: var(--navy); color: #fff; padding: 24px 0;
+  display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 100;
+}
+.sidebar-logo { padding: 0 24px 8px; text-align: center; }
+.sidebar-logo img, .sidebar-logo svg { max-width: 160px; max-height: 60px; }
+.sidebar-slogan { text-align: center; font-size: 12px; color: rgba(255,255,255,.4); letter-spacing: 3px; font-style: italic; padding: 0 24px 16px; border-bottom: 1px solid rgba(255,255,255,.1); }
+.sidebar-nav { flex: 1; padding: 16px 0; overflow-y: auto; }
+.nav-item {
+  display: flex; align-items: center; gap: 12px; padding: 12px 24px;
+  color: rgba(255,255,255,.6); cursor: pointer; transition: all .2s; font-size: 14px;
+}
+.nav-item:hover { color: #fff; background: rgba(255,255,255,.05); }
+.nav-item.active { color: #fff; background: rgba(255,255,255,.1); border-left: 3px solid var(--coral); }
+.nav-item svg { width: 20px; height: 20px; flex-shrink: 0; }
+.nav-sep { height: 1px; background: rgba(255,255,255,.08); margin: 8px 24px; }
+.sidebar-footer { padding: 16px 24px; border-top: 1px solid rgba(255,255,255,.1); }
+.user-info { font-size: 13px; color: rgba(255,255,255,.6); margin-bottom: 12px; }
+.user-info strong { color: #fff; display: block; font-size: 14px; }
+.btn-logout { width: 100%; padding: 8px; border-radius: 8px; background: rgba(255,255,255,.1); color: rgba(255,255,255,.7); border: none; cursor: pointer; font-size: 13px; }
+.btn-logout:hover { background: rgba(255,255,255,.15); color: #fff; }
+
+.main-content { margin-left: 250px; flex: 1; padding: 32px; min-height: 100vh; }
+.page-header { margin-bottom: 28px; }
+.page-header h1 { font-size: 26px; color: var(--navy); font-weight: 700; }
+.page-header p { color: var(--gray-500); margin-top: 4px; }
+
+/* === CARDS === */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
+.stat-card {
+  background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  border: 1px solid var(--gray-100);
+}
+.stat-card .stat-label { font-size: 13px; color: var(--gray-500); text-transform: uppercase; letter-spacing: .5px; }
+.stat-card .stat-value { font-size: 32px; font-weight: 700; color: var(--navy); margin-top: 4px; }
+
+.card {
+  background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  border: 1px solid var(--gray-100); margin-bottom: 20px;
+}
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.card-header h2 { font-size: 18px; color: var(--navy); }
+
+/* === TABLE === */
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--gray-500); padding: 12px 16px; border-bottom: 2px solid var(--gray-100); }
+td { padding: 14px 16px; border-bottom: 1px solid var(--gray-100); font-size: 14px; }
+tr:hover td { background: var(--gray-50); }
+tr { cursor: pointer; }
+
+/* === SEARCH === */
+.search-bar {
+  display: flex; gap: 12px; margin-bottom: 20px;
+}
+.search-bar input {
+  flex: 1; padding: 10px 16px; border: 2px solid var(--gray-200); border-radius: 10px;
+  font-size: 14px; outline: none; background: #fff;
+}
+.search-bar input:focus { border-color: var(--coral); }
+
+/* === STATUS BADGES === */
+.badge {
+  display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
+}
+.badge-active { background: #d1fae5; color: #065f46; }
+.badge-inactive { background: var(--gray-100); color: var(--gray-500); }
+.badge-processing { background: #fef3c7; color: #92400e; }
+.badge-pending { background: #dbeafe; color: #1e40af; }
+.badge-approved { background: #d1fae5; color: #065f46; }
+.badge-rejected { background: #fee2e2; color: #991b1b; }
+
+/* === SIM PROFILE === */
+.sim-profile { }
+.sim-profile-header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  padding-bottom: 20px; margin-bottom: 20px; border-bottom: 2px solid var(--gray-100);
+}
+.sim-profile-title h2 { font-size: 22px; color: var(--navy); margin-bottom: 4px; }
+.sim-profile-title .sim-number { font-size: 18px; color: var(--coral); font-weight: 600; }
+.sim-profile-title .sim-serial { font-size: 13px; color: var(--gray-500); font-family: monospace; margin-top: 2px; }
+.sim-profile-status { text-align: right; }
+.sim-profile-badge { font-size: 14px; padding: 6px 16px; }
+
+.sim-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+.sim-info-section { padding: 16px 0; }
+.sim-info-section:nth-child(odd) { padding-right: 24px; border-right: 1px solid var(--gray-100); }
+.sim-info-section:nth-child(even) { padding-left: 24px; }
+.sim-info-section h3 {
+  font-size: 13px; text-transform: uppercase; letter-spacing: 1px;
+  color: var(--coral); margin-bottom: 14px; font-weight: 700;
+}
+.info-row { display: flex; justify-content: space-between; padding: 8px 0; }
+.info-label { color: var(--gray-500); font-size: 13px; }
+.info-value { font-weight: 600; color: var(--gray-700); font-size: 14px; text-align: right; max-width: 60%; word-break: break-all; }
+
+.sim-actions-bar {
+  display: flex; gap: 10px; flex-wrap: wrap; padding: 16px 0;
+  border-top: 2px solid var(--gray-100); border-bottom: 2px solid var(--gray-100);
+  margin: 16px 0;
+}
+
+.sim-assign-grid {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; align-items: end;
+  padding-top: 16px;
+}
+.sim-assign-grid .form-group { margin-bottom: 0; }
+.inline-edit { border: 1.5px solid var(--gray-200); border-radius: 8px; padding: 8px 12px; font-size: 14px; width: 100%; outline: none; }
+.inline-edit:focus { border-color: var(--coral); }
+
+/* === MODAL === */
+.modal-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,.5);
+  display: flex; align-items: center; justify-content: center; z-index: 1000;
+}
+.modal {
+  background: #fff; border-radius: 16px; padding: 32px; width: 100%; max-width: 500px;
+  max-height: 80vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.3);
+}
+.modal h2 { font-size: 20px; color: var(--navy); margin-bottom: 20px; }
+.modal-actions { display: flex; gap: 12px; margin-top: 24px; }
+.modal-actions .btn { flex: 1; }
+
+/* === TOAST === */
+.toast {
+  position: fixed; bottom: 24px; right: 24px; padding: 16px 24px; border-radius: 12px;
+  color: #fff; font-size: 14px; font-weight: 500; z-index: 2000;
+  animation: slideIn .3s ease; max-width: 400px;
+}
+.toast-success { background: var(--green); }
+.toast-error { background: var(--red); }
+.toast-info { background: var(--blue); }
+@keyframes slideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+.back-link { display: inline-flex; align-items: center; gap: 6px; color: var(--gray-500); font-size: 14px; margin-bottom: 16px; cursor: pointer; }
+.back-link:hover { color: var(--coral); }
+
+/* === PLACEHOLDER PAGES === */
+.placeholder-page { text-align: center; padding: 60px 20px; }
+.placeholder-page .icon { font-size: 48px; margin-bottom: 16px; }
+.placeholder-page h2 { color: var(--navy); margin-bottom: 8px; }
+.placeholder-page p { color: var(--gray-500); max-width: 400px; margin: 0 auto; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .sidebar { display: none; }
+  .main-content { margin-left: 0; padding: 16px; }
+  .sim-info-grid { grid-template-columns: 1fr; }
+  .sim-info-section:nth-child(odd) { padding-right: 0; border-right: none; border-bottom: 1px solid var(--gray-100); }
+  .sim-info-section:nth-child(even) { padding-left: 0; }
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+  .sim-assign-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN PAGE -->
+<div id="loginPage">
+  <div class="login-box">
+    <div class="login-logo">
+      <img src="/logo.png" alt="SkyConnect" style="max-width:200px;max-height:80px" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+      <svg viewBox="0 0 600 100" xmlns="http://www.w3.org/2000/svg" style="display:none;width:200px">
+        <text x="10" y="70" font-family="Arial Black, Arial" font-weight="900" font-size="60" fill="#0d2137">SKYC</text>
+        <circle cx="265" cy="52" r="28" fill="#e63956"/>
+        <text x="252" y="70" font-family="Arial Black, Arial" font-weight="900" font-size="60" fill="white">O</text>
+        <text x="290" y="70" font-family="Arial Black, Arial" font-weight="900" font-size="60" fill="#0d2137">NNECT</text>
+        <text x="10" y="92" font-family="Arial" font-size="14" fill="#6b7a8d" letter-spacing="6">SATELLITE SERVICES</text>
+      </svg>
+    </div>
+    <p class="login-subtitle">Plataforma de Gestión de SIM Satelitales</p>
+    <form onsubmit="doLogin(event)">
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="loginEmail" required placeholder="email@empresa.com">
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <input type="password" id="loginPass" required placeholder="••••••••">
+      </div>
+      <button type="submit" class="btn btn-coral" id="loginBtn">Iniciar Sesión</button>
+      <p class="login-error" id="loginError"></p>
+    </form>
+  </div>
+</div>
+
+<!-- APP PAGE -->
+<div id="appPage">
+  <div class="app-layout">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-logo">
+        <img src="/logo-light.png" alt="SkyConnect" style="max-width:160px;max-height:60px" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+        <svg viewBox="0 0 500 80" xmlns="http://www.w3.org/2000/svg" style="display:none;width:160px">
+          <text x="5" y="55" font-family="Arial Black, Arial" font-weight="900" font-size="44" fill="white">SKYC</text>
+          <circle cx="200" cy="38" r="20" fill="#e63956"/>
+          <text x="190" y="52" font-family="Arial Black, Arial" font-weight="900" font-size="44" fill="white">O</text>
+          <text x="220" y="55" font-family="Arial Black, Arial" font-weight="900" font-size="44" fill="white">NNECT</text>
+          <text x="5" y="72" font-family="Arial" font-size="11" fill="rgba(255,255,255,.5)" letter-spacing="5">SATELLITE SERVICES</text>
+        </svg>
+      </div>
+      <div class="sidebar-slogan">Anywhere. Anytime.</div>
+      <nav class="sidebar-nav">
+        <div class="nav-item active" data-page="dashboard" onclick="navigate('dashboard')">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          Dashboard
+        </div>
+        <div class="nav-item" data-page="sims" onclick="navigate('sims')">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><circle cx="12" cy="18" r="1"/><line x1="9" y1="6" x2="15" y2="6"/></svg>
+          Dispositivos
+        </div>
+        <div class="nav-item" data-page="accounts" onclick="navigate('accounts')">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2z"/><path d="M16 3v4H8V3"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+          Cuentas / Clientes
+        </div>
+        <div class="nav-sep"></div>
+        <div class="nav-item" data-page="reports" onclick="navigate('reports')">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          Reportes
+        </div>
+        <div class="nav-item" data-page="billing" onclick="navigate('billing')">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+          Facturación
+        </div>
+        <div class="nav-sep"></div>
+        <div class="nav-item" data-page="subusers" onclick="navigate('subusers')">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Sub-Usuarios
+        </div>
+        <div class="nav-item" data-page="myaccount" onclick="navigate('myaccount')">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Mi Cuenta
+        </div>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-info">
+          <strong id="userName"></strong>
+          <span id="userCompany"></span>
+        </div>
+        <button class="btn-logout" onclick="doLogout()">Cerrar Sesión</button>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content" id="mainContent"></div>
+  </div>
+</div>
+
+<!-- Modal Container -->
+<div id="modalContainer"></div>
+
+<script>
+// === App State ===
+let currentUser = null;
+let currentPage = 'dashboard';
+let planData = null;
+
+// === Init ===
+(async function init() {
+  try {
+    const res = await fetch('/api/me');
+    if (res.ok) {
+      currentUser = await res.json();
+      if (currentUser.role === 'admin') {
+        window.location.href = '/admin';
+        return;
+      }
+      showApp();
+    }
+  } catch (e) {}
+})();
+
+fetch('/api/plans').then(r => r.json()).then(d => planData = d);
+
+// === Auth ===
+async function doLogin(e) {
+  e.preventDefault();
+  const email = document.getElementById('loginEmail').value;
+  const pass = document.getElementById('loginPass').value;
+  const errEl = document.getElementById('loginError');
+  errEl.style.display = 'none';
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: pass })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      errEl.textContent = data.error || 'Error al iniciar sesión';
+      errEl.style.display = 'block';
+      return;
+    }
+    currentUser = data;
+    if (data.role === 'admin') { window.location.href = '/admin'; return; }
+    showApp();
+  } catch (err) {
+    errEl.textContent = 'Error de conexión';
+    errEl.style.display = 'block';
+  }
+}
+
+async function doLogout() {
+  await fetch('/api/logout', { method: 'POST' });
+  currentUser = null;
+  document.getElementById('loginPage').style.display = 'flex';
+  document.getElementById('appPage').style.display = 'none';
+}
+
+function showApp() {
+  document.getElementById('loginPage').style.display = 'none';
+  document.getElementById('appPage').style.display = 'block';
+  document.getElementById('userName').textContent = currentUser.name;
+  document.getElementById('userCompany').textContent = currentUser.company;
+  navigate('dashboard');
+}
+
+// === Navigation ===
+function navigate(page, param) {
+  currentPage = page;
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const navItem = document.querySelector(`.nav-item[data-page="${page}"]`);
+  if (navItem) navItem.classList.add('active');
+  render(param);
+}
+
+async function render(param) {
+  const main = document.getElementById('mainContent');
+  try {
+    switch (currentPage) {
+      case 'dashboard': await renderDashboard(main); break;
+      case 'sims': await renderSims(main); break;
+      case 'simDetail': await renderSimDetail(main, param); break;
+      case 'accounts': renderAccounts(main); break;
+      case 'reports': renderReports(main); break;
+      case 'billing': renderBilling(main); break;
+      case 'subusers': await renderSubUsers(main); break;
+      case 'myaccount': renderMyAccount(main); break;
+    }
+  } catch (err) {
+    main.innerHTML = '<div class="card"><p>Error al cargar datos</p></div>';
+  }
+}
+
+// === Dashboard ===
+async function renderDashboard(el) {
+  const sims = await fetch('/api/sims').then(r => r.json());
+  const active = sims.filter(s => s.status === 'active').length;
+  const inactive = sims.filter(s => s.status === 'inactive').length;
+  const processing = sims.filter(s => s.status === 'processing').length;
+
+  el.innerHTML = `
+    <div class="page-header">
+      <h1>Dashboard</h1>
+      <p>Bienvenido, ${currentUser.name}</p>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Total Dispositivos</div>
+        <div class="stat-value">${sims.length}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Activas</div>
+        <div class="stat-value" style="color:var(--green)">${active}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Inactivas</div>
+        <div class="stat-value" style="color:var(--gray-500)">${inactive}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">En Proceso</div>
+        <div class="stat-value" style="color:var(--amber)">${processing}</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><h2>SIM CARDS</h2></div>
+      <table>
+        <thead><tr><th>Tipo</th><th>SIM / Dispositivo</th><th>IMSI</th><th>Nombre</th><th>Cuenta</th><th>Estado</th></tr></thead>
+        <tbody>
+          ${sims.map(s => `
+            <tr onclick="navigate('simDetail','${s.id}')">
+              <td>${s.cardType || '—'}</td>
+              <td style="font-family:monospace;font-size:13px">${s.serial}</td>
+              <td>${s.msisdn || '—'}</td>
+              <td>${s.name || '—'}</td>
+              <td>${s.subClient || '—'}</td>
+              <td><span class="badge badge-${s.status}">${statusLabel(s.status)}</span></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// === Dispositivos (SIM List) ===
+async function renderSims(el) {
+  const sims = await fetch('/api/sims').then(r => r.json());
+  el.innerHTML = `
+    <div class="page-header">
+      <h1>Dispositivos</h1>
+      <p>${sims.length} dispositivos asignados</p>
+    </div>
+    <div class="search-bar">
+      <input type="text" id="simSearch" placeholder="Buscar por nombre, serial o número (IMSI)..." oninput="filterSims()">
+    </div>
+    <div class="card">
+      <table>
+        <thead><tr><th>Tipo</th><th>SIM / Dispositivo</th><th>IMSI</th><th>Nombre</th><th>Cuenta</th><th>Estado</th></tr></thead>
+        <tbody id="simsTableBody">
+          ${sims.map(s => `
+            <tr onclick="navigate('simDetail','${s.id}')" data-search="${(s.name||'').toLowerCase()} ${s.serial.toLowerCase()} ${(s.msisdn||'').toLowerCase()}">
+              <td>${s.cardType || '—'}</td>
+              <td style="font-family:monospace;font-size:13px">${s.serial}</td>
+              <td>${s.msisdn || '—'}</td>
+              <td>${s.name || '—'}</td>
+              <td>${s.subClient || '—'}</td>
+              <td><span class="badge badge-${s.status}">${statusLabel(s.status)}</span></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function filterSims() {
+  const q = document.getElementById('simSearch').value.toLowerCase();
+  document.querySelectorAll('#simsTableBody tr').forEach(row => {
+    const data = row.getAttribute('data-search') || '';
+    row.style.display = data.includes(q) ? '' : 'none';
+  });
+}
+
+// === SIM Detail / Profile ===
+async function renderSimDetail(el, simId) {
+  const sim = await fetch(`/api/sims/${simId}`).then(r => r.json());
+  const subusers = await fetch('/api/subusers').then(r => r.json());
+  const approvedSubs = subusers.filter(s => s.status === 'approved');
+
+  if (sim.status === 'inactive') {
+    el.innerHTML = `
+      <div class="back-link" onclick="navigate('sims')">&#8592; Volver a Dispositivos</div>
+      <div class="card">
+        <div class="sim-profile">
+          <div class="sim-profile-header">
+            <div class="sim-profile-title">
+              <h2>${sim.name || 'SIM sin activar'}</h2>
+              <div class="sim-serial">Serial: ${sim.serial}</div>
+            </div>
+            <div class="sim-profile-status">
+              <span class="badge badge-inactive sim-profile-badge">Inactiva</span>
+            </div>
+          </div>
+          <div class="sim-info-grid">
+            <div class="sim-info-section">
+              <h3>Información del Dispositivo</h3>
+              <div class="info-row"><span class="info-label">Serial</span><span class="info-value">${sim.serial}</span></div>
+              <div class="info-row"><span class="info-label">Tipo de Tarjeta</span><span class="info-value">${sim.cardType || '—'}</span></div>
+              <div class="info-row"><span class="info-label">Estado</span><span class="info-value"><span class="badge badge-inactive">Inactiva</span></span></div>
+            </div>
+            <div class="sim-info-section">
+              <h3>Activación</h3>
+              <p style="color:var(--gray-500);font-size:14px;margin-bottom:16px">Esta SIM no está activa. Solicite la activación para comenzar a usarla.</p>
+              <button class="btn btn-coral" onclick="showActivateModal('${sim.id}')" style="width:auto">Activar Dispositivo</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  if (sim.status === 'processing') {
+    el.innerHTML = `
+      <div class="back-link" onclick="navigate('sims')">&#8592; Volver a Dispositivos</div>
+      <div class="card">
+        <div class="sim-profile">
+          <div class="sim-profile-header">
+            <div class="sim-profile-title">
+              <h2>${sim.name || sim.serial}</h2>
+              <div class="sim-serial">Serial: ${sim.serial}</div>
+            </div>
+            <div class="sim-profile-status">
+              <span class="badge badge-processing sim-profile-badge">Procesando</span>
+            </div>
+          </div>
+          <div style="text-align:center;padding:40px 0">
+            <p style="font-size:16px;color:var(--amber);font-weight:600">Su solicitud está siendo procesada</p>
+            <p style="color:var(--gray-500);margin-top:8px">Recibirá un correo de confirmación cuando esté lista.</p>
+          </div>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  // Active SIM — full profile
+  el.innerHTML = `
+    <div class="back-link" onclick="navigate('sims')">&#8592; Volver a Dispositivos</div>
+    <div class="card">
+      <div class="sim-profile">
+        <div class="sim-profile-header">
+          <div class="sim-profile-title">
+            <h2>${sim.name || sim.serial}</h2>
+            <div class="sim-number">${sim.msisdn || ''}</div>
+            <div class="sim-serial">Serial: ${sim.serial}</div>
+          </div>
+          <div class="sim-profile-status">
+            <span class="badge badge-active sim-profile-badge">Activa</span>
+          </div>
+        </div>
+
+        <div class="sim-actions-bar">
+          <button class="btn btn-outline btn-sm" onclick="requestBalanceUpdate('${sim.id}')">Actualizar Saldo</button>
+          <button class="btn btn-coral btn-sm" onclick="showRechargeModal('${sim.id}', '${sim.serviceType}')">Recargar</button>
+          <button class="btn btn-red btn-sm" onclick="confirmDeactivate('${sim.id}')">Desactivar</button>
+        </div>
+
+        <div class="sim-info-grid">
+          <div class="sim-info-section">
+            <h3>Información del Dispositivo</h3>
+            <div class="info-row"><span class="info-label">Serial</span><span class="info-value" style="font-family:monospace">${sim.serial}</span></div>
+            <div class="info-row"><span class="info-label">ICCID</span><span class="info-value" style="font-family:monospace">${sim.iccid || '—'}</span></div>
+            <div class="info-row"><span class="info-label">IMEI</span><span class="info-value" style="font-family:monospace">${sim.imei || '—'}</span></div>
+            <div class="info-row"><span class="info-label">Número (MSISDN)</span><span class="info-value">${sim.msisdn || '—'}</span></div>
+            <div class="info-row"><span class="info-label">PUK</span><span class="info-value">${sim.puk || '—'}</span></div>
+            <div class="info-row"><span class="info-label">PIN</span><span class="info-value">${sim.pin || '—'}</span></div>
+            <div class="info-row"><span class="info-label">Tipo de Tarjeta</span><span class="info-value">${sim.cardType || '—'}</span></div>
+          </div>
+
+          <div class="sim-info-section">
+            <h3>Servicio y Plan</h3>
+            <div class="info-row"><span class="info-label">Servicio</span><span class="info-value">${sim.serviceType || '—'}</span></div>
+            <div class="info-row"><span class="info-label">Plan de Minutos</span><span class="info-value">${sim.planType || '—'}</span></div>
+            <div class="info-row"><span class="info-label">Saldo Disponible</span><span class="info-value" style="color:var(--green);font-size:18px;font-weight:700">${sim.balance} min</span></div>
+            <div class="info-row"><span class="info-label">Minutos Usados</span><span class="info-value">${sim.minutesActive}</span></div>
+            <div class="info-row"><span class="info-label">Fecha de Activación</span><span class="info-value">${formatDate(sim.activationDate)}</span></div>
+            <div class="info-row"><span class="info-label">Fecha de Vencimiento</span><span class="info-value">${formatDate(sim.expiryDate)}</span></div>
+          </div>
+
+          <div class="sim-info-section">
+            <h3>Conectividad</h3>
+            <div class="info-row"><span class="info-label">Última Conexión</span><span class="info-value">${formatDate(sim.lastConnection)}</span></div>
+            <div class="info-row"><span class="info-label">Última Ubicación</span><span class="info-value">${sim.lastLocation || '—'}</span></div>
+          </div>
+
+          <div class="sim-info-section">
+            <h3>Asignación</h3>
+            <div class="sim-assign-grid">
+              <div class="form-group">
+                <label>Nombre</label>
+                <input class="inline-edit" id="assignName" value="${sim.name || ''}" placeholder="Ej: Unidad Norte">
+              </div>
+              <div class="form-group">
+                <label>Referencia</label>
+                <input class="inline-edit" id="assignRef" value="${sim.reference || ''}" placeholder="Ej: PN-001">
+              </div>
+              <div class="form-group">
+                <label>Cuenta / Cliente</label>
+                <select class="inline-edit" id="assignSub">
+                  <option value="">— Sin asignar —</option>
+                  ${approvedSubs.map(s => `<option value="${s.name}" ${sim.subClient === s.name ? 'selected' : ''}>${s.name}</option>`).join('')}
+                </select>
+              </div>
+            </div>
+            <div style="margin-top:12px">
+              <button class="btn btn-navy btn-sm" onclick="saveAssignment('${sim.id}')">Guardar Asignación</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// === Cuentas / Clientes ===
+function renderAccounts(el) {
+  el.innerHTML = `
+    <div class="page-header">
+      <h1>Cuentas / Clientes</h1>
+      <p>Gestione sus cuentas y clientes</p>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <h2>Mis Cuentas</h2>
+        <button class="btn btn-coral btn-sm" onclick="showNewAccountModal()">+ Nueva Cuenta</button>
+      </div>
+      <p style="color:var(--gray-500);padding:20px 0">No hay cuentas registradas. Cree una nueva cuenta para organizar sus dispositivos.</p>
+    </div>
+  `;
+}
+
+function showNewAccountModal() {
+  const mc = document.getElementById('modalContainer');
+  mc.innerHTML = `
+    <div class="modal-overlay" onclick="closeModal(event)">
+      <div class="modal" onclick="event.stopPropagation()">
+        <h2>Nueva Cuenta / Cliente</h2>
+        <div class="form-group"><label>Nombre de la Cuenta</label><input id="accName" placeholder="Nombre de empresa o cliente"></div>
+        <div class="form-group"><label>Contacto</label><input id="accContact" placeholder="Nombre del contacto"></div>
+        <div class="form-group"><label>Email</label><input id="accEmail" type="email" placeholder="email@empresa.com"></div>
+        <div class="form-group"><label>Teléfono</label><input id="accPhone" placeholder="+52 ..."></div>
+        <div class="modal-actions">
+          <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+          <button class="btn btn-coral" onclick="toast('Solicitud de cuenta enviada','success');closeModal()">Crear Cuenta</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// === Reportes ===
+function renderReports(el) {
+  el.innerHTML = `
+    <div class="page-header">
+      <h1>Reportes</h1>
+      <p>Solicite el historial de llamadas de sus dispositivos</p>
+    </div>
+    <div class="card">
+      <div class="card-header"><h2>Solicitar Reporte</h2></div>
+      <p style="color:var(--gray-500);margin-bottom:20px">Seleccione un dispositivo y el período para recibir el historial de llamadas por correo electrónico.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;align-items:end">
+        <div class="form-group">
+          <label>Dispositivo</label>
+          <select id="reportSim" class="inline-edit" style="width:100%">
+            <option value="">— Seleccionar —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Desde</label>
+          <input type="date" id="reportFrom" class="inline-edit" style="width:100%">
+        </div>
+        <div class="form-group">
+          <label>Hasta</label>
+          <input type="date" id="reportTo" class="inline-edit" style="width:100%">
+        </div>
+      </div>
+      <button class="btn btn-coral btn-sm" style="margin-top:16px" onclick="requestReport()">Solicitar Reporte</button>
+    </div>
+  `;
+  // Load SIMs into dropdown
+  fetch('/api/sims').then(r => r.json()).then(sims => {
+    const sel = document.getElementById('reportSim');
+    sims.filter(s => s.status === 'active').forEach(s => {
+      sel.innerHTML += `<option value="${s.id}">${s.name || s.serial} — ${s.msisdn || ''}</option>`;
+    });
+  });
+}
+
+function requestReport() {
+  const simId = document.getElementById('reportSim').value;
+  if (!simId) return toast('Seleccione un dispositivo', 'error');
+  toast('Solicitud de reporte enviada. Recibirá el historial por correo electrónico.', 'success');
+  // TODO: send to backend
+}
+
+// === Facturación ===
+function renderBilling(el) {
+  el.innerHTML = `
+    <div class="page-header">
+      <h1>Facturación</h1>
+      <p>Consulte sus facturas mensuales</p>
+    </div>
+    <div class="card">
+      <div class="card-header"><h2>Facturas</h2></div>
+      <p style="color:var(--gray-500);padding:20px 0">No hay facturas disponibles en este momento. Sus facturas mensuales aparecerán aquí en formato PDF.</p>
+    </div>
+  `;
+}
+
+// === Mi Cuenta ===
+function renderMyAccount(el) {
+  el.innerHTML = `
+    <div class="page-header">
+      <h1>Mi Cuenta</h1>
+      <p>Configure sus datos y preferencias</p>
+    </div>
+    <div class="card">
+      <div class="card-header"><h2>Información de Contacto</h2></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="form-group">
+          <label>Nombre</label>
+          <input class="inline-edit" style="width:100%" value="${currentUser.name}" readonly>
+        </div>
+        <div class="form-group">
+          <label>Empresa</label>
+          <input class="inline-edit" style="width:100%" value="${currentUser.company}" readonly>
+        </div>
+        <div class="form-group">
+          <label>Email Principal</label>
+          <input class="inline-edit" style="width:100%" value="${currentUser.email}" readonly>
+        </div>
+        <div class="form-group">
+          <label>Email para Notificaciones</label>
+          <input class="inline-edit" style="width:100%" id="notifEmail" value="${currentUser.email}" placeholder="email@empresa.com">
+        </div>
+        <div class="form-group">
+          <label>Teléfono de Contacto</label>
+          <input class="inline-edit" style="width:100%" id="contactPhone" placeholder="+52 ...">
+        </div>
+        <div class="form-group">
+          <label>Persona de Contacto</label>
+          <input class="inline-edit" style="width:100%" id="contactPerson" placeholder="Nombre completo">
+        </div>
+      </div>
+      <div class="form-group" style="margin-top:16px">
+        <label>Dirección</label>
+        <textarea class="inline-edit" id="contactAddress" style="width:100%;min-height:60px;resize:vertical" placeholder="Dirección completa"></textarea>
+      </div>
+      <button class="btn btn-navy btn-sm" style="margin-top:16px" onclick="toast('Datos actualizados','success')">Guardar Cambios</button>
+    </div>
+  `;
+}
+
+// === Sub-Users ===
+async function renderSubUsers(el) {
+  const subusers = await fetch('/api/subusers').then(r => r.json());
+  el.innerHTML = `
+    <div class="page-header">
+      <h1>Sub-Usuarios</h1>
+      <p>Gestión de sub-usuarios</p>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <h2>Mis Sub-Usuarios</h2>
+        <button class="btn btn-coral btn-sm" onclick="showNewSubUserModal()">+ Nuevo Sub-Usuario</button>
+      </div>
+      ${subusers.length === 0 ? '<p style="color:var(--gray-500);padding:20px 0">No hay sub-usuarios registrados</p>' : `
+      <table>
+        <thead><tr><th>Nombre</th><th>Email</th><th>Teléfono</th><th>Estado</th><th>Fecha</th></tr></thead>
+        <tbody>
+          ${subusers.map(s => `
+            <tr style="cursor:default">
+              <td>${s.name}</td>
+              <td>${s.email}</td>
+              <td>${s.phone || '—'}</td>
+              <td><span class="badge badge-${s.status}">${statusLabel(s.status)}</span></td>
+              <td>${formatDate(s.createdAt)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>`}
+    </div>
+  `;
+}
+
+// === Actions ===
+
+function showActivateModal(simId) {
+  if (!planData) return toast('Cargando opciones...', 'info');
+  const mc = document.getElementById('modalContainer');
+  mc.innerHTML = `
+    <div class="modal-overlay" onclick="closeModal(event)">
+      <div class="modal" onclick="event.stopPropagation()">
+        <h2>Activar Dispositivo</h2>
+        <div class="form-group">
+          <label>Tipo de Activación</label>
+          <select id="actType" onchange="toggleSchedule()">
+            <option value="immediate">Inmediata</option>
+            <option value="scheduled">Programada</option>
+          </select>
+        </div>
+        <div class="form-group" id="scheduleGroup" style="display:none">
+          <label>Fecha y Hora</label>
+          <input type="datetime-local" id="actDate">
+        </div>
+        <div class="form-group">
+          <label>Servicio</label>
+          <select id="actService" onchange="updatePlanOptions()">
+            <option value="">— Seleccionar —</option>
+            ${planData.services.map(s => `<option value="${s}">${s}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Plan de Minutos</label>
+          <select id="actPlan" disabled>
+            <option value="">— Seleccione servicio primero —</option>
+          </select>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+          <button class="btn btn-coral" onclick="doActivate('${simId}')">Solicitar Activación</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function toggleSchedule() {
+  document.getElementById('scheduleGroup').style.display = document.getElementById('actType').value === 'scheduled' ? 'block' : 'none';
+}
+
+function updatePlanOptions() {
+  const service = document.getElementById('actService').value;
+  const planSel = document.getElementById('actPlan');
+  if (!service) { planSel.innerHTML = '<option value="">— Seleccione servicio primero —</option>'; planSel.disabled = true; return; }
+  const plans = planData.plans[service] || [];
+  planSel.innerHTML = '<option value="">— Seleccionar plan —</option>' + plans.map(p => `<option value="${p}">${p}</option>`).join('');
+  planSel.disabled = false;
+}
+
+async function doActivate(simId) {
+  const serviceType = document.getElementById('actService').value;
+  const planType = document.getElementById('actPlan').value;
+  const activationType = document.getElementById('actType').value;
+  const scheduledDate = document.getElementById('actDate')?.value || '';
+  if (!serviceType || !planType) return toast('Seleccione servicio y plan', 'error');
+  const res = await fetch(`/api/sims/${simId}/activate`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ serviceType, planType, activationType, scheduledDate })
+  });
+  if (res.ok) { closeModal(); toast('Solicitud de activación enviada', 'success'); navigate('simDetail', simId); }
+  else { const d = await res.json(); toast(d.error || 'Error', 'error'); }
+}
+
+function confirmDeactivate(simId) {
+  const mc = document.getElementById('modalContainer');
+  mc.innerHTML = `
+    <div class="modal-overlay" onclick="closeModal(event)">
+      <div class="modal" onclick="event.stopPropagation()">
+        <h2>Desactivar Dispositivo</h2>
+        <p style="margin-bottom:16px;color:var(--gray-500)">¿Está seguro que desea desactivar este dispositivo? Esta acción será procesada por nuestro equipo.</p>
+        <div class="modal-actions">
+          <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+          <button class="btn btn-red" onclick="doDeactivate('${simId}')">Sí, Desactivar</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function doDeactivate(simId) {
+  const res = await fetch(`/api/sims/${simId}/deactivate`, { method: 'POST' });
+  if (res.ok) { closeModal(); toast('Solicitud de desactivación enviada', 'success'); navigate('simDetail', simId); }
+}
+
+async function requestBalanceUpdate(simId) {
+  const res = await fetch(`/api/sims/${simId}/refresh-balance`, { method: 'POST' });
+  if (res.ok) toast('Se ha solicitado la actualización al servidor. Consulte en unos minutos.', 'info');
+}
+
+function showRechargeModal(simId, serviceType) {
+  if (!planData) return toast('Cargando...', 'info');
+  const plans = planData.plans[serviceType] || planData.plans['Pre-Pago'];
+  const mc = document.getElementById('modalContainer');
+  mc.innerHTML = `
+    <div class="modal-overlay" onclick="closeModal(event)">
+      <div class="modal" onclick="event.stopPropagation()">
+        <h2>Recargar Dispositivo</h2>
+        <div class="form-group">
+          <label>Plan de Recarga</label>
+          <select id="rechargePlan">
+            <option value="">— Seleccionar plan —</option>
+            ${plans.map(p => `<option value="${p}">${p}</option>`).join('')}
+          </select>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+          <button class="btn btn-coral" onclick="doRecharge('${simId}')">Solicitar Recarga</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function doRecharge(simId) {
+  const plan = document.getElementById('rechargePlan').value;
+  if (!plan) return toast('Seleccione un plan', 'error');
+  const res = await fetch(`/api/sims/${simId}/recharge`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ plan })
+  });
+  if (res.ok) { closeModal(); toast('Solicitud de recarga enviada', 'success'); }
+}
+
+async function saveAssignment(simId) {
+  const name = document.getElementById('assignName').value;
+  const reference = document.getElementById('assignRef').value;
+  const subClient = document.getElementById('assignSub').value;
+  const res = await fetch(`/api/sims/${simId}/assign`, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, reference, subClient })
+  });
+  if (res.ok) toast('Asignación guardada', 'success');
+}
+
+function showNewSubUserModal() {
+  const mc = document.getElementById('modalContainer');
+  mc.innerHTML = `
+    <div class="modal-overlay" onclick="closeModal(event)">
+      <div class="modal" onclick="event.stopPropagation()">
+        <h2>Nuevo Sub-Usuario</h2>
+        <div class="form-group"><label>Nombre</label><input id="suName" placeholder="Nombre completo"></div>
+        <div class="form-group"><label>Email</label><input id="suEmail" type="email" placeholder="email@empresa.com"></div>
+        <div class="form-group"><label>Teléfono (opcional)</label><input id="suPhone" placeholder="+52 ..."></div>
+        <div class="modal-actions">
+          <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+          <button class="btn btn-coral" onclick="doCreateSubUser()">Solicitar</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function doCreateSubUser() {
+  const name = document.getElementById('suName').value;
+  const email = document.getElementById('suEmail').value;
+  if (!name || !email) return toast('Nombre y email son requeridos', 'error');
+  const res = await fetch('/api/subusers', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, email, phone: document.getElementById('suPhone').value })
+  });
+  if (res.ok) { closeModal(); toast('Solicitud de sub-usuario enviada. Pendiente de aprobación.', 'success'); navigate('subusers'); }
+}
+
+// === Helpers ===
+function closeModal(e) {
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('modalContainer').innerHTML = '';
+}
+
+function toast(msg, type = 'success') {
+  const t = document.createElement('div');
+  t.className = `toast toast-${type}`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 4000);
+}
+
+function statusLabel(s) {
+  const m = { active: 'Activa', inactive: 'Inactiva', processing: 'Procesando', pending: 'Pendiente', approved: 'Aprobado', rejected: 'Rechazado' };
+  return m[s] || s;
+}
+
+function formatDate(d) {
+  if (!d) return '—';
+  try { return new Date(d).toLocaleDateString('es-ES', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+  catch (e) { return d; }
+}
+</script>
+</body>
+</html>
