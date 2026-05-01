@@ -917,7 +917,7 @@ async function renderSimDetail(el, simId) {
             <input type="checkbox" id="inlineActAccept" onchange="toggleActivateBtn()">
             <label for="inlineActAccept">Acepto los cargos que ser&aacute;n reflejados en la siguiente factura</label>
           </div>
-          <button class="btn btn-coral btn-sm btn-disabled" id="inlineActBtn" disabled style="margin-top:4px" onclick="doInlineActivate('${sim.id}')">Activar</button>
+          <button class="btn btn-coral btn-disabled" id="inlineActBtn" disabled style="margin-top:4px" onclick="doInlineActivate('${sim.id}')">Activar</button>
         </div>
       </div>
 
@@ -1204,7 +1204,15 @@ function renderBilling(el) {
 
 // === Mi Cuenta ===
 function renderMyAccount(el) {
-  const ccOptions = COUNTRY_CODES.map(c => `<option value="${c.code}">${c.label}</option>`).join('');
+  const savedCode = currentUser.countryCode || '+1';
+  const ccOptions = COUNTRY_CODES.map(c => `<option value="${c.code}" ${c.code === savedCode ? 'selected' : ''}>${c.label}</option>`).join('');
+  const savedPhone = currentUser.phone ? currentUser.phone.replace(/^\+\d+\s*/, '') : '';
+  const savedNotifEmail = currentUser.notificationEmail || currentUser.email;
+  const savedContactPerson = currentUser.contactPerson || '';
+  const savedAddress = currentUser.address || '';
+  const savedCountry = currentUser.country || '';
+  const savedCity = currentUser.city || '';
+  const savedPostalCode = currentUser.postalCode || '';
   el.innerHTML = `
     <div class="page-header">
       <h1>Mi Cuenta</h1>
@@ -1227,34 +1235,34 @@ function renderMyAccount(el) {
         </div>
         <div class="form-group">
           <label>Email para Notificaciones</label>
-          <input class="inline-edit" style="width:100%" id="notifEmail" value="${currentUser.email}" placeholder="email@empresa.com">
+          <input class="inline-edit" style="width:100%" id="notifEmail" value="${savedNotifEmail}" placeholder="email@empresa.com">
         </div>
         <div class="form-group">
           <label>Tel&eacute;fono de Contacto</label>
           <div class="phone-with-code">
             <select id="contactPhoneCode">${ccOptions}</select>
-            <input class="inline-edit" id="contactPhone" placeholder="Numero de telefono">
+            <input class="inline-edit" id="contactPhone" value="${savedPhone}" placeholder="Numero de telefono">
           </div>
         </div>
         <div class="form-group">
           <label>Persona de Contacto</label>
-          <input class="inline-edit" style="width:100%" id="contactPerson" placeholder="Nombre completo">
+          <input class="inline-edit" style="width:100%" id="contactPerson" value="${savedContactPerson}" placeholder="Nombre completo">
         </div>
         <div class="form-group">
           <label>Direcci&oacute;n</label>
-          <input class="inline-edit" style="width:100%" id="contactAddress" placeholder="Direccion completa">
+          <input class="inline-edit" style="width:100%" id="contactAddress" value="${savedAddress}" placeholder="Direccion completa">
         </div>
         <div class="form-group">
           <label>Pa&iacute;s</label>
-          <input class="inline-edit" style="width:100%" id="contactCountry" placeholder="Pais">
+          <input class="inline-edit" style="width:100%" id="contactCountry" value="${savedCountry}" placeholder="Pais">
         </div>
         <div class="form-group">
           <label>Ciudad</label>
-          <input class="inline-edit" style="width:100%" id="contactCity" placeholder="Ciudad">
+          <input class="inline-edit" style="width:100%" id="contactCity" value="${savedCity}" placeholder="Ciudad">
         </div>
         <div class="form-group">
           <label>C&oacute;digo Postal</label>
-          <input class="inline-edit" style="width:100%" id="contactPostalCode" placeholder="Codigo postal">
+          <input class="inline-edit" style="width:100%" id="contactPostalCode" value="${savedPostalCode}" placeholder="Codigo postal">
         </div>
       </div>
       <button class="btn btn-navy btn-sm" style="margin-top:16px" onclick="saveMyAccount()">Guardar Cambios</button>
@@ -1263,12 +1271,10 @@ function renderMyAccount(el) {
 }
 
 async function saveMyAccount() {
-  const phoneCode = document.getElementById('contactPhoneCode').value;
-  const phoneNum = document.getElementById('contactPhone').value;
-  const fullPhone = phoneNum ? (phoneCode + ' ' + phoneNum) : '';
   const data = {
     notificationEmail: document.getElementById('notifEmail').value,
-    phone: fullPhone,
+    countryCode: document.getElementById('contactPhoneCode').value,
+    phone: document.getElementById('contactPhone').value,
     contactPerson: document.getElementById('contactPerson').value,
     address: document.getElementById('contactAddress').value,
     country: document.getElementById('contactCountry').value,
