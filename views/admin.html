@@ -624,8 +624,9 @@ async function renderRequests(el) {
           </div>
           <div class="request-actions">
             ${r.type === 'activation' ? `<button class="btn btn-coral btn-sm" onclick="editSimThenComplete('${r.id}','${r.simId}')">Cargar datos y completar</button>` : ''}
+            ${r.type === 'recharge' ? `<button class="btn btn-coral btn-sm" onclick="editSimThenComplete('${r.id}','${r.simId}')">Actualizar datos y completar</button>` : ''}
             ${r.type === 'balance_update' ? `<button class="btn btn-green btn-sm" onclick="editSimThenCompleteBalanceUpdate('${r.id}','${r.simId}')">Completar</button>` : ''}
-            ${r.type !== 'activation' && r.type !== 'balance_update' ? `<button class="btn btn-green btn-sm" onclick="completeReq('${r.id}')">Completar</button>` : ''}
+            ${r.type !== 'activation' && r.type !== 'recharge' && r.type !== 'balance_update' ? `<button class="btn btn-green btn-sm" onclick="completeReq('${r.id}')">Completar</button>` : ''}
             <button class="btn btn-red btn-sm" onclick="rejectReq('${r.id}')">Rechazar</button>
           </div>
         </div>
@@ -1193,6 +1194,7 @@ async function renderAccounts(el) {
               <td>${usr ? usr.name + ' (' + (usr.company || '') + ')' : '<em style="color:var(--gray-300)">Sin asignar</em>'}</td>
               <td>${formatMadridDate(a.createdAt)}</td>
               <td>
+                <button class="btn btn-outline btn-sm" onclick="showEditAccountAdmin('${a.id}')">Editar</button>
                 <button class="btn btn-outline btn-sm" onclick="showAssignAccount('${a.id}')">Asignar</button>
                 <button class="btn btn-red btn-sm" onclick="deleteAccountAdmin('${a.id}','${(a.name||'').replace(/'/g,"\\'")}')">Eliminar</button>
               </td>
@@ -1302,6 +1304,47 @@ async function deleteAccountAdmin(accountId, name) {
     render();
   } else {
     toast(r?.error || 'Error al eliminar', 'error');
+  }
+}
+
+async function showEditAccountAdmin(accountId) {
+  const accounts = await api('/api/accounts');
+  const account = (accounts || []).find(a => a.id === accountId);
+  if (!account) return toast('Cuenta no encontrada', 'error');
+  const mc = document.getElementById('modalContainer');
+  mc.innerHTML = `
+    <div class="modal-overlay" onclick="closeModal(event)">
+      <div class="modal" onclick="event.stopPropagation()">
+        <h2>Editar Cuenta</h2>
+        <div class="form-group"><label>Nombre de Cuenta *</label><input id="editAccName" value="${account.name || ''}"></div>
+        <div class="form-group"><label>Contacto</label><input id="editAccContact" value="${account.contact || ''}"></div>
+        <div class="form-group"><label>Email</label><input id="editAccEmail" value="${account.email || ''}"></div>
+        <div class="form-group"><label>Teléfono</label><input id="editAccPhone" value="${account.phone || ''}"></div>
+        <div class="modal-actions">
+          <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+          <button class="btn btn-coral" onclick="doEditAccountAdmin('${accountId}')">Guardar</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function doEditAccountAdmin(accountId) {
+  const name = document.getElementById('editAccName').value.trim();
+  if (!name) return toast('Nombre es requerido', 'error');
+  const data = {
+    name,
+    contact: document.getElementById('editAccContact').value.trim(),
+    email: document.getElementById('editAccEmail').value.trim(),
+    phone: document.getElementById('editAccPhone').value.trim()
+  };
+  const r = await api('/api/admin/accounts/' + accountId, { method: 'PATCH', body: JSON.stringify(data) });
+  if (r && r.ok) {
+    toast('Cuenta actualizada', 'success');
+    closeModal();
+    render();
+  } else {
+    toast(r?.error || 'Error al actualizar', 'error');
   }
 }
 
@@ -1794,8 +1837,8 @@ function editPlan(type, idx) {
 }
 
 async function saveAirtime() {
-  // Send the full plans object via PUT
-  const payload = airtimeData;
+  // Send the full plans object via PUT — always wrap in {services, plans} structure
+  const payload = { services: airtimeServices, plans: airtimeData };
   const res = await api('/api/admin/plans', {
     method: 'PUT',
     body: JSON.stringify(payload)
