@@ -82,7 +82,7 @@ a { color: var(--coral); text-decoration: none; }
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   padding: 12px 24px; border-radius: 10px; font-size: 15px; font-weight: 600;
-  border: none; cursor: pointer; transition: all .2s; width: 100%;
+  border: none; cursor: pointer; transition: all .2s;
 }
 .btn-coral { background: var(--coral); color: #fff; }
 .btn-coral:hover { background: var(--coral-hover); transform: translateY(-1px); }
@@ -90,12 +90,13 @@ a { color: var(--coral); text-decoration: none; }
 .btn-navy:hover { background: var(--navy-light); }
 .btn-outline { background: transparent; border: 2px solid var(--gray-200); color: var(--gray-700); }
 .btn-outline:hover { border-color: var(--coral); color: var(--coral); }
-.btn-sm { padding: 8px 16px; font-size: 13px; width: auto; }
+.btn-sm { padding: 8px 16px; font-size: 13px; }
 .btn-green { background: var(--green); color: #fff; }
 .btn-green:hover { opacity: .9; }
 .btn-red { background: var(--red); color: #fff; }
 .btn-red:hover { opacity: .9; }
 .btn-disabled { opacity: .4; cursor: not-allowed; pointer-events: none; }
+.btn-full { width: 100%; }
 .login-error { color: var(--red); font-size: 14px; margin-top: 12px; display: none; }
 
 /* === APP LAYOUT === */
@@ -313,6 +314,33 @@ tr { cursor: pointer; }
 .delete-subuser-btn:hover { color: var(--red); background: #fee2e2; }
 .delete-subuser-btn svg { width: 16px; height: 16px; }
 
+/* === Phone with country code === */
+.phone-with-code {
+  display: flex; gap: 8px; align-items: stretch;
+}
+.phone-with-code select {
+  width: 120px; flex-shrink: 0; border: 1.5px solid var(--gray-200); border-radius: 8px;
+  padding: 8px 6px; font-size: 13px; outline: none; background: #fff;
+}
+.phone-with-code select:focus { border-color: var(--coral); }
+.phone-with-code input { flex: 1; }
+
+/* === Recharge row alignment === */
+.recharge-row {
+  display: flex; gap: 12px; align-items: stretch;
+}
+.recharge-row .form-group {
+  flex: 1; margin-bottom: 0;
+}
+.recharge-row .form-group select {
+  height: 100%;
+}
+.recharge-row .btn {
+  align-self: stretch;
+  height: auto;
+  padding: 12px 24px;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .sidebar { display: none; }
@@ -354,7 +382,7 @@ tr { cursor: pointer; }
           <button type="button" class="password-toggle" onclick="togglePasswordVisibility()" id="passToggle" title="Mostrar contrase&ntilde;a"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg></button>
         </div>
       </div>
-      <button type="submit" class="btn btn-coral" id="loginBtn">Iniciar Sesi&oacute;n</button>
+      <button type="submit" class="btn btn-coral btn-full" id="loginBtn">Iniciar Sesi&oacute;n</button>
       <p class="login-error" id="loginError"></p>
     </form>
   </div>
@@ -439,6 +467,87 @@ const SVG_EYE_CLOSED = '<svg fill="none" stroke="currentColor" stroke-width="1.5
 const SVG_PENCIL = '<svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125"/></svg>';
 const SVG_REFRESH = '<svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.992 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182M21.015 4.356v4.992"/></svg>';
 const SVG_TRASH = '<svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>';
+
+// === Country codes for phone selector ===
+const COUNTRY_CODES = [
+  { code: '+1', label: '+1 US' },
+  { code: '+1', label: '+1 CA' },
+  { code: '+7', label: '+7 RU' },
+  { code: '+20', label: '+20 EG' },
+  { code: '+27', label: '+27 ZA' },
+  { code: '+30', label: '+30 GR' },
+  { code: '+31', label: '+31 NL' },
+  { code: '+32', label: '+32 BE' },
+  { code: '+33', label: '+33 FR' },
+  { code: '+34', label: '+34 ES' },
+  { code: '+36', label: '+36 HU' },
+  { code: '+39', label: '+39 IT' },
+  { code: '+40', label: '+40 RO' },
+  { code: '+41', label: '+41 CH' },
+  { code: '+43', label: '+43 AT' },
+  { code: '+44', label: '+44 GB' },
+  { code: '+45', label: '+45 DK' },
+  { code: '+46', label: '+46 SE' },
+  { code: '+47', label: '+47 NO' },
+  { code: '+48', label: '+48 PL' },
+  { code: '+49', label: '+49 DE' },
+  { code: '+51', label: '+51 PE' },
+  { code: '+52', label: '+52 MX' },
+  { code: '+53', label: '+53 CU' },
+  { code: '+54', label: '+54 AR' },
+  { code: '+55', label: '+55 BR' },
+  { code: '+56', label: '+56 CL' },
+  { code: '+57', label: '+57 CO' },
+  { code: '+58', label: '+58 VE' },
+  { code: '+60', label: '+60 MY' },
+  { code: '+61', label: '+61 AU' },
+  { code: '+62', label: '+62 ID' },
+  { code: '+63', label: '+63 PH' },
+  { code: '+64', label: '+64 NZ' },
+  { code: '+65', label: '+65 SG' },
+  { code: '+66', label: '+66 TH' },
+  { code: '+81', label: '+81 JP' },
+  { code: '+82', label: '+82 KR' },
+  { code: '+84', label: '+84 VN' },
+  { code: '+86', label: '+86 CN' },
+  { code: '+90', label: '+90 TR' },
+  { code: '+91', label: '+91 IN' },
+  { code: '+92', label: '+92 PK' },
+  { code: '+93', label: '+93 AF' },
+  { code: '+94', label: '+94 LK' },
+  { code: '+95', label: '+95 MM' },
+  { code: '+212', label: '+212 MA' },
+  { code: '+213', label: '+213 DZ' },
+  { code: '+216', label: '+216 TN' },
+  { code: '+234', label: '+234 NG' },
+  { code: '+254', label: '+254 KE' },
+  { code: '+351', label: '+351 PT' },
+  { code: '+352', label: '+352 LU' },
+  { code: '+353', label: '+353 IE' },
+  { code: '+354', label: '+354 IS' },
+  { code: '+358', label: '+358 FI' },
+  { code: '+370', label: '+370 LT' },
+  { code: '+371', label: '+371 LV' },
+  { code: '+372', label: '+372 EE' },
+  { code: '+380', label: '+380 UA' },
+  { code: '+385', label: '+385 HR' },
+  { code: '+420', label: '+420 CZ' },
+  { code: '+421', label: '+421 SK' },
+  { code: '+502', label: '+502 GT' },
+  { code: '+503', label: '+503 SV' },
+  { code: '+504', label: '+504 HN' },
+  { code: '+505', label: '+505 NI' },
+  { code: '+506', label: '+506 CR' },
+  { code: '+507', label: '+507 PA' },
+  { code: '+509', label: '+509 HT' },
+  { code: '+591', label: '+591 BO' },
+  { code: '+593', label: '+593 EC' },
+  { code: '+595', label: '+595 PY' },
+  { code: '+598', label: '+598 UY' },
+  { code: '+971', label: '+971 AE' },
+  { code: '+972', label: '+972 IL' },
+  { code: '+966', label: '+966 SA' },
+];
 
 // === App State ===
 let currentUser = null;
@@ -607,7 +716,7 @@ async function renderSims(el) {
       <p>${sims.length} dispositivos asignados</p>
     </div>
     <div class="search-bar">
-      <input type="text" id="simSearch" placeholder="Buscar por nombre, serial o teléfono..." oninput="filterSims()">
+      <input type="text" id="simSearch" placeholder="Buscar por nombre, serial o telefono..." oninput="filterSims()">
     </div>
     <div class="card">
       <table>
@@ -696,6 +805,25 @@ function renderSimHeader(sim) {
   `;
 }
 
+// === Helper: render SIM Device section ===
+function renderSimDeviceSection(sim) {
+  return `
+    <div class="sim-info-section">
+      <h3>Dispositivo</h3>
+      <div class="info-row"><span class="info-label">NETWORK</span><span class="info-value">${sim.network || '—'}</span></div>
+      <div class="info-row"><span class="info-label">TIPO</span><span class="info-value">${sim.cardType || '—'}</span></div>
+      <div class="info-row"><span class="info-label">ICCID</span><span class="info-value" style="font-family:monospace">${sim.iccid || '—'}</span></div>
+      <div class="info-row"><span class="info-label">IMSI</span><span class="info-value" style="font-family:monospace">${sim.imei || '—'}</span></div>
+      <div class="info-row"><span class="info-label">PIN 1</span><span class="info-value">${sim.pin || '—'}</span></div>
+      <div class="info-row"><span class="info-label">PIN 2</span><span class="info-value">${sim.pin2 || '—'}</span></div>
+      <div class="info-row"><span class="info-label">PUK 1</span><span class="info-value">${sim.puk || '—'}</span></div>
+      <div class="info-row"><span class="info-label">PUK 2</span><span class="info-value">${sim.puk2 || '—'}</span></div>
+      <div class="info-row"><span class="info-label">TELEPHONY</span><span class="info-value">${sim.telephony || '—'}</span></div>
+      <div class="info-row"><span class="info-label">DATA</span><span class="info-value">${sim.simData || '—'}</span></div>
+    </div>
+  `;
+}
+
 // === SIM name inline edit ===
 function enableSimNameEdit(simId) {
   const display = document.getElementById('simNameDisplay');
@@ -752,19 +880,7 @@ async function renderSimDetail(el, simId) {
           ${renderSimHeader(sim)}
 
           <div class="sim-info-grid">
-            <div class="sim-info-section">
-              <h3>Dispositivo</h3>
-              <div class="info-row"><span class="info-label">NETWORK</span><span class="info-value">${sim.network || '—'}</span></div>
-              <div class="info-row"><span class="info-label">TIPO</span><span class="info-value">${sim.cardType || '—'}</span></div>
-              <div class="info-row"><span class="info-label">ICCID</span><span class="info-value" style="font-family:monospace">${sim.iccid || '—'}</span></div>
-              <div class="info-row"><span class="info-label">IMSI</span><span class="info-value" style="font-family:monospace">${sim.imei || '—'}</span></div>
-              <div class="info-row"><span class="info-label">PIN 1</span><span class="info-value">${sim.pin || '—'}</span></div>
-              <div class="info-row"><span class="info-label">PIN 2</span><span class="info-value">${sim.pin2 || '—'}</span></div>
-              <div class="info-row"><span class="info-label">PUK 1</span><span class="info-value">${sim.puk || '—'}</span></div>
-              <div class="info-row"><span class="info-label">PUK 2</span><span class="info-value">${sim.puk2 || '—'}</span></div>
-              <div class="info-row"><span class="info-label">TELEPHONY</span><span class="info-value">${sim.telephony || '—'}</span></div>
-              <div class="info-row"><span class="info-label">DATA</span><span class="info-value">${sim.simData || '—'}</span></div>
-            </div>
+            ${renderSimDeviceSection(sim)}
             <div class="sim-info-section">
               <h3>Servicios de la tarjeta</h3>
               <div class="info-row"><span class="info-label">Servicio</span><span class="info-value">—</span></div>
@@ -801,7 +917,7 @@ async function renderSimDetail(el, simId) {
             <input type="checkbox" id="inlineActAccept" onchange="toggleActivateBtn()">
             <label for="inlineActAccept">Acepto los cargos que ser&aacute;n reflejados en la siguiente factura</label>
           </div>
-          <button class="btn btn-coral btn-sm btn-disabled" id="inlineActBtn" disabled style="margin-top:4px" onclick="doInlineActivate('${sim.id}')">Solicitar Activaci&oacute;n</button>
+          <button class="btn btn-coral btn-sm btn-disabled" id="inlineActBtn" disabled style="margin-top:4px" onclick="doInlineActivate('${sim.id}')">Activar</button>
         </div>
       </div>
 
@@ -826,19 +942,7 @@ async function renderSimDetail(el, simId) {
         ${renderSimHeader(sim)}
 
         <div class="sim-info-grid">
-          <div class="sim-info-section">
-            <h3>Dispositivo</h3>
-            <div class="info-row"><span class="info-label">NETWORK</span><span class="info-value">${sim.network || '—'}</span></div>
-            <div class="info-row"><span class="info-label">TIPO</span><span class="info-value">${sim.cardType || '—'}</span></div>
-            <div class="info-row"><span class="info-label">ICCID</span><span class="info-value" style="font-family:monospace">${sim.iccid || '—'}</span></div>
-            <div class="info-row"><span class="info-label">IMSI</span><span class="info-value" style="font-family:monospace">${sim.imei || '—'}</span></div>
-            <div class="info-row"><span class="info-label">PIN 1</span><span class="info-value">${sim.pin || '—'}</span></div>
-            <div class="info-row"><span class="info-label">PIN 2</span><span class="info-value">${sim.pin2 || '—'}</span></div>
-            <div class="info-row"><span class="info-label">PUK 1</span><span class="info-value">${sim.puk || '—'}</span></div>
-            <div class="info-row"><span class="info-label">PUK 2</span><span class="info-value">${sim.puk2 || '—'}</span></div>
-            <div class="info-row"><span class="info-label">TELEPHONY</span><span class="info-value">${sim.telephony || '—'}</span></div>
-            <div class="info-row"><span class="info-label">DATA</span><span class="info-value">${sim.simData || '—'}</span></div>
-          </div>
+          ${renderSimDeviceSection(sim)}
 
           <div class="sim-info-section">
             <h3>Servicios de la tarjeta</h3>
@@ -881,16 +985,14 @@ async function renderSimDetail(el, simId) {
       <div class="card-coral-header">Activaci&oacute;n y Recarga</div>
       <div id="rechargeFormInline">
         <p style="color:var(--gray-500);font-size:14px;margin-bottom:16px">Seleccione un plan para recargar este dispositivo.</p>
-        <div style="display:flex;gap:12px;align-items:end">
-          <div class="form-group" style="flex:1;margin-bottom:0">
+        <div class="recharge-row">
+          <div class="form-group">
             <label>Plan de Recarga</label>
             <select id="inlineRechargePlan">
               <option value="">— Seleccionar plan —</option>
             </select>
           </div>
-          <div>
-            <button class="btn btn-coral btn-sm btn-disabled" id="rechargeBtn" disabled onclick="doInlineRecharge('${sim.id}')">Recargar</button>
-          </div>
+          <button class="btn btn-coral btn-disabled" id="rechargeBtn" disabled onclick="doInlineRecharge('${sim.id}')">Recargar</button>
         </div>
         <div class="accept-charges-row">
           <input type="checkbox" id="rechargeAccept" onchange="toggleRechargeBtn()">
@@ -1010,7 +1112,7 @@ function showNewAccountModal() {
       <div class="modal" onclick="event.stopPropagation()">
         <h2>Nueva Cuenta / Cliente</h2>
         <div class="form-group"><label>CUENTA/CLIENTE *</label><input id="accName" required placeholder="Nombre de empresa o cliente"></div>
-        <div class="form-group"><label>Contacto *</label><input id="accContact" required placeholder="Nombre del contacto"></div>
+        <div class="form-group"><label>Contacto</label><input id="accContact" placeholder="Nombre del contacto (opcional)"></div>
         <div class="modal-actions">
           <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
           <button class="btn btn-coral" onclick="doCreateAccount()">Crear</button>
@@ -1023,7 +1125,7 @@ function showNewAccountModal() {
 async function doCreateAccount() {
   const name = document.getElementById('accName').value.trim();
   const contact = document.getElementById('accContact').value.trim();
-  if (!name || !contact) return toast('Cuenta/Cliente y Contacto son requeridos', 'error');
+  if (!name) return toast('Cuenta/Cliente es requerido', 'error');
   try {
     const res = await fetch('/api/accounts', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1102,6 +1204,7 @@ function renderBilling(el) {
 
 // === Mi Cuenta ===
 function renderMyAccount(el) {
+  const ccOptions = COUNTRY_CODES.map(c => `<option value="${c.code}">${c.label}</option>`).join('');
   el.innerHTML = `
     <div class="page-header">
       <h1>Mi Cuenta</h1>
@@ -1128,7 +1231,10 @@ function renderMyAccount(el) {
         </div>
         <div class="form-group">
           <label>Tel&eacute;fono de Contacto</label>
-          <input class="inline-edit" style="width:100%" id="contactPhone" placeholder="+52 ...">
+          <div class="phone-with-code">
+            <select id="contactPhoneCode">${ccOptions}</select>
+            <input class="inline-edit" id="contactPhone" placeholder="Numero de telefono">
+          </div>
         </div>
         <div class="form-group">
           <label>Persona de Contacto</label>
@@ -1157,9 +1263,12 @@ function renderMyAccount(el) {
 }
 
 async function saveMyAccount() {
+  const phoneCode = document.getElementById('contactPhoneCode').value;
+  const phoneNum = document.getElementById('contactPhone').value;
+  const fullPhone = phoneNum ? (phoneCode + ' ' + phoneNum) : '';
   const data = {
     notificationEmail: document.getElementById('notifEmail').value,
-    phone: document.getElementById('contactPhone').value,
+    phone: fullPhone,
     contactPerson: document.getElementById('contactPerson').value,
     address: document.getElementById('contactAddress').value,
     country: document.getElementById('contactCountry').value,
@@ -1205,7 +1314,7 @@ async function renderSubUsers(el) {
               <td>${s.email}</td>
               <td>${s.empresa || '—'}</td>
               <td><span class="badge badge-${s.status}">${statusLabel(s.status)}</span></td>
-              <td><button class="delete-subuser-btn" onclick="requestDeleteSubUser('${s.id || s._id}')" title="Eliminar">${SVG_TRASH}</button></td>
+              <td><button class="delete-subuser-btn" onclick="requestDeleteSubUser('${s.id || s._id}')" title="Solicitar eliminacion">${SVG_TRASH}</button></td>
             </tr>
           `).join('')}
         </tbody>
@@ -1216,9 +1325,15 @@ async function renderSubUsers(el) {
 
 async function requestDeleteSubUser(id) {
   try {
-    await fetch(`/api/subusers/${id}`, { method: 'DELETE' });
-  } catch (e) {}
-  toast('Solicitud de eliminacion enviada. Pendiente de aprobacion.', 'success');
+    const res = await fetch(`/api/subusers/${id}/delete-request`, { method: 'POST' });
+    if (res.ok) {
+      toast('Solicitud de eliminacion enviada', 'success');
+    } else {
+      toast('Error al enviar solicitud', 'error');
+    }
+  } catch (e) {
+    toast('Error de conexion', 'error');
+  }
   navigate('subusers');
 }
 
@@ -1261,7 +1376,7 @@ function showActivateModal(simId) {
         </div>
         <div class="modal-actions">
           <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
-          <button class="btn btn-coral btn-disabled" id="modalActBtn" disabled onclick="doActivate('${simId}')">Solicitar Activaci&oacute;n</button>
+          <button class="btn btn-coral btn-disabled" id="modalActBtn" disabled onclick="doActivate('${simId}')">Activar</button>
         </div>
       </div>
     </div>
