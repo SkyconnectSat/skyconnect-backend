@@ -3,1553 +3,1781 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SkyConnect - Satellite SIM Management</title>
+<title>SkyConnect Admin</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 :root {
-  --navy: #0d2137;
-  --navy-light: #142d4a;
-  --navy-dark: #091828;
-  --coral: #e63956;
-  --coral-hover: #d42e4a;
-  --gray-50: #f8f9fb;
-  --gray-100: #eef1f5;
-  --gray-200: #dde2ea;
-  --gray-300: #b8c1ce;
-  --gray-500: #6b7a8d;
-  --gray-700: #374151;
-  --green: #10b981;
-  --amber: #f59e0b;
-  --red: #ef4444;
-  --blue: #3b82f6;
+  --navy: #0d2137; --navy-light: #142d4a; --coral: #e63956; --coral-hover: #d42e4a;
+  --gray-50: #f8f9fb; --gray-100: #eef1f5; --gray-200: #dde2ea; --gray-300: #b8c1ce;
+  --gray-500: #6b7a8d; --gray-700: #374151;
+  --green: #10b981; --amber: #f59e0b; --red: #ef4444; --blue: #3b82f6;
 }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--gray-50); color: var(--gray-700); }
-a { color: var(--coral); text-decoration: none; }
 
-/* === LOGIN === */
-#loginPage {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, var(--navy-dark) 0%, var(--navy) 50%, var(--navy-light) 100%);
-}
-.login-box {
-  background: #fff;
-  border-radius: 16px;
-  padding: 48px 40px;
-  width: 100%;
-  max-width: 420px;
-  box-shadow: 0 20px 60px rgba(0,0,0,.3);
-  text-align: center;
-}
-.login-logo { margin-bottom: 8px; }
-.login-logo img, .login-logo svg { max-width: 200px; }
-.login-subtitle { color: var(--gray-500); font-size: 14px; margin-bottom: 32px; }
-.form-group { text-align: left; margin-bottom: 20px; }
-.form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--gray-500); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .5px; }
-.form-group input, .form-group select, .form-group textarea {
-  width: 100%; padding: 12px 16px; border: 2px solid var(--gray-200); border-radius: 10px;
-  font-size: 15px; transition: border-color .2s; outline: none; background: #fff;
-}
-.form-group input:focus, .form-group select:focus { border-color: var(--coral); }
-.password-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-.password-wrapper input {
-  padding-right: 44px;
-}
-.password-toggle {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 18px;
-  color: var(--gray-500);
-  padding: 4px;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.password-toggle:hover { color: var(--gray-700); }
-.password-toggle svg { width: 20px; height: 20px; }
-.btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  padding: 12px 24px; border-radius: 10px; font-size: 15px; font-weight: 600;
-  border: none; cursor: pointer; transition: all .2s;
-}
-.btn-coral { background: var(--coral); color: #fff; }
-.btn-coral:hover { background: var(--coral-hover); transform: translateY(-1px); }
-.btn-navy { background: var(--navy); color: #fff; }
-.btn-navy:hover { background: var(--navy-light); }
-.btn-outline { background: transparent; border: 2px solid var(--gray-200); color: var(--gray-700); }
-.btn-outline:hover { border-color: var(--coral); color: var(--coral); }
-.btn-sm { padding: 8px 16px; font-size: 13px; }
-.btn-green { background: var(--green); color: #fff; }
-.btn-green:hover { opacity: .9; }
-.btn-red { background: var(--red); color: #fff; }
-.btn-red:hover { opacity: .9; }
-.btn-disabled { opacity: .4; cursor: not-allowed; pointer-events: none; }
-.btn-full { width: 100%; }
-.login-error { color: var(--red); font-size: 14px; margin-top: 12px; display: none; }
-
-/* === APP LAYOUT === */
-#appPage { display: none; }
 .app-layout { display: flex; min-height: 100vh; }
 .sidebar {
-  width: 250px; background: var(--navy); color: #fff; padding: 24px 0;
-  display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 100;
+  width: 250px; background: var(--navy-light); color: #fff; padding: 24px 0;
+  display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0;
 }
-.sidebar-logo { padding: 0 24px 8px; text-align: center; }
-.sidebar-logo img, .sidebar-logo svg { max-width: 160px; max-height: 60px; }
-.sidebar-slogan { text-align: center; font-size: 12px; color: rgba(255,255,255,.4); letter-spacing: 3px; font-style: italic; padding: 0 24px 16px; border-bottom: 1px solid rgba(255,255,255,.1); }
+.sidebar-logo { padding: 12px 24px 20px; border-bottom: 1px solid rgba(255,255,255,.1); text-align: center; }
+.sidebar-logo h2 { font-size: 18px; color: var(--coral); }
+.sidebar-logo span { font-size: 11px; color: rgba(255,255,255,.4); }
 .sidebar-nav { flex: 1; padding: 16px 0; overflow-y: auto; }
 .nav-item {
-  display: flex; align-items: center; gap: 12px; padding: 12px 24px;
+  display: flex; align-items: center; gap: 10px; padding: 11px 24px;
   color: rgba(255,255,255,.6); cursor: pointer; transition: all .2s; font-size: 14px;
-  position: relative;
 }
 .nav-item:hover { color: #fff; background: rgba(255,255,255,.05); }
 .nav-item.active { color: #fff; background: rgba(255,255,255,.1); border-left: 3px solid var(--coral); }
-.nav-item svg { width: 20px; height: 20px; flex-shrink: 0; }
-.nav-sep { height: 1px; background: rgba(255,255,255,.08); margin: 8px 24px; }
-.nav-dot {
-  width: 8px; height: 8px; border-radius: 50%; background: #fff;
-  display: none; margin-left: auto; flex-shrink: 0;
-}
-.nav-item[data-has-changes="true"] .nav-dot { display: block; }
+.nav-icon { display: inline-flex; align-items: center; width: 18px; height: 18px; flex-shrink: 0; }
+.nav-icon svg { width: 18px; height: 18px; }
 .sidebar-footer { padding: 16px 24px; border-top: 1px solid rgba(255,255,255,.1); }
-.user-info { font-size: 13px; color: rgba(255,255,255,.6); margin-bottom: 12px; }
-.user-info strong { color: #fff; display: block; font-size: 14px; }
 .btn-logout { width: 100%; padding: 8px; border-radius: 8px; background: rgba(255,255,255,.1); color: rgba(255,255,255,.7); border: none; cursor: pointer; font-size: 13px; }
 .btn-logout:hover { background: rgba(255,255,255,.15); color: #fff; }
 
-.main-content { margin-left: 250px; flex: 1; padding: 32px; min-height: 100vh; }
-.page-header { margin-bottom: 28px; }
-.page-header h1 { font-size: 26px; color: var(--navy); font-weight: 700; }
-.page-header p { color: var(--gray-500); margin-top: 4px; }
+.main-content { margin-left: 250px; flex: 1; padding: 28px; }
+.page-header { margin-bottom: 24px; }
+.page-header h1 { font-size: 24px; color: var(--navy); }
+.page-header p { color: var(--gray-500); font-size: 14px; margin-top: 4px; }
 
-/* === CARDS === */
-.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
-.stat-card {
-  background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.06);
-  border: 1px solid var(--gray-100);
-}
-.stat-card .stat-label { font-size: 13px; color: var(--gray-500); text-transform: uppercase; letter-spacing: .5px; }
-.stat-card .stat-value { font-size: 32px; font-weight: 700; color: var(--navy); margin-top: 4px; }
+.card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.06); border: 1px solid var(--gray-100); margin-bottom: 16px; }
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.card-header h2 { font-size: 16px; color: var(--navy); }
 
-.card {
-  background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,.06);
-  border: 1px solid var(--gray-100); margin-bottom: 20px;
-}
-.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-.card-header h2 { font-size: 18px; color: var(--navy); }
-.card-coral-header {
-  background: var(--coral); color: #fff; margin: -24px -24px 20px -24px;
-  padding: 16px 24px; border-radius: 12px 12px 0 0; font-size: 16px; font-weight: 700;
-}
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px; }
+.stat-card { background: #fff; border-radius: 10px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.06); border: 1px solid var(--gray-100); }
+.stat-card .label { font-size: 12px; color: var(--gray-500); text-transform: uppercase; letter-spacing: .5px; }
+.stat-card .value { font-size: 28px; font-weight: 700; color: var(--navy); margin-top: 2px; }
 
-/* === TABLE === */
 table { width: 100%; border-collapse: collapse; }
-th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--gray-500); padding: 12px 16px; border-bottom: 2px solid var(--gray-100); }
-td { padding: 14px 16px; border-bottom: 1px solid var(--gray-100); font-size: 14px; }
+th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--gray-500); padding: 10px 12px; border-bottom: 2px solid var(--gray-100); }
+td { padding: 10px 12px; border-bottom: 1px solid var(--gray-100); font-size: 13px; }
 tr:hover td { background: var(--gray-50); }
-tr { cursor: pointer; }
 
-/* === SEARCH === */
-.search-bar {
-  display: flex; gap: 12px; margin-bottom: 20px;
-}
-.search-bar input {
-  flex: 1; padding: 10px 16px; border: 2px solid var(--gray-200); border-radius: 10px;
-  font-size: 14px; outline: none; background: #fff;
-}
-.search-bar input:focus { border-color: var(--coral); }
-
-/* === STATUS BADGES === */
-.badge {
-  display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
-}
+.badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
 .badge-active { background: #d1fae5; color: #065f46; }
 .badge-inactive { background: var(--gray-100); color: var(--gray-500); }
 .badge-processing { background: #fef3c7; color: #92400e; }
 .badge-pending { background: #dbeafe; color: #1e40af; }
 .badge-approved { background: #d1fae5; color: #065f46; }
 .badge-rejected { background: #fee2e2; color: #991b1b; }
-.badge-op-proceso { background: #fef3c7; color: #92400e; }
-.badge-op-fallida { background: #fee2e2; color: #991b1b; }
-.badge-op-exitosa { background: #d1fae5; color: #065f46; }
+.badge-completed { background: #d1fae5; color: #065f46; }
 
-/* === SIM PROFILE === */
-.sim-profile { }
-.sim-profile-header {
-  padding-bottom: 20px; margin-bottom: 20px; border-bottom: 2px solid var(--gray-100);
-}
-.sim-profile-name-row {
-  display: flex; align-items: center; gap: 10px; margin-bottom: 4px;
-}
-.sim-profile-name-row h2 { font-size: 22px; color: var(--navy); margin: 0; }
-.sim-profile-name-row .edit-name-btn {
-  background: none; border: none; cursor: pointer; font-size: 16px; padding: 2px 6px; color: var(--gray-500);
-  display: inline-flex; align-items: center; justify-content: center;
-}
-.sim-profile-name-row .edit-name-btn:hover { color: var(--coral); }
-.sim-profile-name-row .edit-name-btn svg { width: 16px; height: 16px; }
-.sim-profile-name-input {
-  font-size: 22px; color: var(--navy); font-weight: 700; border: 2px solid var(--coral);
-  border-radius: 8px; padding: 4px 10px; outline: none; font-family: inherit;
-}
-.sim-serial-line {
-  font-size: 14px; font-family: monospace; color: var(--red); font-weight: 600; margin-bottom: 4px;
-}
-.sim-serial-line .isdn-part { color: var(--gray-700); }
-.sim-profile-title .sim-number { font-size: 18px; color: var(--coral); font-weight: 600; }
-.sim-profile-title .sim-serial { font-size: 13px; color: var(--gray-500); font-family: monospace; margin-top: 2px; }
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; border: none; cursor: pointer; transition: all .15s; }
+.btn-coral { background: var(--coral); color: #fff; }
+.btn-coral:hover { background: var(--coral-hover); }
+.btn-green { background: var(--green); color: #fff; }
+.btn-green:hover { opacity: .9; }
+.btn-red { background: var(--red); color: #fff; }
+.btn-red:hover { opacity: .9; }
+.btn-outline { background: transparent; border: 1px solid var(--gray-200); color: var(--gray-700); }
+.btn-outline:hover { border-color: var(--coral); color: var(--coral); }
+.btn-navy { background: var(--navy); color: #fff; }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
 
-.sim-activate-deactivate-bar {
-  display: flex; gap: 10px; margin-top: 12px;
+.form-group { margin-bottom: 14px; }
+.form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--gray-500); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .3px; }
+.form-group input, .form-group select, .form-group textarea {
+  width: 100%; padding: 9px 12px; border: 1.5px solid var(--gray-200); border-radius: 8px; font-size: 14px; outline: none; background: #fff;
 }
+.form-group input:focus, .form-group select:focus { border-color: var(--coral); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.phone-row { display: grid; grid-template-columns: 200px 1fr; gap: 8px; }
 
-.sim-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
-.sim-info-section { padding: 16px 0; }
-.sim-info-section:nth-child(odd) { padding-right: 24px; border-right: 1px solid var(--gray-100); }
-.sim-info-section:nth-child(even) { padding-left: 24px; }
-.sim-info-section h3 {
-  font-size: 13px; text-transform: uppercase; letter-spacing: 1px;
-  color: var(--coral); margin-bottom: 14px; font-weight: 700;
-}
-.info-row { display: flex; justify-content: space-between; padding: 8px 0; align-items: flex-start; }
-.info-label { color: var(--gray-500); font-size: 13px; }
-.info-value { font-weight: 600; color: var(--gray-700); font-size: 14px; text-align: right; max-width: 60%; word-break: break-all; }
-.info-subtext { font-size: 11px; color: var(--gray-500); font-style: italic; font-weight: 400; margin-top: 4px; line-height: 1.3; }
-
-.refresh-balance-btn {
-  background: none; border: none; cursor: pointer; font-size: 14px; padding: 2px 4px;
-  vertical-align: middle; color: var(--blue);
-  display: inline-flex; align-items: center; justify-content: center;
-}
-.refresh-balance-btn:hover { opacity: .7; }
-.refresh-balance-btn svg { width: 16px; height: 16px; }
-
-.sim-actions-bar {
-  display: flex; gap: 10px; flex-wrap: wrap; padding: 16px 0;
-  border-top: 2px solid var(--gray-100); border-bottom: 2px solid var(--gray-100);
-  margin: 16px 0;
-}
-
-.sim-assign-grid {
-  display: grid; grid-template-columns: 1fr; gap: 16px; align-items: end;
-  padding-top: 16px;
-}
-.sim-assign-grid .form-group { margin-bottom: 0; }
-.inline-edit { border: 1.5px solid var(--gray-200); border-radius: 8px; padding: 8px 12px; font-size: 14px; width: 100%; outline: none; }
-.inline-edit:focus { border-color: var(--coral); }
-
-/* === MODAL === */
 .modal-overlay {
   position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,.5);
   display: flex; align-items: center; justify-content: center; z-index: 1000;
 }
-.modal {
-  background: #fff; border-radius: 16px; padding: 32px; width: 100%; max-width: 500px;
-  max-height: 80vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.3);
-}
-.modal h2 { font-size: 20px; color: var(--navy); margin-bottom: 20px; }
-.modal-actions { display: flex; gap: 12px; margin-top: 24px; }
-.modal-actions .btn { flex: 1; }
+.modal { background: #fff; border-radius: 14px; padding: 28px; width: 100%; max-width: 600px; max-height: 85vh; overflow-y: auto; }
+.modal h2 { font-size: 18px; color: var(--navy); margin-bottom: 16px; }
+.modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+.modal-actions .btn { flex: 1; padding: 10px; }
 
-/* === TOAST === */
 .toast {
-  position: fixed; bottom: 24px; right: 24px; padding: 16px 24px; border-radius: 12px;
-  color: #fff; font-size: 14px; font-weight: 500; z-index: 2000;
-  animation: slideIn .3s ease; max-width: 400px;
+  position: fixed; bottom: 20px; right: 20px; padding: 14px 20px; border-radius: 10px;
+  color: #fff; font-size: 14px; z-index: 2000; animation: slideIn .3s;
 }
 .toast-success { background: var(--green); }
 .toast-error { background: var(--red); }
 .toast-info { background: var(--blue); }
 @keyframes slideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
-.back-link { display: inline-flex; align-items: center; gap: 6px; color: var(--gray-500); font-size: 14px; margin-bottom: 16px; cursor: pointer; }
-.back-link:hover { color: var(--coral); }
+.request-card { border: 1px solid var(--gray-200); border-radius: 10px; padding: 16px; margin-bottom: 12px; }
+.request-card.urgent { border-left: 4px solid var(--coral); }
+.request-meta { display: flex; gap: 16px; flex-wrap: wrap; margin: 8px 0; font-size: 13px; color: var(--gray-500); }
+.request-actions { display: flex; gap: 8px; margin-top: 10px; }
 
-/* === PLACEHOLDER PAGES === */
-.placeholder-page { text-align: center; padding: 60px 20px; }
-.placeholder-page .icon { font-size: 48px; margin-bottom: 16px; }
-.placeholder-page h2 { color: var(--navy); margin-bottom: 8px; }
-.placeholder-page p { color: var(--gray-500); max-width: 400px; margin: 0 auto; }
+.plan-category { border: 1px solid var(--gray-200); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+.plan-category-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.plan-category-header h3 { font-size: 15px; color: var(--navy); }
+.plan-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--gray-50); border-radius: 6px; margin-bottom: 6px; font-size: 13px; }
+.plan-item button { background: none; border: none; color: var(--red); cursor: pointer; font-size: 16px; font-weight: bold; }
+.btn-header-group { display: flex; gap: 8px; align-items: center; }
 
-/* === MI CUENTA 2-col grid === */
-.my-account-grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+/* Country code dropdown */
+.cc-dropdown-wrapper { position: relative; }
+.cc-dropdown-trigger {
+  display: flex; align-items: center; gap: 6px; padding: 9px 12px; border: 1.5px solid var(--gray-200);
+  border-radius: 8px; font-size: 14px; background: #fff; cursor: pointer; min-width: 160px; justify-content: space-between;
 }
+.cc-dropdown-trigger:focus-within, .cc-dropdown-trigger.open { border-color: var(--coral); }
+.cc-dropdown-panel {
+  position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1.5px solid var(--gray-200);
+  border-radius: 8px; margin-top: 4px; z-index: 100; max-height: 240px; overflow: hidden; display: flex; flex-direction: column;
+  box-shadow: 0 8px 24px rgba(0,0,0,.12);
+}
+.cc-dropdown-search {
+  padding: 8px 10px; border: none; border-bottom: 1px solid var(--gray-100); font-size: 13px; outline: none; flex-shrink: 0;
+}
+.cc-dropdown-list { overflow-y: auto; flex: 1; }
+.cc-dropdown-item {
+  display: flex; align-items: center; gap: 8px; padding: 8px 12px; font-size: 13px; cursor: pointer;
+}
+.cc-dropdown-item:hover { background: var(--gray-50); }
+.cc-dropdown-item.selected { background: var(--gray-100); font-weight: 600; }
 
-/* === Readonly grayed inputs === */
-.inline-edit[readonly] {
-  background: #f3f4f6; color: var(--gray-500); cursor: default;
+/* Toggle switch */
+.toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--gray-100); }
+.toggle-row label { font-size: 14px; color: var(--gray-700); font-weight: 500; text-transform: none; letter-spacing: 0; }
+.toggle-switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+  position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+  background: var(--gray-200); border-radius: 24px; transition: .3s;
 }
+.toggle-slider:before {
+  position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
+  background: #fff; border-radius: 50%; transition: .3s;
+}
+.toggle-switch input:checked + .toggle-slider { background: var(--green); }
+.toggle-switch input:checked + .toggle-slider:before { transform: translateX(20px); }
 
-/* === Accept charges checkbox === */
-.accept-charges-row {
-  display: flex; align-items: center; gap: 8px; margin: 12px 0;
-}
-.accept-charges-row input[type="checkbox"] {
-  width: 16px; height: 16px; accent-color: var(--coral); cursor: pointer;
-}
-.accept-charges-row label {
-  font-size: 13px; color: var(--gray-700); cursor: pointer; user-select: none;
-}
+.add-plan-row { display: flex; gap: 8px; margin-top: 8px; }
+.add-plan-row input { flex: 1; padding: 7px 10px; border: 1.5px solid var(--gray-200); border-radius: 6px; font-size: 13px; outline: none; }
+.add-plan-row input:focus { border-color: var(--coral); }
 
-/* === Delete sub-user button === */
-.delete-subuser-btn {
-  background: none; border: none; cursor: pointer; color: var(--gray-500); padding: 4px;
-  display: inline-flex; align-items: center; justify-content: center;
-  border-radius: 4px; transition: all .2s;
-}
-.delete-subuser-btn:hover { color: var(--red); background: #fee2e2; }
-.delete-subuser-btn svg { width: 16px; height: 16px; }
+/* Search / filter bar */
+.filter-bar { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+.filter-bar input, .filter-bar select { padding: 8px 12px; border: 1.5px solid var(--gray-200); border-radius: 8px; font-size: 13px; outline: none; background: #fff; }
+.filter-bar input:focus, .filter-bar select:focus { border-color: var(--coral); }
+.filter-bar input { min-width: 260px; }
+.filter-bar select { min-width: 180px; }
 
-/* === Phone with country code === */
-.phone-with-code {
-  display: flex; gap: 8px; align-items: stretch;
-}
-.phone-with-code select {
-  width: 120px; flex-shrink: 0; border: 1.5px solid var(--gray-200); border-radius: 8px;
-  padding: 8px 6px; font-size: 13px; outline: none; background: #fff;
-}
-.phone-with-code select:focus { border-color: var(--coral); }
-.phone-with-code input { flex: 1; }
-
-/* === Recharge row alignment === */
-.recharge-row {
-  display: flex; gap: 12px; align-items: stretch;
-}
-.recharge-row .form-group {
-  flex: 1; margin-bottom: 0;
-}
-.recharge-row .form-group select {
-  height: 100%;
-}
-.recharge-row .btn {
-  align-self: stretch;
-  height: auto;
-  padding: 12px 24px;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .sidebar { display: none; }
-  .main-content { margin-left: 0; padding: 16px; }
-  .sim-info-grid { grid-template-columns: 1fr; }
-  .sim-info-section:nth-child(odd) { padding-right: 0; border-right: none; border-bottom: 1px solid var(--gray-100); }
-  .sim-info-section:nth-child(even) { padding-left: 0; }
-  .stats-grid { grid-template-columns: 1fr 1fr; }
-  .sim-assign-grid { grid-template-columns: 1fr; }
-  .my-account-grid { grid-template-columns: 1fr; }
-}
+/* Permissions checkboxes */
+.perm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+.perm-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--gray-50); border-radius: 8px; }
+.perm-item input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--coral); }
+.perm-item label { font-size: 13px; color: var(--gray-700); font-weight: 500; text-transform: none; letter-spacing: 0; cursor: pointer; }
 </style>
 </head>
 <body>
-
-<!-- LOGIN PAGE -->
-<div id="loginPage">
-  <div class="login-box">
-    <div class="login-logo">
-      <img src="/logo.png" alt="SkyConnect" style="max-width:200px;max-height:80px" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
-      <svg viewBox="0 0 600 100" xmlns="http://www.w3.org/2000/svg" style="display:none;width:200px">
-        <text x="10" y="70" font-family="Arial Black, Arial" font-weight="900" font-size="60" fill="#0d2137">SKYC</text>
-        <circle cx="265" cy="52" r="28" fill="#e63956"/>
-        <text x="252" y="70" font-family="Arial Black, Arial" font-weight="900" font-size="60" fill="white">O</text>
-        <text x="290" y="70" font-family="Arial Black, Arial" font-weight="900" font-size="60" fill="#0d2137">NNECT</text>
-        <text x="10" y="92" font-family="Arial" font-size="14" fill="#6b7a8d" letter-spacing="6">SATELLITE SERVICES</text>
-      </svg>
+<div class="app-layout">
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <h2>SKYCONNECT</h2>
+      <span>PANEL ADMIN</span>
     </div>
-    <p class="login-subtitle">Plataforma de Gesti&oacute;n de SIM Satelitales</p>
-    <form onsubmit="doLogin(event)">
-      <div class="form-group">
-        <label>USUARIO</label>
-        <input type="text" id="loginEmail" required placeholder="Ingrese su usuario">
+    <nav class="sidebar-nav">
+      <div class="nav-item active" data-page="requests" onclick="navTo('requests')">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>
+        Solicitudes
       </div>
-      <div class="form-group">
-        <label>Contrase&ntilde;a</label>
-        <div class="password-wrapper">
-          <input type="password" id="loginPass" required placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;">
-          <button type="button" class="password-toggle" onclick="togglePasswordVisibility()" id="passToggle" title="Mostrar contrase&ntilde;a"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg></button>
-        </div>
+      <div class="nav-item" data-page="sims" onclick="navTo('sims')">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="6" y1="8" x2="6" y2="16"/><line x1="10" y1="8" x2="10" y2="16"/><line x1="14" y1="8" x2="14" y2="16"/><line x1="18" y1="8" x2="18" y2="16"/></svg></span>
+        SIM Cards
       </div>
-      <button type="submit" class="btn btn-coral btn-full" id="loginBtn">Iniciar Sesi&oacute;n</button>
-      <p class="login-error" id="loginError"></p>
-    </form>
-  </div>
-</div>
-
-<!-- APP PAGE -->
-<div id="appPage">
-  <div class="app-layout">
-    <!-- Sidebar -->
-    <div class="sidebar">
-      <div class="sidebar-logo">
-        <img src="/logo-light.png" alt="SkyConnect" style="max-width:160px;max-height:60px" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
-        <svg viewBox="0 0 500 80" xmlns="http://www.w3.org/2000/svg" style="display:none;width:160px">
-          <text x="5" y="55" font-family="Arial Black, Arial" font-weight="900" font-size="44" fill="white">SKYC</text>
-          <circle cx="200" cy="38" r="20" fill="#e63956"/>
-          <text x="190" y="52" font-family="Arial Black, Arial" font-weight="900" font-size="44" fill="white">O</text>
-          <text x="220" y="55" font-family="Arial Black, Arial" font-weight="900" font-size="44" fill="white">NNECT</text>
-          <text x="5" y="72" font-family="Arial" font-size="11" fill="rgba(255,255,255,.5)" letter-spacing="5">SATELLITE SERVICES</text>
-        </svg>
+      <div class="nav-item" data-page="accounts" onclick="navTo('accounts')">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="2" y1="8" x2="22" y2="8"/><line x1="8" y1="8" x2="8" y2="21"/></svg></span>
+        Cuentas
       </div>
-      <div class="sidebar-slogan">Anywhere. Anytime.</div>
-      <nav class="sidebar-nav">
-        <div class="nav-item active" data-page="dashboard" onclick="navigate('dashboard')">
-          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-          Dashboard
-          <span class="nav-dot"></span>
-        </div>
-        <div class="nav-item" data-page="sims" onclick="navigate('sims')">
-          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><circle cx="12" cy="18" r="1"/><line x1="9" y1="6" x2="15" y2="6"/></svg>
-          Dispositivos
-          <span class="nav-dot"></span>
-        </div>
-        <div class="nav-item" data-page="accounts" onclick="navigate('accounts')">
-          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2z"/><path d="M16 3v4H8V3"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
-          Cuenta/Cliente
-          <span class="nav-dot"></span>
-        </div>
-        <div class="nav-item" data-page="subusers" onclick="navigate('subusers')">
-          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          Sub-Usuarios
-          <span class="nav-dot"></span>
-        </div>
-        <div class="nav-sep"></div>
-        <div class="nav-item" data-page="reports" onclick="navigate('reports')">
-          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-          Reportes
-          <span class="nav-dot"></span>
-        </div>
-        <div class="nav-item" data-page="billing" onclick="navigate('billing')">
-          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-          Facturaci&oacute;n
-          <span class="nav-dot"></span>
-        </div>
-        <div class="nav-sep"></div>
-        <div class="nav-item" data-page="myaccount" onclick="navigate('myaccount')">
-          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          Mi Cuenta
-          <span class="nav-dot"></span>
-        </div>
-      </nav>
-      <div class="sidebar-footer">
-        <div class="user-info">
-          <strong id="userName"></strong>
-          <span id="userCompany"></span>
-        </div>
-        <button class="btn-logout" onclick="doLogout()">Cerrar Sesi&oacute;n</button>
+      <div class="nav-item" data-page="users" onclick="navTo('users')">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+        Usuarios
       </div>
+      <div class="nav-item" data-page="subusers" onclick="navTo('subusers')">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg></span>
+        Sub-Usuarios
+      </div>
+      <div class="nav-item" data-page="airtime" onclick="navTo('airtime')">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+        Airtime
+      </div>
+      <div class="nav-item" data-page="activity" onclick="navTo('activity')">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+        Actividad
+      </div>
+      <div class="nav-item" data-page="branding" onclick="navTo('branding')">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span>
+        Logo / Marca
+      </div>
+      <div class="nav-item" data-page="notifications" onclick="navTo('notifications')">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>
+        Notificaciones
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="btn-logout" onclick="logout()">Cerrar Sesion</button>
     </div>
-
-    <!-- Main Content -->
-    <div class="main-content" id="mainContent"></div>
   </div>
-</div>
 
-<!-- Modal Container -->
+  <div class="main-content" id="main"></div>
+</div>
 <div id="modalContainer"></div>
 
 <script>
-// === SVG Icon helpers ===
-const SVG_EYE_OPEN = '<svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>';
-const SVG_EYE_CLOSED = '<svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3.98 8.223A10.477 10.477 0 001.934 12c1.292 4.338 5.31 7.5 10.066 7.5.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88"/></svg>';
-const SVG_PENCIL = '<svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125"/></svg>';
-const SVG_REFRESH = '<svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.992 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182M21.015 4.356v4.992"/></svg>';
-const SVG_TRASH = '<svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>';
+let page = 'requests';
 
-// === Country codes for phone selector ===
-const COUNTRY_CODES = [
-  { code: '+1', label: '+1 US' },
-  { code: '+1', label: '+1 CA' },
-  { code: '+7', label: '+7 RU' },
-  { code: '+20', label: '+20 EG' },
-  { code: '+27', label: '+27 ZA' },
-  { code: '+30', label: '+30 GR' },
-  { code: '+31', label: '+31 NL' },
-  { code: '+32', label: '+32 BE' },
-  { code: '+33', label: '+33 FR' },
-  { code: '+34', label: '+34 ES' },
-  { code: '+36', label: '+36 HU' },
-  { code: '+39', label: '+39 IT' },
-  { code: '+40', label: '+40 RO' },
-  { code: '+41', label: '+41 CH' },
-  { code: '+43', label: '+43 AT' },
-  { code: '+44', label: '+44 GB' },
-  { code: '+45', label: '+45 DK' },
-  { code: '+46', label: '+46 SE' },
-  { code: '+47', label: '+47 NO' },
-  { code: '+48', label: '+48 PL' },
-  { code: '+49', label: '+49 DE' },
-  { code: '+51', label: '+51 PE' },
-  { code: '+52', label: '+52 MX' },
-  { code: '+53', label: '+53 CU' },
-  { code: '+54', label: '+54 AR' },
-  { code: '+55', label: '+55 BR' },
-  { code: '+56', label: '+56 CL' },
-  { code: '+57', label: '+57 CO' },
-  { code: '+58', label: '+58 VE' },
-  { code: '+60', label: '+60 MY' },
-  { code: '+61', label: '+61 AU' },
-  { code: '+62', label: '+62 ID' },
-  { code: '+63', label: '+63 PH' },
-  { code: '+64', label: '+64 NZ' },
-  { code: '+65', label: '+65 SG' },
-  { code: '+66', label: '+66 TH' },
-  { code: '+81', label: '+81 JP' },
-  { code: '+82', label: '+82 KR' },
-  { code: '+84', label: '+84 VN' },
-  { code: '+86', label: '+86 CN' },
-  { code: '+90', label: '+90 TR' },
-  { code: '+91', label: '+91 IN' },
-  { code: '+92', label: '+92 PK' },
-  { code: '+93', label: '+93 AF' },
-  { code: '+94', label: '+94 LK' },
-  { code: '+95', label: '+95 MM' },
-  { code: '+212', label: '+212 MA' },
-  { code: '+213', label: '+213 DZ' },
-  { code: '+216', label: '+216 TN' },
-  { code: '+234', label: '+234 NG' },
-  { code: '+254', label: '+254 KE' },
-  { code: '+351', label: '+351 PT' },
-  { code: '+352', label: '+352 LU' },
-  { code: '+353', label: '+353 IE' },
-  { code: '+354', label: '+354 IS' },
-  { code: '+358', label: '+358 FI' },
-  { code: '+370', label: '+370 LT' },
-  { code: '+371', label: '+371 LV' },
-  { code: '+372', label: '+372 EE' },
-  { code: '+380', label: '+380 UA' },
-  { code: '+385', label: '+385 HR' },
-  { code: '+420', label: '+420 CZ' },
-  { code: '+421', label: '+421 SK' },
-  { code: '+502', label: '+502 GT' },
-  { code: '+503', label: '+503 SV' },
-  { code: '+504', label: '+504 HN' },
-  { code: '+505', label: '+505 NI' },
-  { code: '+506', label: '+506 CR' },
-  { code: '+507', label: '+507 PA' },
-  { code: '+509', label: '+509 HT' },
-  { code: '+591', label: '+591 BO' },
-  { code: '+593', label: '+593 EC' },
-  { code: '+595', label: '+595 PY' },
-  { code: '+598', label: '+598 UY' },
-  { code: '+971', label: '+971 AE' },
-  { code: '+972', label: '+972 IL' },
-  { code: '+966', label: '+966 SA' },
+// All countries of the world (195+ countries, sorted alphabetically)
+const ALL_COUNTRIES = [
+  "Afghanistan","Albania","Algeria","Andorra","Angola","Antigua and Barbuda","Argentina","Armenia","Australia","Austria",
+  "Azerbaijan","Bahamas","Bahrain","Bangladesh","Barbados","Belarus","Belgium","Belize","Benin","Bhutan",
+  "Bolivia","Bosnia and Herzegovina","Botswana","Brazil","Brunei","Bulgaria","Burkina Faso","Burundi","Cabo Verde","Cambodia",
+  "Cameroon","Canada","Central African Republic","Chad","Chile","China","Colombia","Comoros","Congo","Congo (Democratic Republic)",
+  "Costa Rica","Croatia","Cuba","Cyprus","Czech Republic","Denmark","Djibouti","Dominica","Dominican Republic","East Timor",
+  "Ecuador","Egypt","El Salvador","Equatorial Guinea","Eritrea","Estonia","Eswatini","Ethiopia","Fiji","Finland",
+  "France","Gabon","Gambia","Georgia","Germany","Ghana","Greece","Grenada","Guatemala","Guinea",
+  "Guinea-Bissau","Guyana","Haiti","Honduras","Hungary","Iceland","India","Indonesia","Iran","Iraq",
+  "Ireland","Israel","Italy","Ivory Coast","Jamaica","Japan","Jordan","Kazakhstan","Kenya","Kiribati",
+  "Kosovo","Kuwait","Kyrgyzstan","Laos","Latvia","Lebanon","Lesotho","Liberia","Libya","Liechtenstein",
+  "Lithuania","Luxembourg","Madagascar","Malawi","Malaysia","Maldives","Mali","Malta","Marshall Islands","Mauritania",
+  "Mauritius","Mexico","Micronesia","Moldova","Monaco","Mongolia","Montenegro","Morocco","Mozambique","Myanmar",
+  "Namibia","Nauru","Nepal","Netherlands","New Zealand","Nicaragua","Niger","Nigeria","North Korea","North Macedonia",
+  "Norway","Oman","Pakistan","Palau","Palestine","Panama","Papua New Guinea","Paraguay","Peru","Philippines",
+  "Poland","Portugal","Qatar","Romania","Russia","Rwanda","Saint Kitts and Nevis","Saint Lucia","Saint Vincent and the Grenadines","Samoa",
+  "San Marino","Sao Tome and Principe","Saudi Arabia","Senegal","Serbia","Seychelles","Sierra Leone","Singapore","Slovakia","Slovenia",
+  "Solomon Islands","Somalia","South Africa","South Korea","South Sudan","Spain","Sri Lanka","Sudan","Suriname","Sweden",
+  "Switzerland","Syria","Taiwan","Tajikistan","Tanzania","Thailand","Togo","Tonga","Trinidad and Tobago","Tunisia",
+  "Turkey","Turkmenistan","Tuvalu","Uganda","Ukraine","United Arab Emirates","United Kingdom","United States","Uruguay","Uzbekistan",
+  "Vanuatu","Vatican City","Venezuela","Vietnam","Yemen","Zambia","Zimbabwe"
 ];
 
-// === App State ===
-let currentUser = null;
-let currentPage = 'dashboard';
-let planData = null;
+// Comprehensive country codes list
+const COUNTRY_CODES = [
+  { code: '+1', country: 'Estados Unidos', flag: '\u{1F1FA}\u{1F1F8}' },
+  { code: '+1', country: 'Canada', flag: '\u{1F1E8}\u{1F1E6}' },
+  { code: '+7', country: 'Rusia', flag: '\u{1F1F7}\u{1F1FA}' },
+  { code: '+20', country: 'Egipto', flag: '\u{1F1EA}\u{1F1EC}' },
+  { code: '+27', country: 'Sudafrica', flag: '\u{1F1FF}\u{1F1E6}' },
+  { code: '+30', country: 'Grecia', flag: '\u{1F1EC}\u{1F1F7}' },
+  { code: '+31', country: 'Paises Bajos', flag: '\u{1F1F3}\u{1F1F1}' },
+  { code: '+32', country: 'Belgica', flag: '\u{1F1E7}\u{1F1EA}' },
+  { code: '+33', country: 'Francia', flag: '\u{1F1EB}\u{1F1F7}' },
+  { code: '+34', country: 'Espana', flag: '\u{1F1EA}\u{1F1F8}' },
+  { code: '+36', country: 'Hungria', flag: '\u{1F1ED}\u{1F1FA}' },
+  { code: '+39', country: 'Italia', flag: '\u{1F1EE}\u{1F1F9}' },
+  { code: '+40', country: 'Rumania', flag: '\u{1F1F7}\u{1F1F4}' },
+  { code: '+41', country: 'Suiza', flag: '\u{1F1E8}\u{1F1ED}' },
+  { code: '+43', country: 'Austria', flag: '\u{1F1E6}\u{1F1F9}' },
+  { code: '+44', country: 'Reino Unido', flag: '\u{1F1EC}\u{1F1E7}' },
+  { code: '+45', country: 'Dinamarca', flag: '\u{1F1E9}\u{1F1F0}' },
+  { code: '+46', country: 'Suecia', flag: '\u{1F1F8}\u{1F1EA}' },
+  { code: '+47', country: 'Noruega', flag: '\u{1F1F3}\u{1F1F4}' },
+  { code: '+48', country: 'Polonia', flag: '\u{1F1F5}\u{1F1F1}' },
+  { code: '+49', country: 'Alemania', flag: '\u{1F1E9}\u{1F1EA}' },
+  { code: '+51', country: 'Peru', flag: '\u{1F1F5}\u{1F1EA}' },
+  { code: '+52', country: 'Mexico', flag: '\u{1F1F2}\u{1F1FD}' },
+  { code: '+53', country: 'Cuba', flag: '\u{1F1E8}\u{1F1FA}' },
+  { code: '+54', country: 'Argentina', flag: '\u{1F1E6}\u{1F1F7}' },
+  { code: '+55', country: 'Brasil', flag: '\u{1F1E7}\u{1F1F7}' },
+  { code: '+56', country: 'Chile', flag: '\u{1F1E8}\u{1F1F1}' },
+  { code: '+57', country: 'Colombia', flag: '\u{1F1E8}\u{1F1F4}' },
+  { code: '+58', country: 'Venezuela', flag: '\u{1F1FB}\u{1F1EA}' },
+  { code: '+60', country: 'Malasia', flag: '\u{1F1F2}\u{1F1FE}' },
+  { code: '+61', country: 'Australia', flag: '\u{1F1E6}\u{1F1FA}' },
+  { code: '+62', country: 'Indonesia', flag: '\u{1F1EE}\u{1F1E9}' },
+  { code: '+63', country: 'Filipinas', flag: '\u{1F1F5}\u{1F1ED}' },
+  { code: '+64', country: 'Nueva Zelanda', flag: '\u{1F1F3}\u{1F1FF}' },
+  { code: '+65', country: 'Singapur', flag: '\u{1F1F8}\u{1F1EC}' },
+  { code: '+66', country: 'Tailandia', flag: '\u{1F1F9}\u{1F1ED}' },
+  { code: '+81', country: 'Japon', flag: '\u{1F1EF}\u{1F1F5}' },
+  { code: '+82', country: 'Corea del Sur', flag: '\u{1F1F0}\u{1F1F7}' },
+  { code: '+84', country: 'Vietnam', flag: '\u{1F1FB}\u{1F1F3}' },
+  { code: '+86', country: 'China', flag: '\u{1F1E8}\u{1F1F3}' },
+  { code: '+90', country: 'Turquia', flag: '\u{1F1F9}\u{1F1F7}' },
+  { code: '+91', country: 'India', flag: '\u{1F1EE}\u{1F1F3}' },
+  { code: '+92', country: 'Pakistan', flag: '\u{1F1F5}\u{1F1F0}' },
+  { code: '+93', country: 'Afganistan', flag: '\u{1F1E6}\u{1F1EB}' },
+  { code: '+94', country: 'Sri Lanka', flag: '\u{1F1F1}\u{1F1F0}' },
+  { code: '+95', country: 'Myanmar', flag: '\u{1F1F2}\u{1F1F2}' },
+  { code: '+212', country: 'Marruecos', flag: '\u{1F1F2}\u{1F1E6}' },
+  { code: '+213', country: 'Argelia', flag: '\u{1F1E9}\u{1F1FF}' },
+  { code: '+216', country: 'Tunez', flag: '\u{1F1F9}\u{1F1F3}' },
+  { code: '+218', country: 'Libia', flag: '\u{1F1F1}\u{1F1FE}' },
+  { code: '+220', country: 'Gambia', flag: '\u{1F1EC}\u{1F1F2}' },
+  { code: '+221', country: 'Senegal', flag: '\u{1F1F8}\u{1F1F3}' },
+  { code: '+234', country: 'Nigeria', flag: '\u{1F1F3}\u{1F1EC}' },
+  { code: '+254', country: 'Kenia', flag: '\u{1F1F0}\u{1F1EA}' },
+  { code: '+255', country: 'Tanzania', flag: '\u{1F1F9}\u{1F1FF}' },
+  { code: '+256', country: 'Uganda', flag: '\u{1F1FA}\u{1F1EC}' },
+  { code: '+260', country: 'Zambia', flag: '\u{1F1FF}\u{1F1F2}' },
+  { code: '+263', country: 'Zimbabue', flag: '\u{1F1FF}\u{1F1FC}' },
+  { code: '+351', country: 'Portugal', flag: '\u{1F1F5}\u{1F1F9}' },
+  { code: '+352', country: 'Luxemburgo', flag: '\u{1F1F1}\u{1F1FA}' },
+  { code: '+353', country: 'Irlanda', flag: '\u{1F1EE}\u{1F1EA}' },
+  { code: '+354', country: 'Islandia', flag: '\u{1F1EE}\u{1F1F8}' },
+  { code: '+358', country: 'Finlandia', flag: '\u{1F1EB}\u{1F1EE}' },
+  { code: '+370', country: 'Lituania', flag: '\u{1F1F1}\u{1F1F9}' },
+  { code: '+371', country: 'Letonia', flag: '\u{1F1F1}\u{1F1FB}' },
+  { code: '+372', country: 'Estonia', flag: '\u{1F1EA}\u{1F1EA}' },
+  { code: '+380', country: 'Ucrania', flag: '\u{1F1FA}\u{1F1E6}' },
+  { code: '+381', country: 'Serbia', flag: '\u{1F1F7}\u{1F1F8}' },
+  { code: '+385', country: 'Croacia', flag: '\u{1F1ED}\u{1F1F7}' },
+  { code: '+386', country: 'Eslovenia', flag: '\u{1F1F8}\u{1F1EE}' },
+  { code: '+420', country: 'Chequia', flag: '\u{1F1E8}\u{1F1FF}' },
+  { code: '+421', country: 'Eslovaquia', flag: '\u{1F1F8}\u{1F1F0}' },
+  { code: '+502', country: 'Guatemala', flag: '\u{1F1EC}\u{1F1F9}' },
+  { code: '+503', country: 'El Salvador', flag: '\u{1F1F8}\u{1F1FB}' },
+  { code: '+504', country: 'Honduras', flag: '\u{1F1ED}\u{1F1F3}' },
+  { code: '+505', country: 'Nicaragua', flag: '\u{1F1F3}\u{1F1EE}' },
+  { code: '+506', country: 'Costa Rica', flag: '\u{1F1E8}\u{1F1F7}' },
+  { code: '+507', country: 'Panama', flag: '\u{1F1F5}\u{1F1E6}' },
+  { code: '+509', country: 'Haiti', flag: '\u{1F1ED}\u{1F1F9}' },
+  { code: '+591', country: 'Bolivia', flag: '\u{1F1E7}\u{1F1F4}' },
+  { code: '+592', country: 'Guyana', flag: '\u{1F1EC}\u{1F1FE}' },
+  { code: '+593', country: 'Ecuador', flag: '\u{1F1EA}\u{1F1E8}' },
+  { code: '+595', country: 'Paraguay', flag: '\u{1F1F5}\u{1F1FE}' },
+  { code: '+598', country: 'Uruguay', flag: '\u{1F1FA}\u{1F1FE}' },
+  { code: '+670', country: 'Timor Oriental', flag: '\u{1F1F9}\u{1F1F1}' },
+  { code: '+673', country: 'Brunei', flag: '\u{1F1E7}\u{1F1F3}' },
+  { code: '+675', country: 'Papua Nueva Guinea', flag: '\u{1F1F5}\u{1F1EC}' },
+  { code: '+852', country: 'Hong Kong', flag: '\u{1F1ED}\u{1F1F0}' },
+  { code: '+853', country: 'Macao', flag: '\u{1F1F2}\u{1F1F4}' },
+  { code: '+855', country: 'Camboya', flag: '\u{1F1F0}\u{1F1ED}' },
+  { code: '+856', country: 'Laos', flag: '\u{1F1F1}\u{1F1E6}' },
+  { code: '+880', country: 'Bangladesh', flag: '\u{1F1E7}\u{1F1E9}' },
+  { code: '+886', country: 'Taiwan', flag: '\u{1F1F9}\u{1F1FC}' },
+  { code: '+960', country: 'Maldivas', flag: '\u{1F1F2}\u{1F1FB}' },
+  { code: '+961', country: 'Libano', flag: '\u{1F1F1}\u{1F1E7}' },
+  { code: '+962', country: 'Jordania', flag: '\u{1F1EF}\u{1F1F4}' },
+  { code: '+963', country: 'Siria', flag: '\u{1F1F8}\u{1F1FE}' },
+  { code: '+964', country: 'Irak', flag: '\u{1F1EE}\u{1F1F6}' },
+  { code: '+965', country: 'Kuwait', flag: '\u{1F1F0}\u{1F1FC}' },
+  { code: '+966', country: 'Arabia Saudita', flag: '\u{1F1F8}\u{1F1E6}' },
+  { code: '+968', country: 'Oman', flag: '\u{1F1F4}\u{1F1F2}' },
+  { code: '+970', country: 'Palestina', flag: '\u{1F1F5}\u{1F1F8}' },
+  { code: '+971', country: 'Emiratos Arabes', flag: '\u{1F1E6}\u{1F1EA}' },
+  { code: '+972', country: 'Israel', flag: '\u{1F1EE}\u{1F1F1}' },
+  { code: '+973', country: 'Barein', flag: '\u{1F1E7}\u{1F1ED}' },
+  { code: '+974', country: 'Catar', flag: '\u{1F1F6}\u{1F1E6}' },
+  { code: '+976', country: 'Mongolia', flag: '\u{1F1F2}\u{1F1F3}' },
+  { code: '+977', country: 'Nepal', flag: '\u{1F1F3}\u{1F1F5}' },
+  { code: '+992', country: 'Tayikistan', flag: '\u{1F1F9}\u{1F1EF}' },
+  { code: '+993', country: 'Turkmenistan', flag: '\u{1F1F9}\u{1F1F2}' },
+  { code: '+994', country: 'Azerbaiyan', flag: '\u{1F1E6}\u{1F1FF}' },
+  { code: '+995', country: 'Georgia', flag: '\u{1F1EC}\u{1F1EA}' },
+  { code: '+996', country: 'Kirguistan', flag: '\u{1F1F0}\u{1F1EC}' },
+  { code: '+998', country: 'Uzbekistan', flag: '\u{1F1FA}\u{1F1FF}' },
+  { code: '+1809', country: 'Rep. Dominicana', flag: '\u{1F1E9}\u{1F1F4}' },
+  { code: '+1787', country: 'Puerto Rico', flag: '\u{1F1F5}\u{1F1F7}' },
+];
 
-// === Init ===
-(async function init() {
-  try {
-    const res = await fetch('/api/me');
-    if (res.ok) {
-      currentUser = await res.json();
-      if (currentUser.role === 'admin') {
-        window.location.href = '/admin';
-        return;
-      }
-      showApp();
-    }
-  } catch (e) {}
-})();
+// Cached plans data for use across modules
+let cachedPlansData = null;
 
-fetch('/api/plans').then(r => r.json()).then(d => planData = d);
+async function fetchPlansData() {
+  cachedPlansData = await api('/api/admin/plans');
+  return cachedPlansData;
+}
 
-// === Password Toggle ===
-function togglePasswordVisibility() {
-  const inp = document.getElementById('loginPass');
-  const btn = document.getElementById('passToggle');
-  if (inp.type === 'password') {
-    inp.type = 'text';
-    btn.innerHTML = SVG_EYE_CLOSED;
-    btn.title = 'Ocultar contrasena';
-  } else {
-    inp.type = 'password';
-    btn.innerHTML = SVG_EYE_OPEN;
-    btn.title = 'Mostrar contrasena';
+function renderCountryCodeDropdown(inputId, selectedCode) {
+  const sel = selectedCode || '+1';
+  const match = COUNTRY_CODES.find(c => c.code === sel) || COUNTRY_CODES[0];
+  return `
+    <div class="cc-dropdown-wrapper" id="${inputId}_wrapper">
+      <input type="hidden" id="${inputId}" value="${sel}">
+      <div class="cc-dropdown-trigger" onclick="toggleCCDropdown('${inputId}')" id="${inputId}_trigger">
+        <span id="${inputId}_display">${match.flag} ${match.code} ${match.country}</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="cc-dropdown-panel" id="${inputId}_panel" style="display:none">
+        <input class="cc-dropdown-search" placeholder="Buscar pais..." oninput="filterCCDropdown('${inputId}', this.value)" autocomplete="off">
+        <div class="cc-dropdown-list" id="${inputId}_list"></div>
+      </div>
+    </div>
+  `;
+}
+
+function toggleCCDropdown(inputId) {
+  const panel = document.getElementById(inputId + '_panel');
+  const trigger = document.getElementById(inputId + '_trigger');
+  const isOpen = panel.style.display !== 'none';
+  // close all other dropdowns first
+  document.querySelectorAll('.cc-dropdown-panel').forEach(p => { p.style.display = 'none'; });
+  document.querySelectorAll('.cc-dropdown-trigger').forEach(t => { t.classList.remove('open'); });
+  if (!isOpen) {
+    panel.style.display = 'flex';
+    trigger.classList.add('open');
+    const searchInput = panel.querySelector('.cc-dropdown-search');
+    searchInput.value = '';
+    searchInput.focus();
+    populateCCList(inputId, '');
   }
 }
 
-// === Auth ===
-async function doLogin(e) {
-  e.preventDefault();
-  const email = document.getElementById('loginEmail').value;
-  const pass = document.getElementById('loginPass').value;
-  const errEl = document.getElementById('loginError');
-  errEl.style.display = 'none';
-  try {
-    const res = await fetch('/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password: pass })
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      errEl.textContent = data.error || 'Error al iniciar sesion';
-      errEl.style.display = 'block';
-      return;
-    }
-    currentUser = data;
-    if (data.role === 'admin') { window.location.href = '/admin'; return; }
-    showApp();
-  } catch (err) {
-    errEl.textContent = 'Error de conexion';
-    errEl.style.display = 'block';
+function populateCCList(inputId, filter) {
+  const list = document.getElementById(inputId + '_list');
+  const currentVal = document.getElementById(inputId).value;
+  const lf = filter.toLowerCase();
+  const filtered = COUNTRY_CODES.filter(c =>
+    c.country.toLowerCase().includes(lf) || c.code.includes(lf)
+  );
+  list.innerHTML = filtered.map(c => `
+    <div class="cc-dropdown-item${c.code === currentVal ? ' selected' : ''}" onclick="selectCC('${inputId}', '${c.code}', '${c.flag}', '${c.country}')">
+      ${c.flag} <span style="min-width:50px;display:inline-block">${c.code}</span> ${c.country}
+    </div>
+  `).join('');
+}
+
+function filterCCDropdown(inputId, value) {
+  populateCCList(inputId, value);
+}
+
+function selectCC(inputId, code, flag, country) {
+  document.getElementById(inputId).value = code;
+  document.getElementById(inputId + '_display').textContent = flag + ' ' + code + ' ' + country;
+  document.getElementById(inputId + '_panel').style.display = 'none';
+  document.getElementById(inputId + '_trigger').classList.remove('open');
+}
+
+// Close dropdowns on outside click
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.cc-dropdown-wrapper')) {
+    document.querySelectorAll('.cc-dropdown-panel').forEach(p => { p.style.display = 'none'; });
+    document.querySelectorAll('.cc-dropdown-trigger').forEach(t => { t.classList.remove('open'); });
+  }
+});
+
+function formatMadrid(dateStr) {
+  if (!dateStr) return '—';
+  return new Date(dateStr).toLocaleString('es-ES', { timeZone: 'Europe/Madrid' });
+}
+
+function formatMadridDate(dateStr) {
+  if (!dateStr) return '—';
+  return new Date(dateStr).toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' });
+}
+
+async function api(url, opts) {
+  const r = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...opts });
+  if (r.status === 401) { window.location.href = '/'; return null; }
+  return r.json();
+}
+
+function navTo(p) {
+  page = p;
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === p));
+  render();
+}
+
+async function render() {
+  const m = document.getElementById('main');
+  switch (page) {
+    case 'requests': await renderRequests(m); break;
+    case 'sims': await renderSims(m); break;
+    case 'accounts': await renderAccounts(m); break;
+    case 'users': await renderUsers(m); break;
+    case 'subusers': await renderSubUsers(m); break;
+    case 'airtime': await renderAirtime(m); break;
+    case 'branding': await renderBranding(m); break;
+    case 'activity': await renderActivity(m); break;
+    case 'notifications': await renderNotifications(m); break;
   }
 }
 
-async function doLogout() {
-  await fetch('/api/logout', { method: 'POST' });
-  currentUser = null;
-  document.getElementById('loginPage').style.display = 'flex';
-  document.getElementById('appPage').style.display = 'none';
-}
+// === REQUESTS ===
+async function renderRequests(el) {
+  const [reqs, subs] = await Promise.all([
+    api('/api/admin/requests'),
+    api('/api/subusers')
+  ]);
+  if (!reqs) return;
+  const pending = reqs.filter(r => r.status === 'pending');
+  const completed = reqs.filter(r => r.status !== 'pending');
+  const pendingSubs = (subs || []).filter(s => s.status === 'pending');
 
-function showApp() {
-  document.getElementById('loginPage').style.display = 'none';
-  document.getElementById('appPage').style.display = 'block';
-  document.getElementById('userName').textContent = currentUser.name;
-  document.getElementById('userCompany').textContent = currentUser.company;
-  navigate('dashboard');
-}
+  const typeLabel = { activation: 'Activacion', deactivation: 'Desactivacion', recharge: 'Recarga', balance_update: 'Actualizar Saldo', account_creation: 'Creacion de Cuenta', subuser_approval: 'Aprobacion Sub-Usuario' };
 
-// === Navigation ===
-function navigate(page, param) {
-  currentPage = page;
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const navItem = document.querySelector(`.nav-item[data-page="${page}"]`);
-  if (navItem) navItem.classList.add('active');
-  render(param);
-}
-
-async function render(param) {
-  const main = document.getElementById('mainContent');
-  try {
-    switch (currentPage) {
-      case 'dashboard': await renderDashboard(main); break;
-      case 'sims': await renderSims(main); break;
-      case 'simDetail': await renderSimDetail(main, param); break;
-      case 'accounts': await renderAccounts(main); break;
-      case 'reports': renderReports(main); break;
-      case 'billing': renderBilling(main); break;
-      case 'subusers': await renderSubUsers(main); break;
-      case 'myaccount': renderMyAccount(main); break;
-    }
-  } catch (err) {
-    main.innerHTML = '<div class="card"><p>Error al cargar datos</p></div>';
-  }
-}
-
-// === Dashboard ===
-async function renderDashboard(el) {
-  const sims = await fetch('/api/sims').then(r => r.json());
-  const active = sims.filter(s => s.status === 'active').length;
-  const inactive = sims.filter(s => s.status === 'inactive').length;
-  const processing = sims.filter(s => s.status === 'processing').length;
+  const totalPending = pending.length + pendingSubs.length;
 
   el.innerHTML = `
-    <div class="page-header">
-      <h1>Dashboard</h1>
-      <p>Bienvenido, ${currentUser.name}</p>
-    </div>
+    <div class="page-header"><h1>Solicitudes</h1><p>${totalPending} pendientes</p></div>
     <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-label">Total Dispositivos</div>
-        <div class="stat-value">${sims.length}</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Activas</div>
-        <div class="stat-value" style="color:var(--green)">${active}</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Inactivas</div>
-        <div class="stat-value" style="color:var(--gray-500)">${inactive}</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">En Proceso</div>
-        <div class="stat-value" style="color:var(--amber)">${processing}</div>
-      </div>
+      <div class="stat-card"><div class="label">Pendientes</div><div class="value" style="color:var(--amber)">${totalPending}</div></div>
+      <div class="stat-card"><div class="label">Sub-Usuarios Pend.</div><div class="value" style="color:var(--blue)">${pendingSubs.length}</div></div>
+      <div class="stat-card"><div class="label">Completadas</div><div class="value" style="color:var(--green)">${completed.filter(r=>r.status==='completed').length}</div></div>
+      <div class="stat-card"><div class="label">Total</div><div class="value">${reqs.length}</div></div>
     </div>
-    <div class="card">
-      <div class="card-header"><h2>SIM CARDS</h2></div>
+    ${pendingSubs.length > 0 ? `<div class="card"><div class="card-header"><h2>Sub-Usuarios Pendientes de Aprobacion</h2></div>
+      ${pendingSubs.map(s => `
+        <div class="request-card urgent">
+          <strong>Aprobacion Sub-Usuario</strong> — <span class="badge badge-pending">Pendiente</span>
+          <div class="request-meta">
+            <span>Nombre: ${s.name}</span>
+            <span>Email: ${s.email}</span>
+            <span>Telefono: ${s.phone || '—'}</span>
+            <span>${formatMadrid(s.createdAt)}</span>
+          </div>
+          <div class="request-actions">
+            <button class="btn btn-green btn-sm" onclick="approveSub('${s.id}')">Aprobar</button>
+            <button class="btn btn-red btn-sm" onclick="rejectSub('${s.id}')">Rechazar</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>` : ''}
+    ${pending.length > 0 ? `<div class="card"><div class="card-header"><h2>Solicitudes Pendientes</h2></div>
+      ${pending.map(r => `
+        <div class="request-card urgent">
+          <strong>${typeLabel[r.type] || r.type}</strong> — <span class="badge badge-pending">Pendiente</span>
+          <div class="request-meta">
+            <span>Cliente: ${r.clientName} (${r.company})</span>
+            <span>SIM: ${r.simSerial}</span>
+            ${r.serviceType ? `<span>Servicio: ${r.serviceType}</span>` : ''}
+            ${r.planType ? `<span>Plan: ${r.planType}</span>` : ''}
+            ${r.plan ? `<span>Recarga: ${r.plan}</span>` : ''}
+            ${r.activationType ? `<span>Tipo: ${r.activationType === 'immediate' ? 'Inmediata' : 'Programada: ' + r.scheduledDate}</span>` : ''}
+            <span>${formatMadrid(r.createdAt)}</span>
+          </div>
+          <div class="request-actions">
+            ${r.type === 'activation' ? `<button class="btn btn-coral btn-sm" onclick="editSimThenComplete('${r.id}','${r.simId}')">Cargar datos y completar</button>` : ''}
+            ${r.type === 'balance_update' ? `<button class="btn btn-green btn-sm" onclick="editSimThenCompleteBalanceUpdate('${r.id}','${r.simId}')">Completar</button>` : ''}
+            ${r.type !== 'activation' && r.type !== 'balance_update' ? `<button class="btn btn-green btn-sm" onclick="completeReq('${r.id}')">Completar</button>` : ''}
+            <button class="btn btn-red btn-sm" onclick="rejectReq('${r.id}')">Rechazar</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>` : (pendingSubs.length === 0 ? '<div class="card"><p style="color:var(--gray-500)">No hay solicitudes pendientes</p></div>' : '')}
+    ${completed.length > 0 ? `<div class="card"><div class="card-header"><h2>Historial</h2></div>
       <table>
-        <thead><tr><th>Tipo</th><th>SIM / Dispositivo</th><th>Tel&eacute;fono</th><th>Nombre</th><th>Cuenta</th><th>Estado</th></tr></thead>
+        <thead><tr><th>Tipo</th><th>SIM</th><th>Cliente</th><th>Estado</th><th>Fecha</th></tr></thead>
         <tbody>
-          ${sims.map(s => `
-            <tr onclick="navigate('simDetail','${s.id}')">
-              <td>${s.cardType || '—'}</td>
-              <td style="font-family:monospace;font-size:13px">${s.serial}</td>
-              <td>${s.msisdn || '—'}</td>
-              <td>${s.name || '—'}</td>
-              <td>${s.subClient || '—'}</td>
-              <td><span class="badge badge-${s.status}">${statusLabel(s.status)}</span></td>
-            </tr>
+          ${completed.slice(0, 30).map(r => `
+            <tr><td>${typeLabel[r.type]||r.type}</td><td style="font-family:monospace;font-size:12px">${r.simSerial}</td>
+            <td>${r.clientName}</td><td><span class="badge badge-${r.status}">${r.status}</span></td>
+            <td>${formatMadrid(r.createdAt)}</td></tr>
           `).join('')}
         </tbody>
       </table>
-    </div>
+    </div>` : ''}
   `;
 }
 
-// === Dispositivos (SIM List) ===
-async function renderSims(el) {
-  const sims = await fetch('/api/sims').then(r => r.json());
-  el.innerHTML = `
-    <div class="page-header">
-      <h1>Dispositivos</h1>
-      <p>${sims.length} dispositivos asignados</p>
-    </div>
-    <div class="search-bar">
-      <input type="text" id="simSearch" placeholder="Buscar por nombre, serial o telefono..." oninput="filterSims()">
-    </div>
-    <div class="card">
-      <table>
-        <thead><tr><th>Tipo</th><th>SIM / Dispositivo</th><th>Tel&eacute;fono</th><th>Nombre</th><th>Cuenta</th><th>Estado</th></tr></thead>
-        <tbody id="simsTableBody">
-          ${sims.map(s => `
-            <tr onclick="navigate('simDetail','${s.id}')" data-search="${(s.name||'').toLowerCase()} ${s.serial.toLowerCase()} ${(s.msisdn||'').toLowerCase()}">
-              <td>${s.cardType || '—'}</td>
-              <td style="font-family:monospace;font-size:13px">${s.serial}</td>
-              <td>${s.msisdn || '—'}</td>
-              <td>${s.name || '—'}</td>
-              <td>${s.subClient || '—'}</td>
-              <td><span class="badge badge-${s.status}">${statusLabel(s.status)}</span></td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    </div>
-  `;
+async function completeReq(reqId) {
+  await api(`/api/admin/requests/${reqId}/complete`, { method: 'POST' });
+  toast('Solicitud completada', 'success');
+  render();
 }
 
-function filterSims() {
-  const q = document.getElementById('simSearch').value.toLowerCase();
-  document.querySelectorAll('#simsTableBody tr').forEach(row => {
-    const data = row.getAttribute('data-search') || '';
-    row.style.display = data.includes(q) ? '' : 'none';
-  });
+async function rejectReq(reqId) {
+  if (!confirm('Rechazar esta solicitud?')) return;
+  await api(`/api/admin/requests/${reqId}/reject`, { method: 'POST', body: '{}' });
+  toast('Solicitud rechazada', 'info');
+  render();
 }
 
-// === Helper: format ISDN (remove + and spaces) ===
-function formatISDN(msisdn) {
-  if (!msisdn) return '';
-  return msisdn.replace(/[\s+]/g, '');
+// Balance update: open SIM edit modal, then complete the request after saving
+async function editSimThenCompleteBalanceUpdate(reqId, simId) {
+  await editSim(simId, reqId);
 }
 
-// === Helper: render operations table ===
-function renderOperationsTable(operations) {
-  if (!operations || operations.length === 0) {
-    return `<p style="color:var(--gray-500);padding:16px 0">No hay operaciones recientes</p>`;
-  }
-  const recent = operations.slice(-3).reverse();
-  return `
-    <table>
-      <thead><tr><th>Operaci&oacute;n</th><th>Fecha</th><th>Estado</th></tr></thead>
-      <tbody>
-        ${recent.map(op => {
-          let badgeClass = 'badge-op-proceso';
-          let label = 'En proceso';
-          if (op.status === 'completed' || op.status === 'success' || op.status === 'Exitosa') { badgeClass = 'badge-op-exitosa'; label = 'Exitosa'; }
-          else if (op.status === 'failed' || op.status === 'Fallida') { badgeClass = 'badge-op-fallida'; label = 'Fallida'; }
-          else if (op.status === 'pending' || op.status === 'En proceso') { badgeClass = 'badge-op-proceso'; label = 'En proceso'; }
-          else { badgeClass = 'badge-op-proceso'; label = 'En proceso'; }
-          return `
-            <tr style="cursor:default">
-              <td>${op.type || op.operation || '—'}</td>
-              <td>${formatDate(op.date || op.createdAt)}</td>
-              <td><span class="badge ${badgeClass}">${label}</span></td>
-            </tr>
-          `;
-        }).join('')}
-      </tbody>
-    </table>
-  `;
-}
+// Edit SIM then complete activation request
+async function editSimThenComplete(reqId, simId) {
+  const sim = await api(`/api/sims/${simId}`);
+  if (!sim) return;
+  const plansData = await fetchPlansData();
 
-// === Helper: render SIM header (shared across all states) ===
-function renderSimHeader(sim) {
-  const isdn = formatISDN(sim.msisdn);
-  const isActive = sim.status === 'active';
-  const isInactive = sim.status === 'inactive';
-  const isProcessing = sim.status === 'processing';
-
-  return `
-    <div class="sim-profile-header">
-      <div class="sim-profile-name-row">
-        <h2 id="simNameDisplay">${sim.name || sim.serial}</h2>
-        <button class="edit-name-btn" onclick="enableSimNameEdit('${sim.id}')" title="Editar nombre">${SVG_PENCIL}</button>
-      </div>
-      <div class="sim-serial-line">${sim.serial}${isdn ? ' - <span class="isdn-part">' + isdn + '</span>' : ''}</div>
-      ${isProcessing ? '<span class="badge badge-processing" style="font-size:14px;padding:6px 16px">Procesando</span>' : ''}
-      <div class="sim-activate-deactivate-bar">
-        <button class="btn btn-green btn-sm ${isActive ? 'btn-disabled' : ''}" ${isActive ? 'disabled' : ''} onclick="showActivateModal('${sim.id}')">Activar</button>
-        <button class="btn btn-red btn-sm ${isInactive ? 'btn-disabled' : ''}" ${isInactive ? 'disabled' : ''} onclick="confirmDeactivate('${sim.id}')">Desactivar</button>
-      </div>
-    </div>
-  `;
-}
-
-// === Helper: render SIM Device section ===
-function renderSimDeviceSection(sim) {
-  return `
-    <div class="sim-info-section">
-      <h3>Dispositivo</h3>
-      <div class="info-row"><span class="info-label">NETWORK</span><span class="info-value">${sim.network || '—'}</span></div>
-      <div class="info-row"><span class="info-label">TIPO</span><span class="info-value">${sim.cardType || '—'}</span></div>
-      <div class="info-row"><span class="info-label">ICCID</span><span class="info-value" style="font-family:monospace">${sim.iccid || '—'}</span></div>
-      <div class="info-row"><span class="info-label">IMSI</span><span class="info-value" style="font-family:monospace">${sim.imei || '—'}</span></div>
-      <div class="info-row"><span class="info-label">PIN 1</span><span class="info-value">${sim.pin || '—'}</span></div>
-      <div class="info-row"><span class="info-label">PIN 2</span><span class="info-value">${sim.pin2 || '—'}</span></div>
-      <div class="info-row"><span class="info-label">PUK 1</span><span class="info-value">${sim.puk || '—'}</span></div>
-      <div class="info-row"><span class="info-label">PUK 2</span><span class="info-value">${sim.puk2 || '—'}</span></div>
-      <div class="info-row"><span class="info-label">TELEPHONY</span><span class="info-value">${sim.telephony || '—'}</span></div>
-      <div class="info-row"><span class="info-label">DATA</span><span class="info-value">${sim.simData || '—'}</span></div>
-    </div>
-  `;
-}
-
-// === SIM name inline edit ===
-function enableSimNameEdit(simId) {
-  const display = document.getElementById('simNameDisplay');
-  const currentName = display.textContent;
-  display.outerHTML = `<input class="sim-profile-name-input" id="simNameInput" value="${currentName}" onblur="saveSimName('${simId}')" onkeydown="if(event.key==='Enter')this.blur()">`;
-  document.getElementById('simNameInput').focus();
-}
-
-async function saveSimName(simId) {
-  const input = document.getElementById('simNameInput');
-  if (!input) return;
-  const newName = input.value.trim();
-  if (newName) {
-    const res = await fetch(`/api/sims/${simId}/assign`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newName })
-    });
-    if (res.ok) toast('Nombre actualizado', 'success');
-  }
-  input.outerHTML = `<h2 id="simNameDisplay">${newName || simId}</h2>`;
-}
-
-// === SIM Detail / Profile ===
-async function renderSimDetail(el, simId) {
-  const sim = await fetch(`/api/sims/${simId}`).then(r => r.json());
-  const accounts = await fetch('/api/subusers').then(r => r.json()).catch(() => []);
-  const approvedAccounts = accounts.filter(s => s.status === 'approved');
-
-  if (sim.status === 'processing') {
-    el.innerHTML = `
-      <div class="back-link" onclick="navigate('sims')">&#8592; Volver a Dispositivos</div>
-      <div class="card">
-        <div class="sim-profile">
-          ${renderSimHeader(sim)}
-          <div style="text-align:center;padding:40px 0">
-            <p style="font-size:16px;color:var(--amber);font-weight:600">Su solicitud est&aacute; siendo procesada</p>
-            <p style="color:var(--gray-500);margin-top:8px">Recibir&aacute; un correo de confirmaci&oacute;n cuando est&eacute; lista.</p>
-          </div>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-header"><h2>Operaciones Recientes</h2></div>
-        ${renderOperationsTable(sim.operations)}
-      </div>
-    `;
-    return;
-  }
-
-  if (sim.status === 'inactive') {
-    el.innerHTML = `
-      <div class="back-link" onclick="navigate('sims')">&#8592; Volver a Dispositivos</div>
-      <div class="card">
-        <div class="sim-profile">
-          ${renderSimHeader(sim)}
-
-          <div class="sim-info-grid">
-            ${renderSimDeviceSection(sim)}
-            <div class="sim-info-section">
-              <h3>Servicios de la tarjeta</h3>
-              <div class="info-row"><span class="info-label">Servicio</span><span class="info-value">—</span></div>
-              <div class="info-row"><span class="info-label">Plan de Minutos</span><span class="info-value">—</span></div>
-              <div class="info-row"><span class="info-label">Saldo Disponible</span><span class="info-value">—</span></div>
-              <div class="info-row"><span class="info-label">&Uacute;ltima Ubicaci&oacute;n</span><span class="info-value">—</span></div>
-              <div class="info-row"><span class="info-label">Fecha de Activaci&oacute;n</span><span class="info-value">—</span></div>
-              <div class="info-row"><span class="info-label">Fecha de Vencimiento</span><span class="info-value">—</span></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Activation form for inactive -->
-      <div class="card">
-        <div class="card-coral-header">Activaci&oacute;n y Recarga</div>
-        <div id="activationFormInline">
-          <p style="color:var(--gray-500);font-size:14px;margin-bottom:16px">Esta SIM no est&aacute; activa. Complete los datos para solicitar la activaci&oacute;n.</p>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:end">
-            <div class="form-group">
-              <label>Servicio</label>
-              <select id="inlineActService" onchange="updateInlinePlanOptions()">
-                <option value="">— Seleccionar —</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Plan de Minutos</label>
-              <select id="inlineActPlan" disabled>
-                <option value="">— Seleccione servicio primero —</option>
-              </select>
-            </div>
-          </div>
-          <div class="accept-charges-row">
-            <input type="checkbox" id="inlineActAccept" onchange="toggleActivateBtn()">
-            <label for="inlineActAccept">Acepto los cargos que ser&aacute;n reflejados en la siguiente factura</label>
-          </div>
-          <button class="btn btn-coral btn-disabled" id="inlineActBtn" disabled style="margin-top:4px" onclick="doInlineActivate('${sim.id}')">Activar</button>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-header"><h2>Operaciones Recientes</h2></div>
-        ${renderOperationsTable(sim.operations)}
-      </div>
-    `;
-    // populate service options
-    if (planData) {
-      const sel = document.getElementById('inlineActService');
-      planData.services.forEach(s => { sel.innerHTML += `<option value="${s}">${s}</option>`; });
+  // Build plan options grouped by service
+  const plans = plansData?.plans || plansData || {};
+  const services = plansData?.services || Object.keys(plans);
+  let planOptions = '<option value="">— Seleccionar —</option>';
+  services.forEach(svc => {
+    const svcPlans = plans[svc] || [];
+    if (svcPlans.length > 0) {
+      planOptions += `<optgroup label="${svc}">`;
+      svcPlans.forEach(p => {
+        planOptions += `<option value="${p}" ${sim.planType === p ? 'selected' : ''}>${p}</option>`;
+      });
+      planOptions += '</optgroup>';
     }
-    return;
-  }
+  });
 
-  // === ACTIVE SIM — full profile ===
-  el.innerHTML = `
-    <div class="back-link" onclick="navigate('sims')">&#8592; Volver a Dispositivos</div>
-    <div class="card">
-      <div class="sim-profile">
-        ${renderSimHeader(sim)}
-
-        <div class="sim-info-grid">
-          ${renderSimDeviceSection(sim)}
-
-          <div class="sim-info-section">
-            <h3>Servicios de la tarjeta</h3>
-            <div class="info-row"><span class="info-label">Servicio</span><span class="info-value">${sim.serviceType || '—'}</span></div>
-            <div class="info-row"><span class="info-label">Plan de Minutos</span><span class="info-value">${sim.planType || '—'}</span></div>
-            <div class="info-row">
-              <span class="info-label">Saldo Disponible</span>
-              <span class="info-value">
-                <span style="color:var(--green);font-size:18px;font-weight:700">${sim.balance} min</span>
-                <button class="refresh-balance-btn" onclick="requestBalanceUpdate('${sim.id}')" title="Actualizar saldo">${SVG_REFRESH}</button>
-                <div class="info-subtext">El saldo se actualiza autom&aacute;ticamente cada 24h, siempre puedes solicitar una actualizaci&oacute;n al sistema antes de eso</div>
-              </span>
-            </div>
-            <div class="info-row"><span class="info-label">&Uacute;ltima Ubicaci&oacute;n</span><span class="info-value">${sim.lastLocation || '—'}</span></div>
-            <div class="info-row"><span class="info-label">Fecha de Activaci&oacute;n</span><span class="info-value">${formatDate(sim.activationDate)}</span></div>
-            <div class="info-row"><span class="info-label">Fecha de Vencimiento</span><span class="info-value">${formatDate(sim.expiryDate)}</span></div>
-          </div>
-
-          <div class="sim-info-section">
-            <h3>Informaci&oacute;n Adicional</h3>
-            <div class="sim-assign-grid">
-              <div class="form-group">
-                <label>Cuenta/Cliente</label>
-                <select class="inline-edit" id="assignSub">
-                  <option value="">— Sin asignar —</option>
-                  ${approvedAccounts.map(s => `<option value="${s.name}" ${sim.subClient === s.name ? 'selected' : ''}>${s.name}</option>`).join('')}
-                </select>
-              </div>
-            </div>
-            <div style="margin-top:12px">
-              <button class="btn btn-navy btn-sm" onclick="saveAssignment('${sim.id}')">Guardar</button>
-            </div>
-          </div>
+  const mc = document.getElementById('modalContainer');
+  mc.innerHTML = `
+    <div class="modal-overlay">
+      <div class="modal">
+        <h2>Cargar Datos de SIM — Activacion</h2>
+        <p style="color:var(--gray-500);margin-bottom:16px;font-size:13px">Complete los datos de la SIM antes de confirmar la activacion. El cliente recibira un email de confirmacion.</p>
+        <div class="form-row">
+          <div class="form-group"><label>ICCID</label><input id="eIccid" value="${sim.iccid}"></div>
+          <div class="form-group"><label>IMEI</label><input id="eImei" value="${sim.imei}"></div>
         </div>
-      </div>
-    </div>
-
-    <!-- Recharge section for active -->
-    <div class="card">
-      <div class="card-coral-header">Activaci&oacute;n y Recarga</div>
-      <div id="rechargeFormInline">
-        <p style="color:var(--gray-500);font-size:14px;margin-bottom:16px">Seleccione un plan para recargar este dispositivo.</p>
-        <div class="recharge-row">
-          <div class="form-group">
-            <label>Plan de Recarga</label>
-            <select id="inlineRechargePlan">
-              <option value="">— Seleccionar plan —</option>
+        <div class="form-row">
+          <div class="form-group"><label>Numero (MSISDN)</label><input id="eMsisdn" value="${sim.msisdn}" placeholder="+8816 ..."></div>
+          <div class="form-group"><label>IMSI</label><input id="eImsi" value="${sim.imsi || ''}"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>PUK 1</label><input id="ePuk" value="${sim.puk}"></div>
+          <div class="form-group"><label>PIN 1</label><input id="ePin" value="${sim.pin}"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>PUK 2</label><input id="ePuk2" value="${sim.puk2 || ''}"></div>
+          <div class="form-group"><label>PIN 2</label><input id="ePin2" value="${sim.pin2 || ''}"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Network</label>
+            <select id="eNetwork">
+              <option value="">— Seleccionar —</option>
+              <option value="IRIDIUM" ${sim.network==='IRIDIUM'?'selected':''}>IRIDIUM</option>
+              <option value="VIASAT" ${sim.network==='VIASAT'?'selected':''}>VIASAT</option>
+              <option value="STARLINK" ${sim.network==='STARLINK'?'selected':''}>STARLINK</option>
             </select>
           </div>
-          <button class="btn btn-coral btn-disabled" id="rechargeBtn" disabled onclick="doInlineRecharge('${sim.id}')">Recargar</button>
-        </div>
-        <div class="accept-charges-row">
-          <input type="checkbox" id="rechargeAccept" onchange="toggleRechargeBtn()">
-          <label for="rechargeAccept">Acepto los cargos que ser&aacute;n reflejados en la siguiente factura</label>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-header"><h2>Operaciones Recientes</h2></div>
-      ${renderOperationsTable(sim.operations)}
-    </div>
-  `;
-
-  // Populate recharge plans
-  if (planData) {
-    const plans = planData.plans[sim.serviceType] || planData.plans['Pre-Pago'] || [];
-    const sel = document.getElementById('inlineRechargePlan');
-    plans.forEach(p => { sel.innerHTML += `<option value="${p}">${p}</option>`; });
-  }
-}
-
-// === Toggle activation/recharge buttons based on checkbox ===
-function toggleActivateBtn() {
-  const cb = document.getElementById('inlineActAccept');
-  const btn = document.getElementById('inlineActBtn');
-  if (cb && btn) {
-    if (cb.checked) { btn.classList.remove('btn-disabled'); btn.disabled = false; }
-    else { btn.classList.add('btn-disabled'); btn.disabled = true; }
-  }
-}
-
-function toggleRechargeBtn() {
-  const cb = document.getElementById('rechargeAccept');
-  const btn = document.getElementById('rechargeBtn');
-  if (cb && btn) {
-    if (cb.checked) { btn.classList.remove('btn-disabled'); btn.disabled = false; }
-    else { btn.classList.add('btn-disabled'); btn.disabled = true; }
-  }
-}
-
-// === Inline activate (for inactive SIM page) ===
-function updateInlinePlanOptions() {
-  const service = document.getElementById('inlineActService').value;
-  const planSel = document.getElementById('inlineActPlan');
-  if (!service || !planData) { planSel.innerHTML = '<option value="">— Seleccione servicio primero —</option>'; planSel.disabled = true; return; }
-  const plans = planData.plans[service] || [];
-  planSel.innerHTML = '<option value="">— Seleccionar plan —</option>' + plans.map(p => `<option value="${p}">${p}</option>`).join('');
-  planSel.disabled = false;
-}
-
-async function doInlineActivate(simId) {
-  const cb = document.getElementById('inlineActAccept');
-  if (!cb || !cb.checked) return toast('Debe aceptar los cargos para continuar', 'error');
-  const serviceType = document.getElementById('inlineActService').value;
-  const planType = document.getElementById('inlineActPlan').value;
-  if (!serviceType || !planType) return toast('Seleccione servicio y plan', 'error');
-  const res = await fetch(`/api/sims/${simId}/activate`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ serviceType, planType, activationType: 'immediate' })
-  });
-  if (res.ok) { toast('Solicitud de activacion enviada', 'success'); navigate('simDetail', simId); }
-  else { const d = await res.json(); toast(d.error || 'Error', 'error'); }
-}
-
-async function doInlineRecharge(simId) {
-  const cb = document.getElementById('rechargeAccept');
-  if (!cb || !cb.checked) return toast('Debe aceptar los cargos para continuar', 'error');
-  const plan = document.getElementById('inlineRechargePlan').value;
-  if (!plan) return toast('Seleccione un plan', 'error');
-  const res = await fetch(`/api/sims/${simId}/recharge`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ plan })
-  });
-  if (res.ok) { toast('Recarga en proceso', 'success'); navigate('simDetail', simId); }
-  else { const d = await res.json(); toast(d.error || 'Error', 'error'); }
-}
-
-// === Cuenta/Cliente ===
-async function renderAccounts(el) {
-  let accounts = [];
-  try {
-    accounts = await fetch('/api/accounts').then(r => r.json());
-  } catch (e) { accounts = []; }
-
-  el.innerHTML = `
-    <div class="page-header">
-      <h1>Cuenta/Cliente</h1>
-      <p>Gestione sus cuentas y clientes</p>
-    </div>
-    <div class="card">
-      <div class="card-header">
-        <h2>Mis Cuentas</h2>
-        <button class="btn btn-coral btn-sm" onclick="showNewAccountModal()">+ Nueva Cuenta</button>
-      </div>
-      ${accounts.length === 0 ? '<p style="color:var(--gray-500);padding:20px 0">No hay cuentas registradas. Cree una nueva cuenta para organizar sus dispositivos.</p>' : `
-      <table>
-        <thead><tr><th>Cuenta/Cliente</th><th>Contacto</th><th>Fecha</th></tr></thead>
-        <tbody>
-          ${accounts.map(a => `
-            <tr style="cursor:default">
-              <td>${a.name || '—'}</td>
-              <td>${a.contact || '—'}</td>
-              <td>${formatDate(a.createdAt || a.date)}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>`}
-    </div>
-  `;
-}
-
-function showNewAccountModal() {
-  const mc = document.getElementById('modalContainer');
-  mc.innerHTML = `
-    <div class="modal-overlay" onclick="closeModal(event)">
-      <div class="modal" onclick="event.stopPropagation()">
-        <h2>Nueva Cuenta / Cliente</h2>
-        <div class="form-group"><label>CUENTA/CLIENTE *</label><input id="accName" required placeholder="Nombre de empresa o cliente"></div>
-        <div class="form-group"><label>Contacto</label><input id="accContact" placeholder="Nombre del contacto (opcional)"></div>
-        <div class="modal-actions">
-          <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
-          <button class="btn btn-coral" onclick="doCreateAccount()">Crear</button>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-async function doCreateAccount() {
-  const name = document.getElementById('accName').value.trim();
-  const contact = document.getElementById('accContact').value.trim();
-  if (!name) return toast('Cuenta/Cliente es requerido', 'error');
-  try {
-    const res = await fetch('/api/accounts', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, contact })
-    });
-    if (res.ok) {
-      toast('Cuenta creada exitosamente', 'success');
-      closeModal();
-      navigate('accounts');
-    } else {
-      const d = await res.json();
-      toast(d.error || 'Error al crear cuenta', 'error');
-    }
-  } catch (e) {
-    toast('Error de conexion', 'error');
-  }
-}
-
-// === Reportes ===
-function renderReports(el) {
-  el.innerHTML = `
-    <div class="page-header">
-      <h1>Reportes</h1>
-      <p>Solicite el historial de llamadas de sus dispositivos</p>
-    </div>
-    <div class="card">
-      <div class="card-header"><h2>Solicitar Reporte</h2></div>
-      <p style="color:var(--gray-500);margin-bottom:20px">Seleccione un dispositivo y el per&iacute;odo para recibir el historial de llamadas por correo electr&oacute;nico.</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;align-items:end">
-        <div class="form-group">
-          <label>Dispositivo</label>
-          <select id="reportSim" class="inline-edit" style="width:100%">
-            <option value="">— Seleccionar —</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Desde</label>
-          <input type="date" id="reportFrom" class="inline-edit" style="width:100%">
-        </div>
-        <div class="form-group">
-          <label>Hasta</label>
-          <input type="date" id="reportTo" class="inline-edit" style="width:100%">
-        </div>
-      </div>
-      <button class="btn btn-coral btn-sm" style="margin-top:16px" onclick="requestReport()">Solicitar Reporte</button>
-    </div>
-  `;
-  // Load SIMs into dropdown
-  fetch('/api/sims').then(r => r.json()).then(sims => {
-    const sel = document.getElementById('reportSim');
-    sims.filter(s => s.status === 'active').forEach(s => {
-      sel.innerHTML += `<option value="${s.id}">${s.name || s.serial} — ${s.msisdn || ''}</option>`;
-    });
-  });
-}
-
-function requestReport() {
-  const simId = document.getElementById('reportSim').value;
-  if (!simId) return toast('Seleccione un dispositivo', 'error');
-  toast('Solicitud de reporte enviada. Recibira el historial por correo electronico.', 'success');
-}
-
-// === Facturacion ===
-function renderBilling(el) {
-  el.innerHTML = `
-    <div class="page-header">
-      <h1>Facturaci&oacute;n</h1>
-      <p>Consulte sus facturas mensuales</p>
-    </div>
-    <div class="card">
-      <div class="card-header"><h2>Facturas</h2></div>
-      <p style="color:var(--gray-500);padding:20px 0">No hay facturas disponibles en este momento. Sus facturas mensuales aparecer&aacute;n aqu&iacute; en formato PDF.</p>
-    </div>
-  `;
-}
-
-// === Mi Cuenta ===
-function renderMyAccount(el) {
-  const savedCode = currentUser.countryCode || '+1';
-  const ccOptions = COUNTRY_CODES.map(c => `<option value="${c.code}" ${c.code === savedCode ? 'selected' : ''}>${c.label}</option>`).join('');
-  const savedPhone = currentUser.phone ? currentUser.phone.replace(/^\+\d+\s*/, '') : '';
-  const savedNotifEmail = currentUser.notificationEmail || currentUser.email;
-  const savedContactPerson = currentUser.contactPerson || '';
-  const savedAddress = currentUser.address || '';
-  const savedCountry = currentUser.country || '';
-  const savedCity = currentUser.city || '';
-  const savedPostalCode = currentUser.postalCode || '';
-  el.innerHTML = `
-    <div class="page-header">
-      <h1>Mi Cuenta</h1>
-      <p>Configure sus datos y preferencias</p>
-    </div>
-    <div class="card">
-      <div class="card-header"><h2>Informaci&oacute;n de Contacto</h2></div>
-      <div class="my-account-grid">
-        <div class="form-group">
-          <label>Nombre</label>
-          <input class="inline-edit" style="width:100%" value="${currentUser.name}" readonly>
-        </div>
-        <div class="form-group">
-          <label>Empresa</label>
-          <input class="inline-edit" style="width:100%" value="${currentUser.company}" readonly>
-        </div>
-        <div class="form-group">
-          <label>Email Principal</label>
-          <input class="inline-edit" style="width:100%" id="myEmail" value="${currentUser.email}" readonly>
-        </div>
-        <div class="form-group">
-          <label>Email para Notificaciones</label>
-          <input class="inline-edit" style="width:100%" id="notifEmail" value="${savedNotifEmail}" placeholder="email@empresa.com">
-        </div>
-        <div class="form-group">
-          <label>Tel&eacute;fono de Contacto</label>
-          <div class="phone-with-code">
-            <select id="contactPhoneCode">${ccOptions}</select>
-            <input class="inline-edit" id="contactPhone" value="${savedPhone}" placeholder="Numero de telefono">
+          <div class="form-group"><label>Tipo Tarjeta</label>
+            <select id="eCard">
+              <option value="">-- Seleccionar --</option>
+              <option value="IRIDIUM" ${sim.cardType==='IRIDIUM'?'selected':''}>IRIDIUM</option>
+              <option value="INMARSAT" ${sim.cardType==='INMARSAT'?'selected':''}>INMARSAT</option>
+              <option value="PTT" ${sim.cardType==='PTT'?'selected':''}>PTT</option>
+            </select>
           </div>
         </div>
-        <div class="form-group">
-          <label>Persona de Contacto</label>
-          <input class="inline-edit" style="width:100%" id="contactPerson" value="${savedContactPerson}" placeholder="Nombre completo">
+        <div class="form-row">
+          <div class="form-group"><label>Servicio</label>
+            <select id="eService"><option value="">—</option><option value="Pre-Pago" ${sim.serviceType==='Pre-Pago'?'selected':''}>Pre-Pago</option><option value="Post-Pago" ${sim.serviceType==='Post-Pago'?'selected':''}>Post-Pago</option></select>
+          </div>
+          <div class="form-group"><label>Plan</label>
+            <select id="ePlan">${planOptions}</select>
+          </div>
         </div>
-        <div class="form-group">
-          <label>Direcci&oacute;n</label>
-          <input class="inline-edit" style="width:100%" id="contactAddress" value="${savedAddress}" placeholder="Direccion completa">
+        <div class="form-row">
+          <div class="form-group"><label>Telephony</label><input id="eTelephony" value="${sim.telephony || ''}"></div>
+          <div class="form-group"><label>Data</label><input id="eData" value="${sim.simData || sim.data || ''}"></div>
         </div>
-        <div class="form-group">
-          <label>Pa&iacute;s</label>
-          <input class="inline-edit" style="width:100%" id="contactCountry" value="${savedCountry}" placeholder="Pais">
+        <div class="form-row-3">
+          <div class="form-group"><label>Saldo (min)</label><input type="number" id="eBal" value="${sim.balance}"></div>
+          <div class="form-group"><label>Fecha Activacion</label><input type="date" id="eActDate" value="${sim.activationDate}"></div>
+          <div class="form-group"><label>Fecha Vencimiento</label><input type="date" id="eExpDate" value="${sim.expiryDate}"></div>
         </div>
-        <div class="form-group">
-          <label>Ciudad</label>
-          <input class="inline-edit" style="width:100%" id="contactCity" value="${savedCity}" placeholder="Ciudad">
+        <div class="form-group"><label>Ultima Ubicacion</label>
+          <select id="eLoc">
+            <option value="">— Seleccionar —</option>
+            ${ALL_COUNTRIES.map(c => `<option value="${c}" ${sim.lastLocation === c ? 'selected' : ''}>${c}</option>`).join('')}
+          </select>
         </div>
-        <div class="form-group">
-          <label>C&oacute;digo Postal</label>
-          <input class="inline-edit" style="width:100%" id="contactPostalCode" value="${savedPostalCode}" placeholder="Codigo postal">
+        <div class="modal-actions">
+          <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+          <button class="btn btn-coral" onclick="saveSimAndComplete('${simId}','${reqId}')">Guardar y Activar</button>
         </div>
       </div>
-      <button class="btn btn-navy btn-sm" style="margin-top:16px" onclick="saveMyAccount()">Guardar Cambios</button>
     </div>
   `;
 }
 
-async function saveMyAccount() {
-  const data = {
-    notificationEmail: document.getElementById('notifEmail').value,
-    countryCode: document.getElementById('contactPhoneCode').value,
-    phone: document.getElementById('contactPhone').value,
-    contactPerson: document.getElementById('contactPerson').value,
-    address: document.getElementById('contactAddress').value,
-    country: document.getElementById('contactCountry').value,
-    city: document.getElementById('contactCity').value,
-    postalCode: document.getElementById('contactPostalCode').value,
-  };
-  try {
-    const res = await fetch('/api/me', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
-    if (res.ok) {
-      toast('Datos actualizados', 'success');
-    } else {
-      toast('Error al guardar cambios', 'error');
-    }
-  } catch (e) {
-    toast('Error de conexion', 'error');
-  }
+async function saveSimAndComplete(simId, reqId) {
+  await api(`/api/admin/sims/${simId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      iccid: document.getElementById('eIccid').value,
+      imei: document.getElementById('eImei').value,
+      msisdn: document.getElementById('eMsisdn').value,
+      imsi: document.getElementById('eImsi').value,
+      cardType: document.getElementById('eCard').value,
+      network: document.getElementById('eNetwork').value,
+      puk: document.getElementById('ePuk').value,
+      pin: document.getElementById('ePin').value,
+      pin2: document.getElementById('ePin2').value,
+      puk2: document.getElementById('ePuk2').value,
+      serviceType: document.getElementById('eService').value,
+      planType: document.getElementById('ePlan').value,
+      telephony: document.getElementById('eTelephony').value,
+      simData: document.getElementById('eData').value,
+      data: document.getElementById('eData').value,
+      balance: parseFloat(document.getElementById('eBal').value) || 0,
+      activationDate: document.getElementById('eActDate').value,
+      expiryDate: document.getElementById('eExpDate').value,
+      lastLocation: document.getElementById('eLoc').value
+    })
+  });
+  await api(`/api/admin/requests/${reqId}/complete`, { method: 'POST' });
+  closeModal();
+  toast('SIM activada y cliente notificado', 'success');
+  render();
 }
 
-// === Sub-Users ===
-async function renderSubUsers(el) {
-  const subusers = await fetch('/api/subusers').then(r => r.json());
+// === SIMS ===
+let allSimsCache = [];
+let allUsersCache = [];
+
+async function renderSims(el) {
+  const [sims, users] = await Promise.all([
+    api('/api/sims'),
+    api('/api/admin/users')
+  ]);
+  if (!sims) return;
+  allSimsCache = sims;
+  allUsersCache = users || [];
+
+  const clientUsers = allUsersCache.filter(u => u.role === 'client');
+
   el.innerHTML = `
-    <div class="page-header">
-      <h1>Sub-Usuarios</h1>
-      <p>Gesti&oacute;n de sub-usuarios</p>
-    </div>
+    <div class="page-header"><h1>SIM Cards</h1><p>${sims.length} SIMs en el sistema</p></div>
     <div class="card">
       <div class="card-header">
-        <h2>Mis Sub-Usuarios</h2>
-        <button class="btn btn-coral btn-sm" onclick="showNewSubUserModal()">+ Nuevo Sub-Usuario</button>
+        <h2>Todas las SIMs</h2>
+        <div class="btn-header-group">
+          <button class="btn btn-outline btn-sm" onclick="showBulkUpload()">Cargar Excel</button>
+          <button class="btn btn-coral btn-sm" onclick="showAddSim()">+ Nueva SIM</button>
+        </div>
       </div>
-      ${subusers.length === 0 ? '<p style="color:var(--gray-500);padding:20px 0">No hay sub-usuarios registrados</p>' : `
+      <div class="filter-bar">
+        <input id="simSearchInput" type="text" placeholder="Buscar por serial, numero o nombre..." oninput="filterSimsTable()">
+        <select id="simClientFilter" onchange="filterSimsTable()">
+          <option value="">Todos los clientes</option>
+          ${clientUsers.map(u => `<option value="${u.id}">${u.name} (${u.company || ''})</option>`).join('')}
+        </select>
+      </div>
       <table>
-        <thead><tr><th>Nombre</th><th>Email</th><th>Empresa</th><th>Estado</th><th></th></tr></thead>
+        <thead><tr><th>Serial</th><th>Numero</th><th>Cliente</th><th>Plan</th><th>Saldo</th><th>Estado</th><th>Ultima Actualizacion</th><th>Acciones</th></tr></thead>
+        <tbody id="simsTableBody">
+        </tbody>
+      </table>
+    </div>
+  `;
+  filterSimsTable();
+}
+
+function filterSimsTable() {
+  const searchVal = (document.getElementById('simSearchInput')?.value || '').toLowerCase();
+  const clientVal = document.getElementById('simClientFilter')?.value || '';
+
+  let filtered = allSimsCache;
+
+  if (clientVal) {
+    filtered = filtered.filter(s => s.clientId === clientVal);
+  }
+
+  if (searchVal) {
+    filtered = filtered.filter(s => {
+      const usr = allUsersCache.find(u => u.id === s.clientId);
+      const clientName = usr ? usr.name.toLowerCase() : '';
+      return (s.serial || '').toLowerCase().includes(searchVal) ||
+             (s.msisdn || '').toLowerCase().includes(searchVal) ||
+             (s.name || '').toLowerCase().includes(searchVal) ||
+             clientName.includes(searchVal);
+    });
+  }
+
+  const tbody = document.getElementById('simsTableBody');
+  if (!tbody) return;
+
+  tbody.innerHTML = filtered.map(s => {
+    const usr = allUsersCache.find(u => u.id === s.clientId);
+    return `
+    <tr>
+      <td style="font-family:monospace;font-size:12px">${s.serial}</td>
+      <td>${s.msisdn || '—'}</td>
+      <td>${usr ? usr.name : (s.clientId ? s.clientId : '<span style="color:var(--gray-300)">Sin asignar</span>')}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.planType || '—'}</td>
+      <td>${s.balance} min</td>
+      <td><span class="badge badge-${s.status}">${s.status}</span></td>
+      <td style="font-size:12px">${formatMadrid(s.lastUpdated)}</td>
+      <td><button class="btn btn-outline btn-sm" onclick="editSim('${s.id}')">Editar</button>
+      <button class="btn btn-red btn-sm" onclick="deleteSim('${s.id}')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></td>
+    </tr>`;
+  }).join('');
+}
+
+function showBulkUpload() {
+  const mc = document.getElementById('modalContainer');
+  mc.innerHTML = `
+    <div class="modal-overlay">
+      <div class="modal">
+        <h2>Cargar SIMs desde archivo</h2>
+        <p style="color:var(--gray-500);font-size:13px;margin-bottom:16px">Suba un archivo CSV con una SIM por linea en formato: <code>serial,cardType</code></p>
+        <div class="form-group">
+          <label>Archivo CSV / XLSX</label>
+          <input type="file" id="bulkFile" accept=".csv,.xlsx" style="padding:8px">
+        </div>
+        <div id="bulkPreview" style="margin-bottom:12px"></div>
+        <div class="modal-actions">
+          <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+          <button class="btn btn-coral" onclick="processBulkUpload()">Cargar SIMs</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('bulkFile').addEventListener('change', previewBulk);
+}
+
+function previewBulk(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    const text = ev.target.result;
+    const lines = text.trim().split('\n').filter(l => l.trim());
+    document.getElementById('bulkPreview').innerHTML = `
+      <p style="font-size:13px;color:var(--gray-500)">${lines.length} SIMs detectadas en el archivo</p>
+    `;
+  };
+  reader.readAsText(file);
+}
+
+async function processBulkUpload() {
+  const file = document.getElementById('bulkFile').files[0];
+  if (!file) return toast('Seleccione un archivo', 'error');
+  const reader = new FileReader();
+  reader.onload = async function(ev) {
+    const text = ev.target.result;
+    const lines = text.trim().split('\n').filter(l => l.trim());
+    const sims = lines.map(line => {
+      const parts = line.split(',').map(p => p.trim());
+      return { serial: parts[0], cardType: parts[1] || '' };
+    }).filter(s => s.serial);
+
+    if (sims.length === 0) return toast('No se encontraron SIMs validas', 'error');
+
+    const res = await api('/api/admin/sims/bulk', {
+      method: 'POST',
+      body: JSON.stringify({ sims })
+    });
+    if (res?.error) return toast(res.error, 'error');
+    closeModal();
+    toast(`${sims.length} SIMs cargadas correctamente`, 'success');
+    render();
+  };
+  reader.readAsText(file);
+}
+
+// editSim: optionally accepts pendingReqId for balance_update flow
+async function editSim(simId, pendingReqId) {
+  const [sim, users, plansData] = await Promise.all([
+    api(`/api/sims/${simId}`),
+    api('/api/admin/users'),
+    fetchPlansData()
+  ]);
+  if (!sim) return;
+
+  // Build plan options grouped by service
+  const plans = plansData?.plans || plansData || {};
+  const services = plansData?.services || Object.keys(plans);
+  let planOptions = '<option value="">— Seleccionar —</option>';
+  services.forEach(svc => {
+    const svcPlans = plans[svc] || [];
+    if (svcPlans.length > 0) {
+      planOptions += `<optgroup label="${svc}">`;
+      svcPlans.forEach(p => {
+        planOptions += `<option value="${p}" ${sim.planType === p ? 'selected' : ''}>${p}</option>`;
+      });
+      planOptions += '</optgroup>';
+    }
+  });
+
+  const saveAction = pendingReqId
+    ? `saveSimAndCompleteBalanceUpdate('${simId}','${pendingReqId}')`
+    : `saveSim('${simId}')`;
+  const saveLabel = pendingReqId ? 'Guardar y Completar Solicitud' : 'Guardar Cambios';
+
+  const mc = document.getElementById('modalContainer');
+  mc.innerHTML = `
+    <div class="modal-overlay">
+      <div class="modal">
+        <h2>Editar SIM — ${sim.serial}</h2>
+        <div class="form-group"><label>Cliente</label>
+          <select id="eClient">
+            <option value="">Sin asignar</option>
+            ${users.filter(u=>u.role==='client').map(u=>`<option value="${u.id}" ${sim.clientId===u.id?'selected':''}>${u.name} (${u.company})</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group"><label>Estado</label>
+          <select id="eStatus"><option value="inactive" ${sim.status==='inactive'?'selected':''}>Inactiva</option><option value="active" ${sim.status==='active'?'selected':''}>Activa</option><option value="processing" ${sim.status==='processing'?'selected':''}>Procesando</option></select>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Serial</label><input id="eSerial" value="${sim.serial}"></div>
+          <div class="form-group"><label>ICCID</label><input id="eIccid" value="${sim.iccid}"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>IMEI</label><input id="eImei" value="${sim.imei}"></div>
+          <div class="form-group"><label>MSISDN</label><input id="eMsisdn" value="${sim.msisdn}"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>PIN 1</label><input id="ePin" value="${sim.pin}"></div>
+          <div class="form-group"><label>PUK 1</label><input id="ePuk" value="${sim.puk}"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>PIN 2</label><input id="ePin2" value="${sim.pin2 || ''}"></div>
+          <div class="form-group"><label>PUK 2</label><input id="ePuk2" value="${sim.puk2 || ''}"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Servicio</label>
+            <select id="eService"><option value="">—</option><option value="Pre-Pago" ${sim.serviceType==='Pre-Pago'?'selected':''}>Pre-Pago</option><option value="Post-Pago" ${sim.serviceType==='Post-Pago'?'selected':''}>Post-Pago</option></select>
+          </div>
+          <div class="form-group"><label>Tipo Tarjeta</label>
+            <select id="eCard">
+              <option value="">-- Seleccionar --</option>
+              <option value="IRIDIUM" ${sim.cardType==='IRIDIUM'?'selected':''}>IRIDIUM</option>
+              <option value="INMARSAT" ${sim.cardType==='INMARSAT'?'selected':''}>INMARSAT</option>
+              <option value="PTT" ${sim.cardType==='PTT'?'selected':''}>PTT</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Network</label>
+            <select id="eNetwork">
+              <option value="">— Seleccionar —</option>
+              <option value="IRIDIUM" ${sim.network==='IRIDIUM'?'selected':''}>IRIDIUM</option>
+              <option value="VIASAT" ${sim.network==='VIASAT'?'selected':''}>VIASAT</option>
+              <option value="STARLINK" ${sim.network==='STARLINK'?'selected':''}>STARLINK</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Plan</label>
+            <select id="ePlan">${planOptions}</select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Telephony</label><input id="eTelephony" value="${sim.telephony || ''}"></div>
+          <div class="form-group"><label>Data</label><input id="eData" value="${sim.simData || sim.data || ''}"></div>
+        </div>
+        <div class="form-row-3">
+          <div class="form-group"><label>Saldo (min)</label><input type="number" id="eBal" value="${sim.balance}"></div>
+          <div class="form-group"><label>Minutos Activos</label><input type="number" id="eMinAct" value="${sim.minutesActive}"></div>
+          <div class="form-group"><label>Cargo Mensual</label><input type="number" id="eMonthly" value="${sim.monthlyCharge}"></div>
+        </div>
+        <div class="form-row-3">
+          <div class="form-group"><label>Fecha Activacion</label><input type="date" id="eActDate" value="${sim.activationDate}"></div>
+          <div class="form-group"><label>Fecha Vencimiento</label><input type="date" id="eExpDate" value="${sim.expiryDate}"></div>
+          <div class="form-group"><label>Ultima Conexion</label><input type="datetime-local" id="eLastConn" value="${sim.lastConnection ? sim.lastConnection.slice(0,16) : ''}"></div>
+        </div>
+        <div class="form-group"><label>Ultima Ubicacion</label>
+          <select id="eLoc">
+            <option value="">— Seleccionar —</option>
+            ${ALL_COUNTRIES.map(c => `<option value="${c}" ${sim.lastLocation === c ? 'selected' : ''}>${c}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Nombre</label><input id="eName" value="${sim.name}"></div>
+          <div class="form-group"><label>Referencia</label><input id="eRef" value="${sim.reference}"></div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+          <button class="btn btn-coral" onclick="${saveAction}">${saveLabel}</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function collectSimFormData() {
+  return {
+    clientId: document.getElementById('eClient').value,
+    status: document.getElementById('eStatus').value,
+    serial: document.getElementById('eSerial').value,
+    iccid: document.getElementById('eIccid').value,
+    imei: document.getElementById('eImei').value,
+    msisdn: document.getElementById('eMsisdn').value,
+    puk: document.getElementById('ePuk').value,
+    pin: document.getElementById('ePin').value,
+    pin2: document.getElementById('ePin2').value,
+    puk2: document.getElementById('ePuk2').value,
+    network: document.getElementById('eNetwork').value,
+    telephony: document.getElementById('eTelephony').value,
+    simData: document.getElementById('eData').value,
+    data: document.getElementById('eData').value,
+    serviceType: document.getElementById('eService').value,
+    cardType: document.getElementById('eCard').value,
+    planType: document.getElementById('ePlan').value,
+    balance: parseFloat(document.getElementById('eBal').value) || 0,
+    minutesActive: parseFloat(document.getElementById('eMinAct').value) || 0,
+    monthlyCharge: parseFloat(document.getElementById('eMonthly').value) || 0,
+    activationDate: document.getElementById('eActDate').value,
+    expiryDate: document.getElementById('eExpDate').value,
+    lastConnection: document.getElementById('eLastConn').value,
+    lastLocation: document.getElementById('eLoc').value,
+    name: document.getElementById('eName').value,
+    reference: document.getElementById('eRef').value
+  };
+}
+
+async function saveSim(simId) {
+  await api(`/api/admin/sims/${simId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(collectSimFormData())
+  });
+  closeModal();
+  toast('SIM actualizada', 'success');
+  render();
+}
+
+async function saveSimAndCompleteBalanceUpdate(simId, reqId) {
+  await api(`/api/admin/sims/${simId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(collectSimFormData())
+  });
+  await api(`/api/admin/requests/${reqId}/complete`, { method: 'POST' });
+  closeModal();
+  toast('Saldo actualizado y solicitud completada', 'success');
+  render();
+}
+
+async function showAddSim() {
+  const mc = document.getElementById('modalContainer');
+  mc.innerHTML = `
+    <div class="modal-overlay">
+      <div class="modal">
+        <h2>Nueva SIM</h2>
+        <div class="form-group"><label>Serial</label><input id="nSerial" placeholder="8988169328..."></div>
+        <div class="form-group"><label>Tipo de Tarjeta</label>
+          <select id="nCard">
+            <option value="">-- Seleccionar --</option>
+            <option value="IRIDIUM">IRIDIUM</option>
+            <option value="INMARSAT">INMARSAT</option>
+            <option value="PTT">PTT</option>
+          </select>
+        </div>
+        <p style="color:var(--gray-500);font-size:12px;margin-bottom:12px">La SIM se creara sin cliente asignado. Podra asignarla despues desde la tabla.</p>
+        <div class="modal-actions">
+          <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+          <button class="btn btn-coral" onclick="addSim()">Crear SIM</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function addSim() {
+  await api('/api/admin/sims', {
+    method: 'POST',
+    body: JSON.stringify({
+      serial: document.getElementById('nSerial').value,
+      cardType: document.getElementById('nCard').value
+    })
+  });
+  closeModal();
+  toast('SIM creada', 'success');
+  render();
+}
+
+async function deleteSim(id) {
+  if (!confirm('Eliminar esta SIM?')) return;
+  await api(`/api/admin/sims/${id}`, { method: 'DELETE' });
+  toast('SIM eliminada', 'info');
+  render();
+}
+
+// === ACCOUNTS (Cuentas) ===
+async function renderAccounts(el) {
+  const [accounts, users] = await Promise.all([
+    api('/api/accounts'),
+    api('/api/admin/users')
+  ]);
+  if (!accounts) return;
+
+  el.innerHTML = `
+    <div class="page-header"><h1>Cuentas</h1><p>${accounts.length} cuentas de clientes</p></div>
+    <div class="card">
+      <div class="card-header"><h2>Todas las Cuentas</h2></div>
+      <table>
+        <thead><tr><th>Cuenta / Cliente</th><th>Contacto</th><th>Cliente</th><th>Fecha</th></tr></thead>
         <tbody>
-          ${subusers.map(s => `
-            <tr style="cursor:default">
-              <td>${s.name}</td>
-              <td>${s.email}</td>
-              <td>${s.empresa || '—'}</td>
-              <td><span class="badge badge-${s.status}">${statusLabel(s.status)}</span></td>
-              <td><button class="delete-subuser-btn" onclick="requestDeleteSubUser('${s.id || s._id}')" title="Solicitar eliminacion">${SVG_TRASH}</button></td>
+          ${accounts.map(a => {
+            const usr = users?.find(u => u.id === (a.userId || a.clientId));
+            return `
+            <tr>
+              <td><strong>${a.name || a.company || '—'}</strong><br><span style="font-size:12px;color:var(--gray-500)">${a.email || ''}</span></td>
+              <td>${a.contact || a.phone || '—'}</td>
+              <td>${usr ? usr.name + ' (' + (usr.company || '') + ')' : (a.userId || a.clientId || '—')}</td>
+              <td>${formatMadridDate(a.createdAt)}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// === USERS ===
+async function renderUsers(el) {
+  const users = await api('/api/admin/users');
+  if (!users) return;
+  // Sort: admins first, then clients
+  users.sort((a, b) => {
+    if (a.role === 'admin' && b.role !== 'admin') return -1;
+    if (a.role !== 'admin' && b.role === 'admin') return 1;
+    return (a.name || '').localeCompare(b.name || '');
+  });
+  el.innerHTML = `
+    <div class="page-header"><h1>Usuarios</h1></div>
+    <div class="card">
+      <div class="card-header"><h2>Usuarios</h2><button class="btn btn-coral btn-sm" onclick="showAddUser()">+ Nuevo Usuario</button></div>
+      <table>
+        <thead><tr><th>Nombre</th><th>Email</th><th>Empresa</th><th>Telefono</th><th>Rol</th><th>Acciones</th></tr></thead>
+        <tbody>
+          ${users.map(u => `
+            <tr>
+              <td>${u.name}</td>
+              <td>${u.email}</td>
+              <td>${u.company}</td>
+              <td>${u.countryCode ? u.countryCode + ' ' : ''}${u.phone || '—'}</td>
+              <td><span class="badge badge-${u.role==='admin'?'processing':'active'}">${u.role}</span></td>
+              <td><button class="btn btn-outline btn-sm" onclick="showEditUser('${u.id}')">Editar</button></td>
             </tr>
           `).join('')}
         </tbody>
-      </table>`}
+      </table>
     </div>
   `;
 }
 
-async function requestDeleteSubUser(id) {
-  try {
-    const res = await fetch(`/api/subusers/${id}/delete-request`, { method: 'POST' });
-    if (res.ok) {
-      toast('Solicitud de eliminacion enviada', 'success');
-    } else {
-      toast('Error al enviar solicitud', 'error');
-    }
-  } catch (e) {
-    toast('Error de conexion', 'error');
-  }
-  navigate('subusers');
-}
-
-// === Actions ===
-
-function showActivateModal(simId) {
-  if (!planData) return toast('Cargando opciones...', 'info');
+function showAddUser() {
   const mc = document.getElementById('modalContainer');
   mc.innerHTML = `
-    <div class="modal-overlay" onclick="closeModal(event)">
-      <div class="modal" onclick="event.stopPropagation()">
-        <h2>Activar Dispositivo</h2>
-        <div class="form-group">
-          <label>Tipo de Activaci&oacute;n</label>
-          <select id="actType" onchange="toggleSchedule()">
-            <option value="immediate">Inmediata</option>
-            <option value="scheduled">Programada</option>
+    <div class="modal-overlay">
+      <div class="modal">
+        <h2>Nuevo Usuario</h2>
+        <div class="form-group"><label>Rol</label>
+          <select id="nuRole">
+            <option value="client">Cliente</option>
+            <option value="admin">Admin</option>
           </select>
         </div>
-        <div class="form-group" id="scheduleGroup" style="display:none">
-          <label>Fecha y Hora</label>
-          <input type="datetime-local" id="actDate">
-        </div>
+        <div class="form-group"><label>Nombre</label><input id="nuName"></div>
+        <div class="form-group"><label>Email</label><input id="nuEmail" type="email"></div>
+        <div class="form-group"><label>Empresa</label><input id="nuCompany"></div>
         <div class="form-group">
-          <label>Servicio</label>
-          <select id="actService" onchange="updatePlanOptions()">
-            <option value="">— Seleccionar —</option>
-            ${planData.services.map(s => `<option value="${s}">${s}</option>`).join('')}
-          </select>
+          <label>Telefono</label>
+          <div class="phone-row">
+            ${renderCountryCodeDropdown('nuCountryCode', '+1')}
+            <input id="nuPhone" placeholder="Numero de telefono">
+          </div>
         </div>
-        <div class="form-group">
-          <label>Plan de Minutos</label>
-          <select id="actPlan" disabled>
-            <option value="">— Seleccione servicio primero —</option>
-          </select>
-        </div>
-        <div class="accept-charges-row">
-          <input type="checkbox" id="modalActAccept" onchange="toggleModalActivateBtn()">
-          <label for="modalActAccept">Acepto los cargos que ser&aacute;n reflejados en la siguiente factura</label>
-        </div>
+        <div class="form-group"><label>Contrasena</label><input id="nuPass" type="text"></div>
         <div class="modal-actions">
           <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
-          <button class="btn btn-coral btn-disabled" id="modalActBtn" disabled onclick="doActivate('${simId}')">Activar</button>
+          <button class="btn btn-coral" onclick="addUser()">Crear Usuario</button>
         </div>
       </div>
     </div>
   `;
 }
 
-function toggleModalActivateBtn() {
-  const cb = document.getElementById('modalActAccept');
-  const btn = document.getElementById('modalActBtn');
-  if (cb && btn) {
-    if (cb.checked) { btn.classList.remove('btn-disabled'); btn.disabled = false; }
-    else { btn.classList.add('btn-disabled'); btn.disabled = true; }
-  }
-}
-
-function toggleSchedule() {
-  document.getElementById('scheduleGroup').style.display = document.getElementById('actType').value === 'scheduled' ? 'block' : 'none';
-}
-
-function updatePlanOptions() {
-  const service = document.getElementById('actService').value;
-  const planSel = document.getElementById('actPlan');
-  if (!service) { planSel.innerHTML = '<option value="">— Seleccione servicio primero —</option>'; planSel.disabled = true; return; }
-  const plans = planData.plans[service] || [];
-  planSel.innerHTML = '<option value="">— Seleccionar plan —</option>' + plans.map(p => `<option value="${p}">${p}</option>`).join('');
-  planSel.disabled = false;
-}
-
-async function doActivate(simId) {
-  const cb = document.getElementById('modalActAccept');
-  if (!cb || !cb.checked) return toast('Debe aceptar los cargos para continuar', 'error');
-  const serviceType = document.getElementById('actService').value;
-  const planType = document.getElementById('actPlan').value;
-  const activationType = document.getElementById('actType').value;
-  const scheduledDate = document.getElementById('actDate')?.value || '';
-  if (!serviceType || !planType) return toast('Seleccione servicio y plan', 'error');
-  const res = await fetch(`/api/sims/${simId}/activate`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ serviceType, planType, activationType, scheduledDate })
+async function addUser() {
+  const res = await api('/api/admin/users', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: document.getElementById('nuName').value,
+      email: document.getElementById('nuEmail').value,
+      company: document.getElementById('nuCompany').value,
+      password: document.getElementById('nuPass').value,
+      role: document.getElementById('nuRole').value,
+      countryCode: document.getElementById('nuCountryCode').value,
+      phone: document.getElementById('nuPhone').value
+    })
   });
-  if (res.ok) { closeModal(); toast('Solicitud de activacion enviada', 'success'); navigate('simDetail', simId); }
-  else { const d = await res.json(); toast(d.error || 'Error', 'error'); }
+  if (res?.error) return toast(res.error, 'error');
+  closeModal();
+  toast('Usuario creado', 'success');
+  render();
 }
 
-function confirmDeactivate(simId) {
+async function showEditUser(userId) {
+  const users = await api('/api/admin/users');
+  const u = users?.find(x => x.id === userId);
+  if (!u) return toast('Usuario no encontrado', 'error');
   const mc = document.getElementById('modalContainer');
   mc.innerHTML = `
-    <div class="modal-overlay" onclick="closeModal(event)">
-      <div class="modal" onclick="event.stopPropagation()">
-        <h2>Desactivar Dispositivo</h2>
-        <p style="margin-bottom:16px;color:var(--gray-500)">&iquest;Est&aacute; seguro que desea desactivar este dispositivo? Esta acci&oacute;n ser&aacute; procesada por nuestro equipo.</p>
-        <div class="modal-actions">
-          <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
-          <button class="btn btn-red" onclick="doDeactivate('${simId}')">S&iacute;, Desactivar</button>
+    <div class="modal-overlay">
+      <div class="modal">
+        <h2>Editar Usuario — ${u.name}</h2>
+        <div class="form-row">
+          <div class="form-group"><label>Nombre</label><input id="euName" value="${u.name || ''}"></div>
+          <div class="form-group"><label>Empresa</label><input id="euCompany" value="${u.company || ''}"></div>
         </div>
-      </div>
-    </div>
-  `;
-}
-
-async function doDeactivate(simId) {
-  const res = await fetch(`/api/sims/${simId}/deactivate`, { method: 'POST' });
-  if (res.ok) { closeModal(); toast('Solicitud de desactivacion enviada', 'success'); navigate('simDetail', simId); }
-}
-
-async function requestBalanceUpdate(simId) {
-  const res = await fetch(`/api/sims/${simId}/refresh-balance`, { method: 'POST' });
-  if (res.ok) toast('Se ha solicitado la actualizacion del saldo', 'info');
-}
-
-function showRechargeModal(simId, serviceType) {
-  if (!planData) return toast('Cargando...', 'info');
-  const plans = planData.plans[serviceType] || planData.plans['Pre-Pago'];
-  const mc = document.getElementById('modalContainer');
-  mc.innerHTML = `
-    <div class="modal-overlay" onclick="closeModal(event)">
-      <div class="modal" onclick="event.stopPropagation()">
-        <h2>Recargar Dispositivo</h2>
+        <div class="form-group"><label>Email</label><input id="euEmail" type="email" value="${u.email || ''}"></div>
         <div class="form-group">
-          <label>Plan de Recarga</label>
-          <select id="rechargePlan">
-            <option value="">— Seleccionar plan —</option>
-            ${plans.map(p => `<option value="${p}">${p}</option>`).join('')}
+          <label>Telefono</label>
+          <div class="phone-row">
+            ${renderCountryCodeDropdown('euCountryCode', u.countryCode || '+1')}
+            <input id="euPhone" value="${u.phone || ''}">
+          </div>
+        </div>
+        <div class="form-group"><label>Rol</label>
+          <select id="euRole">
+            <option value="client" ${u.role==='client'?'selected':''}>Cliente</option>
+            <option value="admin" ${u.role==='admin'?'selected':''}>Admin</option>
           </select>
         </div>
+        <div class="form-group"><label>Direccion</label><input id="euAddress" value="${u.address || ''}"></div>
+        <div class="form-row-3">
+          <div class="form-group"><label>Ciudad</label><input id="euCity" value="${u.city || ''}"></div>
+          <div class="form-group"><label>Pais</label><input id="euCountry" value="${u.country || ''}"></div>
+          <div class="form-group"><label>Codigo Postal</label><input id="euPostal" value="${u.postalCode || ''}"></div>
+        </div>
+        <div class="form-group">
+          <label>Contrasena (dejar vacio para mantener actual)</label>
+          <input id="euPass" type="text" placeholder="Nueva contrasena...">
+        </div>
         <div class="modal-actions">
           <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
-          <button class="btn btn-coral" onclick="doRecharge('${simId}')">Recargar</button>
+          <button class="btn btn-coral" onclick="saveUser('${userId}')">Guardar Cambios</button>
         </div>
       </div>
     </div>
   `;
 }
 
-async function doRecharge(simId) {
-  const plan = document.getElementById('rechargePlan').value;
-  if (!plan) return toast('Seleccione un plan', 'error');
-  const res = await fetch(`/api/sims/${simId}/recharge`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ plan })
+async function saveUser(userId) {
+  const data = {
+    name: document.getElementById('euName').value,
+    email: document.getElementById('euEmail').value,
+    company: document.getElementById('euCompany').value,
+    phone: document.getElementById('euPhone').value,
+    countryCode: document.getElementById('euCountryCode').value,
+    role: document.getElementById('euRole').value,
+    address: document.getElementById('euAddress').value,
+    city: document.getElementById('euCity').value,
+    country: document.getElementById('euCountry').value,
+    postalCode: document.getElementById('euPostal').value
+  };
+  const pass = document.getElementById('euPass').value;
+  if (pass) data.password = pass;
+
+  const res = await api(`/api/admin/users/${userId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data)
   });
-  if (res.ok) { closeModal(); toast('Recarga en proceso', 'success'); }
+  if (res?.error) return toast(res.error, 'error');
+  closeModal();
+  toast('Usuario actualizado', 'success');
+  render();
 }
 
-async function saveAssignment(simId) {
-  const subClient = document.getElementById('assignSub').value;
-  const res = await fetch(`/api/sims/${simId}/assign`, {
-    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ subClient })
-  });
-  if (res.ok) toast('Informacion guardada', 'success');
+// === SUB-USERS ===
+async function renderSubUsers(el) {
+  const subs = await api('/api/subusers');
+  if (!subs) return;
+  const pending = subs.filter(s => s.status === 'pending');
+  el.innerHTML = `
+    <div class="page-header"><h1>Sub-Usuarios</h1><p>${pending.length} pendientes de aprobacion</p></div>
+    <div class="card">
+      <div class="card-header"><h2>Sub-Usuarios</h2><button class="btn btn-coral btn-sm" onclick="showAddSubUser()">+ Nuevo Sub-Usuario</button></div>
+      <table>
+        <thead><tr><th>Nombre</th><th>Email</th><th>Empresa</th><th>Telefono</th><th>Estado</th><th>Fecha</th><th>Acciones</th></tr></thead>
+        <tbody>
+          ${subs.map(s => `
+            <tr>
+              <td>${s.name}</td><td>${s.email}</td><td>${s.company || '—'}</td><td>${s.phone||'—'}</td>
+              <td><span class="badge badge-${s.status}">${s.status}</span></td>
+              <td>${formatMadridDate(s.createdAt)}</td>
+              <td>
+                ${s.status === 'pending' ? `<button class="btn btn-green btn-sm" onclick="approveSub('${s.id}')">Aprobar</button> <button class="btn btn-red btn-sm" onclick="rejectSub('${s.id}')">Rechazar</button>` : ''}
+                <button class="btn btn-outline btn-sm" onclick="showEditSubUser('${s.id}')">Editar</button>
+                <button class="btn btn-red btn-sm" onclick="deleteSub('${s.id}')" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
 }
 
-function showNewSubUserModal() {
+async function showEditSubUser(subId) {
+  const subs = await api('/api/subusers');
+  const s = (subs || []).find(x => x.id === subId);
+  if (!s) return toast('Sub-usuario no encontrado', 'error');
+
   const mc = document.getElementById('modalContainer');
   mc.innerHTML = `
-    <div class="modal-overlay" onclick="closeModal(event)">
-      <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-overlay">
+      <div class="modal">
+        <h2>Editar Sub-Usuario — ${s.name}</h2>
+        <div class="form-row">
+          <div class="form-group"><label>Nombre</label><input id="esuName" value="${s.name || ''}"></div>
+          <div class="form-group"><label>Empresa</label><input id="esuCompany" value="${s.company || ''}"></div>
+        </div>
+        <div class="form-group"><label>Email</label><input id="esuEmail" type="email" value="${s.email || ''}"></div>
+        <div class="form-group">
+          <label>Contrasena (dejar vacio para mantener actual)</label>
+          <input id="esuPass" type="text" placeholder="Nueva contrasena...">
+        </div>
+
+        <div style="margin-top:16px;margin-bottom:8px"><strong style="font-size:14px;color:var(--navy)">Permisos</strong></div>
+        <div class="perm-grid">
+          <div class="perm-item">
+            <input type="checkbox" id="perm_canViewSims" ${s.canViewSims ? 'checked' : ''}>
+            <label for="perm_canViewSims">Ver Dispositivos</label>
+          </div>
+          <div class="perm-item">
+            <input type="checkbox" id="perm_canActivate" ${s.canActivate ? 'checked' : ''}>
+            <label for="perm_canActivate">Activar/Desactivar</label>
+          </div>
+          <div class="perm-item">
+            <input type="checkbox" id="perm_canRecharge" ${s.canRecharge ? 'checked' : ''}>
+            <label for="perm_canRecharge">Recargar</label>
+          </div>
+          <div class="perm-item">
+            <input type="checkbox" id="perm_canViewBilling" ${s.canViewBilling ? 'checked' : ''}>
+            <label for="perm_canViewBilling">Ver Facturacion</label>
+          </div>
+          <div class="perm-item">
+            <input type="checkbox" id="perm_canViewReports" ${s.canViewReports ? 'checked' : ''}>
+            <label for="perm_canViewReports">Ver Reportes</label>
+          </div>
+          <div class="perm-item">
+            <input type="checkbox" id="perm_canManageAccounts" ${s.canManageAccounts ? 'checked' : ''}>
+            <label for="perm_canManageAccounts">Gestionar Cuentas</label>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+          <button class="btn btn-coral" onclick="saveSubUser('${subId}')">Guardar Cambios</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function saveSubUser(subId) {
+  const data = {
+    name: document.getElementById('esuName').value,
+    email: document.getElementById('esuEmail').value,
+    company: document.getElementById('esuCompany').value,
+    canViewSims: document.getElementById('perm_canViewSims').checked,
+    canActivate: document.getElementById('perm_canActivate').checked,
+    canRecharge: document.getElementById('perm_canRecharge').checked,
+    canViewBilling: document.getElementById('perm_canViewBilling').checked,
+    canViewReports: document.getElementById('perm_canViewReports').checked,
+    canManageAccounts: document.getElementById('perm_canManageAccounts').checked
+  };
+  const pass = document.getElementById('esuPass').value;
+  if (pass) data.password = pass;
+
+  const res = await api(`/api/admin/subusers/${subId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data)
+  });
+  if (res?.error) return toast(res.error, 'error');
+  closeModal();
+  toast('Sub-usuario actualizado', 'success');
+  render();
+}
+
+async function approveSub(id) {
+  await api(`/api/admin/subusers/${id}/approve`, { method: 'POST' });
+  toast('Sub-usuario aprobado', 'success');
+  render();
+}
+
+async function rejectSub(id) {
+  await api(`/api/admin/subusers/${id}/reject`, { method: 'POST' });
+  toast('Sub-usuario rechazado', 'info');
+  render();
+}
+
+async function deleteSub(id) {
+  if (!confirm('Eliminar este sub-usuario?')) return;
+  await api(`/api/admin/subusers/${id}`, { method: 'DELETE' });
+  toast('Sub-usuario eliminado', 'info');
+  render();
+}
+
+function showAddSubUser() {
+  const mc = document.getElementById('modalContainer');
+  mc.innerHTML = `
+    <div class="modal-overlay">
+      <div class="modal">
         <h2>Nuevo Sub-Usuario</h2>
-        <div class="form-group"><label>Empresa</label><input id="suEmpresa" placeholder="Nombre de la empresa"></div>
-        <div class="form-group"><label>Nombre</label><input id="suName" placeholder="Nombre completo"></div>
-        <div class="form-group"><label>Email *</label><input id="suEmail" type="email" required placeholder="email@empresa.com"></div>
+        <div class="form-row">
+          <div class="form-group"><label>Nombre</label><input id="nsuName"></div>
+          <div class="form-group"><label>Empresa</label><input id="nsuCompany"></div>
+        </div>
+        <div class="form-group"><label>Email</label><input id="nsuEmail" type="email"></div>
+        <div class="form-group"><label>Contrasena</label><input id="nsuPass" type="text"></div>
+        <div class="form-group">
+          <label>Telefono</label>
+          <div class="phone-row">
+            ${renderCountryCodeDropdown('nsuCountryCode', '+1')}
+            <input id="nsuPhone" placeholder="Numero de telefono">
+          </div>
+        </div>
+        <div style="margin-top:16px;margin-bottom:8px"><strong style="font-size:14px;color:var(--navy)">Permisos</strong></div>
+        <div class="perm-grid">
+          <div class="perm-item"><input type="checkbox" id="nsu_canViewSims" checked><label for="nsu_canViewSims">Ver Dispositivos</label></div>
+          <div class="perm-item"><input type="checkbox" id="nsu_canActivate"><label for="nsu_canActivate">Activar/Desactivar</label></div>
+          <div class="perm-item"><input type="checkbox" id="nsu_canRecharge"><label for="nsu_canRecharge">Recargar</label></div>
+          <div class="perm-item"><input type="checkbox" id="nsu_canViewBilling"><label for="nsu_canViewBilling">Ver Facturacion</label></div>
+          <div class="perm-item"><input type="checkbox" id="nsu_canViewReports"><label for="nsu_canViewReports">Ver Reportes</label></div>
+          <div class="perm-item"><input type="checkbox" id="nsu_canManageAccounts"><label for="nsu_canManageAccounts">Gestionar Cuentas</label></div>
+        </div>
         <div class="modal-actions">
           <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
-          <button class="btn btn-coral" onclick="doCreateSubUser()">Solicitar</button>
+          <button class="btn btn-coral" onclick="addSubUser()">Crear Sub-Usuario</button>
         </div>
       </div>
     </div>
   `;
 }
 
-async function doCreateSubUser() {
-  const empresa = document.getElementById('suEmpresa').value;
-  const name = document.getElementById('suName').value;
-  const email = document.getElementById('suEmail').value;
-  if (!name || !email) return toast('Nombre y email son requeridos', 'error');
-  const res = await fetch('/api/subusers', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, email, empresa })
+async function addSubUser() {
+  const data = {
+    name: document.getElementById('nsuName').value,
+    email: document.getElementById('nsuEmail').value,
+    company: document.getElementById('nsuCompany').value,
+    password: document.getElementById('nsuPass').value,
+    phone: document.getElementById('nsuPhone').value,
+    countryCode: document.getElementById('nsuCountryCode').value,
+    canViewSims: document.getElementById('nsu_canViewSims').checked,
+    canActivate: document.getElementById('nsu_canActivate').checked,
+    canRecharge: document.getElementById('nsu_canRecharge').checked,
+    canViewBilling: document.getElementById('nsu_canViewBilling').checked,
+    canViewReports: document.getElementById('nsu_canViewReports').checked,
+    canManageAccounts: document.getElementById('nsu_canManageAccounts').checked,
+    status: 'approved'
+  };
+  if (!data.name || !data.email) return toast('Nombre y email son requeridos', 'error');
+  const res = await api('/api/admin/subusers', {
+    method: 'POST',
+    body: JSON.stringify(data)
   });
-  if (res.ok) { closeModal(); toast('Solicitud de sub-usuario enviada. Pendiente de aprobacion.', 'success'); navigate('subusers'); }
+  if (res?.error) return toast(res.error, 'error');
+  closeModal();
+  toast('Sub-usuario creado', 'success');
+  render();
 }
 
-// === Helpers ===
-function closeModal(e) {
-  if (e && e.target !== e.currentTarget) return;
-  document.getElementById('modalContainer').innerHTML = '';
+// === AIRTIME ===
+let airtimeData = null;
+let airtimeServices = [];
+
+async function renderAirtime(el) {
+  const response = await api('/api/admin/plans');
+  if (!response) { airtimeData = {}; airtimeServices = []; }
+  else {
+    // Handle response format: { services: [...], plans: { ... } }
+    if (response.services && response.plans) {
+      airtimeServices = response.services;
+      airtimeData = response.plans;
+    } else {
+      // Fallback: response is the plans object itself
+      airtimeData = response;
+      airtimeServices = Object.keys(airtimeData);
+    }
+  }
+
+  el.innerHTML = `
+    <div class="page-header"><h1>Airtime — Planes</h1><p>Gestion de planes disponibles por tipo de servicio. Estos planes aparecen en los dropdowns de activacion y recarga del cliente.</p></div>
+    <div id="airtimeContent"></div>
+    <div style="margin-top:16px;display:flex;gap:10px">
+      <button class="btn btn-outline" onclick="addServiceType()">+ Nuevo Tipo de Servicio</button>
+      <button class="btn btn-coral" onclick="saveAirtime()">Guardar Cambios</button>
+    </div>
+  `;
+  renderAirtimeContent();
 }
 
+function renderAirtimeContent() {
+  const container = document.getElementById('airtimeContent');
+  if (!container) return;
+  // Use airtimeServices for ordering, fall back to keys
+  const types = airtimeServices.length > 0 ? airtimeServices : Object.keys(airtimeData);
+  container.innerHTML = types.map(type => `
+    <div class="plan-category">
+      <div class="plan-category-header">
+        <h3>${type}</h3>
+        <div class="btn-header-group">
+          <button class="btn btn-outline btn-sm" onclick="renameServiceType('${type}')">Renombrar</button>
+        </div>
+      </div>
+      ${(airtimeData[type] || []).map((plan, idx) => `
+        <div class="plan-item">
+          <span>${plan}</span>
+          <div style="display:flex;gap:6px">
+            <button onclick="editPlan('${type}', ${idx})" title="Editar" style="color:var(--blue)">&#9998;</button>
+            <button onclick="removePlan('${type}', ${idx})" title="Eliminar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          </div>
+        </div>
+      `).join('')}
+      ${(airtimeData[type] || []).length === 0 ? '<p style="color:var(--gray-300);font-size:13px;padding:8px">Sin planes</p>' : ''}
+      <div class="add-plan-row">
+        <input id="newPlan_${type.replace(/[^a-zA-Z0-9]/g,'_')}" placeholder="Nombre del nuevo plan..." onkeydown="if(event.key==='Enter')addPlanInline('${type}')">
+        <button class="btn btn-green btn-sm" onclick="addPlanInline('${type}')">Agregar</button>
+      </div>
+    </div>
+  `).join('');
+
+  if (types.length === 0) {
+    container.innerHTML = '<div class="card"><p style="color:var(--gray-500)">No hay tipos de servicio configurados. Agregue uno para comenzar.</p></div>';
+  }
+}
+
+function addServiceType() {
+  const name = prompt('Nombre del nuevo tipo de servicio:');
+  if (!name || !name.trim()) return;
+  if (airtimeData[name.trim()]) return toast('Ya existe ese tipo de servicio', 'error');
+  airtimeData[name.trim()] = [];
+  if (!airtimeServices.includes(name.trim())) airtimeServices.push(name.trim());
+  renderAirtimeContent();
+}
+
+function renameServiceType(oldName) {
+  const newName = prompt('Nuevo nombre para "' + oldName + '":', oldName);
+  if (!newName || !newName.trim() || newName.trim() === oldName) return;
+  if (airtimeData[newName.trim()]) return toast('Ya existe ese tipo de servicio', 'error');
+  airtimeData[newName.trim()] = airtimeData[oldName];
+  delete airtimeData[oldName];
+  const idx = airtimeServices.indexOf(oldName);
+  if (idx !== -1) airtimeServices[idx] = newName.trim();
+  else airtimeServices.push(newName.trim());
+  renderAirtimeContent();
+}
+
+function addPlanInline(type) {
+  const inputId = 'newPlan_' + type.replace(/[^a-zA-Z0-9]/g, '_');
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  const plan = input.value.trim();
+  if (!plan) return;
+  if (!airtimeData[type]) airtimeData[type] = [];
+  airtimeData[type].push(plan);
+  renderAirtimeContent();
+}
+
+function addPlanToType(type) {
+  const plan = prompt('Nombre del nuevo plan para "' + type + '":');
+  if (!plan || !plan.trim()) return;
+  airtimeData[type].push(plan.trim());
+  renderAirtimeContent();
+}
+
+function removePlan(type, idx) {
+  airtimeData[type].splice(idx, 1);
+  renderAirtimeContent();
+}
+
+function editPlan(type, idx) {
+  const currentName = airtimeData[type][idx];
+  const newName = prompt('Editar plan:', currentName);
+  if (!newName || !newName.trim() || newName.trim() === currentName) return;
+  airtimeData[type][idx] = newName.trim();
+  renderAirtimeContent();
+}
+
+async function saveAirtime() {
+  // Send the full plans object via PUT
+  const payload = airtimeData;
+  const res = await api('/api/admin/plans', {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  });
+  if (res?.error) return toast(res.error, 'error');
+  // Refresh cached plans data
+  cachedPlansData = null;
+  toast('Planes guardados. Los cambios se reflejan en los dropdowns del cliente.', 'success');
+}
+
+// === ACTIVITY ===
+async function renderActivity(el) {
+  const [logs, reqs] = await Promise.all([
+    api('/api/activity'),
+    api('/api/admin/requests')
+  ]);
+
+  const typeLabel = { activation: 'Activacion', deactivation: 'Desactivacion', recharge: 'Recarga', balance_update: 'Actualizar Saldo', account_creation: 'Creacion de Cuenta', subuser_approval: 'Aprobacion Sub-Usuario' };
+
+  // Build comprehensive activity from requests
+  const reqActivities = (reqs || []).map(r => ({
+    action: 'Solicitud: ' + (typeLabel[r.type] || r.type),
+    details: `Cliente: ${r.clientName || ''} | SIM: ${r.simSerial || ''} | Estado: ${r.status}`,
+    user: r.clientName || '',
+    timestamp: r.createdAt,
+    status: r.status,
+    _isReq: true
+  }));
+
+  // Combine and deduplicate
+  const allActivity = [...(logs || [])];
+  reqActivities.forEach(ra => {
+    const exists = allActivity.some(a => a.details && a.details === ra.details && a.timestamp === ra.timestamp);
+    if (!exists) allActivity.push(ra);
+  });
+  allActivity.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+  el.innerHTML = `
+    <div class="page-header"><h1>Actividad</h1><p>Registro completo de actividad del sistema — ${allActivity.length} registros</p></div>
+    <div class="card">
+      <div class="card-header"><h2>Log de Actividad</h2></div>
+      <table>
+        <thead><tr><th>Accion</th><th>Detalles</th><th>Usuario</th><th>Estado</th><th>Fecha</th></tr></thead>
+        <tbody>
+          ${allActivity.length === 0 ? '<tr><td colspan="5" style="color:var(--gray-500);text-align:center;padding:24px">No hay registros de actividad</td></tr>' : ''}
+          ${allActivity.slice(0, 200).map(l => `
+            <tr>
+              <td><strong>${l.action || '—'}</strong></td>
+              <td>${l.details || '—'}</td>
+              <td>${l.user || l.userName || '—'}</td>
+              <td>${l.status ? `<span class="badge badge-${l.status}">${l.status}</span>` : '—'}</td>
+              <td style="white-space:nowrap">${formatMadrid(l.timestamp)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// === NOTIFICATIONS ===
+async function renderNotifications(el) {
+  let settings = {};
+  try {
+    settings = await api('/api/admin/notifications') || {};
+  } catch(e) {
+    settings = {};
+  }
+
+  el.innerHTML = `
+    <div class="page-header"><h1>Notificaciones</h1><p>Configuracion de notificaciones por email</p></div>
+    <div class="card">
+      <div class="card-header"><h2>Configuracion General</h2></div>
+      <div class="form-group">
+        <label>Email de notificaciones admin</label>
+        <input id="notifAdminEmail" value="${settings.adminEmail || ''}" placeholder="admin@empresa.com">
+      </div>
+      <div class="toggle-row">
+        <label>Notificaciones al admin</label>
+        <label class="toggle-switch">
+          <input type="checkbox" id="notifAdmin" ${settings.notifyAdmin ? 'checked' : ''}>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <label>Notificaciones al cliente</label>
+        <label class="toggle-switch">
+          <input type="checkbox" id="notifClient" ${settings.notifyClient ? 'checked' : ''}>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><h2>Configuracion SMTP</h2></div>
+      <p style="color:var(--gray-500);font-size:13px;margin-bottom:16px">Configure SMTP para enviar emails reales. Sin configuracion, las notificaciones se registran en el log del servidor.</p>
+      <div class="form-row">
+        <div class="form-group"><label>SMTP Host</label><input id="smtpHost" value="${settings.smtpHost || ''}" placeholder="smtp.gmail.com"></div>
+        <div class="form-group"><label>SMTP Port</label><input id="smtpPort" type="number" value="${settings.smtpPort || ''}" placeholder="587"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>SMTP User</label><input id="smtpUser" value="${settings.smtpUser || ''}" placeholder="user@gmail.com"></div>
+        <div class="form-group"><label>SMTP Password</label><input id="smtpPass" type="password" value="${settings.smtpPassword || ''}" placeholder="********"></div>
+      </div>
+      <div class="form-group"><label>SMTP From</label><input id="smtpFrom" value="${settings.smtpFrom || ''}" placeholder="SkyConnect <noreply@skyconnect.com>"></div>
+    </div>
+    <div style="margin-top:16px">
+      <button class="btn btn-coral" onclick="saveNotifications()">Guardar</button>
+    </div>
+  `;
+}
+
+async function saveNotifications() {
+  const data = {
+    adminEmail: document.getElementById('notifAdminEmail').value,
+    notifyAdmin: document.getElementById('notifAdmin').checked,
+    notifyClient: document.getElementById('notifClient').checked,
+    smtpHost: document.getElementById('smtpHost').value,
+    smtpPort: parseInt(document.getElementById('smtpPort').value) || null,
+    smtpUser: document.getElementById('smtpUser').value,
+    smtpPassword: document.getElementById('smtpPass').value,
+    smtpFrom: document.getElementById('smtpFrom').value
+  };
+  const res = await api('/api/admin/notifications', {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  });
+  if (res?.error) return toast(res.error, 'error');
+  toast('Configuracion guardada', 'success');
+}
+
+// === BRANDING ===
+async function renderBranding(el) {
+  const logoInfo = await api('/api/admin/logo');
+  const t = Date.now(); // cache bust
+  el.innerHTML = `
+    <div class="page-header"><h1>Logo / Marca</h1><p>Suba su logo para que aparezca en el login y sidebar del cliente</p></div>
+
+    <div class="card">
+      <div class="card-header"><h2>Logo Principal (fondo claro)</h2></div>
+      <p style="color:var(--gray-500);font-size:13px;margin-bottom:16px">Este logo aparece en la pagina de login (fondo blanco). Use un PNG con fondo transparente y colores oscuros.</p>
+      <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap">
+        <div style="background:#fff;border:2px dashed var(--gray-200);border-radius:12px;padding:24px;min-width:220px;text-align:center">
+          ${logoInfo?.hasLogo ? `<img src="/logo.png?t=${t}" style="max-width:200px;max-height:80px">` : '<span style="color:var(--gray-300)">Sin logo</span>'}
+        </div>
+        <div>
+          <input type="file" id="logoFile" accept="image/png,image/jpeg,image/svg+xml" style="display:none" onchange="uploadLogo('logo','logoFile')">
+          <button class="btn btn-coral" onclick="document.getElementById('logoFile').click()">Subir Logo</button>
+          ${logoInfo?.hasLogo ? `<button class="btn btn-outline" style="margin-left:8px" onclick="deleteLogo()">Eliminar</button>` : ''}
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h2>Logo Claro (fondo oscuro)</h2></div>
+      <p style="color:var(--gray-500);font-size:13px;margin-bottom:16px">Este logo aparece en el sidebar (fondo navy oscuro). Use un PNG con fondo transparente y colores claros/blancos. Si no sube uno, se usara el logo principal.</p>
+      <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap">
+        <div style="background:var(--navy);border-radius:12px;padding:24px;min-width:220px;text-align:center">
+          ${logoInfo?.hasLogoLight ? `<img src="/logo-light.png?t=${t}" style="max-width:200px;max-height:60px">` : (logoInfo?.hasLogo ? `<img src="/logo.png?t=${t}" style="max-width:200px;max-height:60px">` : '<span style="color:rgba(255,255,255,.3)">Sin logo</span>')}
+        </div>
+        <div>
+          <input type="file" id="logoLightFile" accept="image/png,image/jpeg,image/svg+xml" style="display:none" onchange="uploadLogo('logoLight','logoLightFile')">
+          <button class="btn btn-navy" onclick="document.getElementById('logoLightFile').click()">Subir Logo Claro</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="border-left:3px solid var(--blue)">
+      <p style="font-size:13px;color:var(--gray-500)"><strong style="color:var(--navy)">Consejo:</strong> El logo principal se usa en la pantalla de login (fondo blanco). El logo claro se usa en el sidebar (fondo azul marino). Si solo tiene un logo, subalo como principal y tambien como logo claro si se ve bien sobre fondo oscuro.</p>
+    </div>
+  `;
+}
+
+function uploadLogo(field, inputId) {
+  const file = document.getElementById(inputId).files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const body = {};
+    body[field] = e.target.result;
+    await api('/api/admin/logo', {
+      method: 'POST',
+      body: JSON.stringify(body)
+    });
+    toast('Logo actualizado', 'success');
+    renderBranding(document.getElementById('main'));
+  };
+  reader.readAsDataURL(file);
+}
+
+async function deleteLogo() {
+  if (!confirm('Eliminar todos los logos?')) return;
+  await api('/api/admin/logo', { method: 'DELETE' });
+  toast('Logos eliminados', 'info');
+  renderBranding(document.getElementById('main'));
+}
+
+// === HELPERS ===
+function closeModal() { document.getElementById('modalContainer').innerHTML = ''; }
 function toast(msg, type = 'success') {
   const t = document.createElement('div');
   t.className = `toast toast-${type}`;
   t.textContent = msg;
   document.body.appendChild(t);
-  setTimeout(() => t.remove(), 4000);
+  setTimeout(() => t.remove(), 3500);
+}
+async function logout() {
+  await fetch('/api/logout', { method: 'POST' });
+  window.location.href = '/';
 }
 
-function statusLabel(s) {
-  const m = { active: 'Activa', inactive: 'Inactiva', processing: 'Procesando', pending: 'Pendiente', approved: 'Aprobado', rejected: 'Rechazado' };
-  return m[s] || s;
-}
-
-function formatDate(d) {
-  if (!d) return '—';
-  try { return new Date(d).toLocaleDateString('es-ES', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); }
-  catch (e) { return d; }
-}
+// Init
+render();
 </script>
 </body>
 </html>
