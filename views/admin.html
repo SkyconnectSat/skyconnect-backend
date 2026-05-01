@@ -22,13 +22,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .sidebar-logo { padding: 12px 24px 20px; border-bottom: 1px solid rgba(255,255,255,.1); text-align: center; }
 .sidebar-logo h2 { font-size: 18px; color: var(--coral); }
 .sidebar-logo span { font-size: 11px; color: rgba(255,255,255,.4); }
-.sidebar-nav { flex: 1; padding: 16px 0; }
+.sidebar-nav { flex: 1; padding: 16px 0; overflow-y: auto; }
 .nav-item {
   display: flex; align-items: center; gap: 10px; padding: 11px 24px;
   color: rgba(255,255,255,.6); cursor: pointer; transition: all .2s; font-size: 14px;
 }
 .nav-item:hover { color: #fff; background: rgba(255,255,255,.05); }
 .nav-item.active { color: #fff; background: rgba(255,255,255,.1); border-left: 3px solid var(--coral); }
+.nav-icon { display: inline-flex; align-items: center; width: 18px; height: 18px; flex-shrink: 0; }
+.nav-icon svg { width: 18px; height: 18px; }
 .sidebar-footer { padding: 16px 24px; border-top: 1px solid rgba(255,255,255,.1); }
 .btn-logout { width: 100%; padding: 8px; border-radius: 8px; background: rgba(255,255,255,.1); color: rgba(255,255,255,.7); border: none; cursor: pointer; font-size: 13px; }
 .btn-logout:hover { background: rgba(255,255,255,.15); color: #fff; }
@@ -81,7 +83,7 @@ tr:hover td { background: var(--gray-50); }
 .form-group input:focus, .form-group select:focus { border-color: var(--coral); }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
-.phone-row { display: grid; grid-template-columns: 120px 1fr; gap: 8px; }
+.phone-row { display: grid; grid-template-columns: 200px 1fr; gap: 8px; }
 
 .modal-overlay {
   position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,.5);
@@ -112,6 +114,48 @@ tr:hover td { background: var(--gray-50); }
 .plan-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--gray-50); border-radius: 6px; margin-bottom: 6px; font-size: 13px; }
 .plan-item button { background: none; border: none; color: var(--red); cursor: pointer; font-size: 16px; font-weight: bold; }
 .btn-header-group { display: flex; gap: 8px; align-items: center; }
+
+/* Country code dropdown */
+.cc-dropdown-wrapper { position: relative; }
+.cc-dropdown-trigger {
+  display: flex; align-items: center; gap: 6px; padding: 9px 12px; border: 1.5px solid var(--gray-200);
+  border-radius: 8px; font-size: 14px; background: #fff; cursor: pointer; min-width: 160px; justify-content: space-between;
+}
+.cc-dropdown-trigger:focus-within, .cc-dropdown-trigger.open { border-color: var(--coral); }
+.cc-dropdown-panel {
+  position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1.5px solid var(--gray-200);
+  border-radius: 8px; margin-top: 4px; z-index: 100; max-height: 240px; overflow: hidden; display: flex; flex-direction: column;
+  box-shadow: 0 8px 24px rgba(0,0,0,.12);
+}
+.cc-dropdown-search {
+  padding: 8px 10px; border: none; border-bottom: 1px solid var(--gray-100); font-size: 13px; outline: none; flex-shrink: 0;
+}
+.cc-dropdown-list { overflow-y: auto; flex: 1; }
+.cc-dropdown-item {
+  display: flex; align-items: center; gap: 8px; padding: 8px 12px; font-size: 13px; cursor: pointer;
+}
+.cc-dropdown-item:hover { background: var(--gray-50); }
+.cc-dropdown-item.selected { background: var(--gray-100); font-weight: 600; }
+
+/* Toggle switch */
+.toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--gray-100); }
+.toggle-row label { font-size: 14px; color: var(--gray-700); font-weight: 500; text-transform: none; letter-spacing: 0; }
+.toggle-switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+  position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+  background: var(--gray-200); border-radius: 24px; transition: .3s;
+}
+.toggle-slider:before {
+  position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
+  background: #fff; border-radius: 50%; transition: .3s;
+}
+.toggle-switch input:checked + .toggle-slider { background: var(--green); }
+.toggle-switch input:checked + .toggle-slider:before { transform: translateX(20px); }
+
+.add-plan-row { display: flex; gap: 8px; margin-top: 8px; }
+.add-plan-row input { flex: 1; padding: 7px 10px; border: 1.5px solid var(--gray-200); border-radius: 6px; font-size: 13px; outline: none; }
+.add-plan-row input:focus { border-color: var(--coral); }
 </style>
 </head>
 <body>
@@ -122,17 +166,45 @@ tr:hover td { background: var(--gray-50); }
       <span>PANEL ADMIN</span>
     </div>
     <nav class="sidebar-nav">
-      <div class="nav-item active" data-page="requests" onclick="navTo('requests')">Solicitudes</div>
-      <div class="nav-item" data-page="sims" onclick="navTo('sims')">SIM Cards</div>
-      <div class="nav-item" data-page="accounts" onclick="navTo('accounts')">Cuentas</div>
-      <div class="nav-item" data-page="users" onclick="navTo('users')">Usuarios</div>
-      <div class="nav-item" data-page="subusers" onclick="navTo('subusers')">Sub-Usuarios</div>
-      <div class="nav-item" data-page="airtime" onclick="navTo('airtime')">Airtime</div>
-      <div class="nav-item" data-page="activity" onclick="navTo('activity')">Actividad</div>
-      <div class="nav-item" data-page="branding" onclick="navTo('branding')">Logo / Marca</div>
+      <div class="nav-item active" data-page="requests" onclick="navTo('requests')">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>
+        Solicitudes
+      </div>
+      <div class="nav-item" data-page="sims" onclick="navTo('sims')">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="6" y1="8" x2="6" y2="16"/><line x1="10" y1="8" x2="10" y2="16"/><line x1="14" y1="8" x2="14" y2="16"/><line x1="18" y1="8" x2="18" y2="16"/></svg></span>
+        SIM Cards
+      </div>
+      <div class="nav-item" data-page="accounts" onclick="navTo('accounts')">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="2" y1="8" x2="22" y2="8"/><line x1="8" y1="8" x2="8" y2="21"/></svg></span>
+        Cuentas
+      </div>
+      <div class="nav-item" data-page="users" onclick="navTo('users')">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+        Usuarios
+      </div>
+      <div class="nav-item" data-page="subusers" onclick="navTo('subusers')">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg></span>
+        Sub-Usuarios
+      </div>
+      <div class="nav-item" data-page="airtime" onclick="navTo('airtime')">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+        Airtime
+      </div>
+      <div class="nav-item" data-page="activity" onclick="navTo('activity')">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+        Actividad
+      </div>
+      <div class="nav-item" data-page="branding" onclick="navTo('branding')">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span>
+        Logo / Marca
+      </div>
+      <div class="nav-item" data-page="notifications" onclick="navTo('notifications')">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>
+        Notificaciones
+      </div>
     </nav>
     <div class="sidebar-footer">
-      <button class="btn-logout" onclick="logout()">Cerrar Sesión</button>
+      <button class="btn-logout" onclick="logout()">Cerrar Sesion</button>
     </div>
   </div>
 
@@ -142,6 +214,194 @@ tr:hover td { background: var(--gray-50); }
 
 <script>
 let page = 'requests';
+
+// Comprehensive country codes list
+const COUNTRY_CODES = [
+  { code: '+1', country: 'Estados Unidos', flag: '\u{1F1FA}\u{1F1F8}' },
+  { code: '+1', country: 'Canada', flag: '\u{1F1E8}\u{1F1E6}' },
+  { code: '+7', country: 'Rusia', flag: '\u{1F1F7}\u{1F1FA}' },
+  { code: '+20', country: 'Egipto', flag: '\u{1F1EA}\u{1F1EC}' },
+  { code: '+27', country: 'Sudafrica', flag: '\u{1F1FF}\u{1F1E6}' },
+  { code: '+30', country: 'Grecia', flag: '\u{1F1EC}\u{1F1F7}' },
+  { code: '+31', country: 'Paises Bajos', flag: '\u{1F1F3}\u{1F1F1}' },
+  { code: '+32', country: 'Belgica', flag: '\u{1F1E7}\u{1F1EA}' },
+  { code: '+33', country: 'Francia', flag: '\u{1F1EB}\u{1F1F7}' },
+  { code: '+34', country: 'Espana', flag: '\u{1F1EA}\u{1F1F8}' },
+  { code: '+36', country: 'Hungria', flag: '\u{1F1ED}\u{1F1FA}' },
+  { code: '+39', country: 'Italia', flag: '\u{1F1EE}\u{1F1F9}' },
+  { code: '+40', country: 'Rumania', flag: '\u{1F1F7}\u{1F1F4}' },
+  { code: '+41', country: 'Suiza', flag: '\u{1F1E8}\u{1F1ED}' },
+  { code: '+43', country: 'Austria', flag: '\u{1F1E6}\u{1F1F9}' },
+  { code: '+44', country: 'Reino Unido', flag: '\u{1F1EC}\u{1F1E7}' },
+  { code: '+45', country: 'Dinamarca', flag: '\u{1F1E9}\u{1F1F0}' },
+  { code: '+46', country: 'Suecia', flag: '\u{1F1F8}\u{1F1EA}' },
+  { code: '+47', country: 'Noruega', flag: '\u{1F1F3}\u{1F1F4}' },
+  { code: '+48', country: 'Polonia', flag: '\u{1F1F5}\u{1F1F1}' },
+  { code: '+49', country: 'Alemania', flag: '\u{1F1E9}\u{1F1EA}' },
+  { code: '+51', country: 'Peru', flag: '\u{1F1F5}\u{1F1EA}' },
+  { code: '+52', country: 'Mexico', flag: '\u{1F1F2}\u{1F1FD}' },
+  { code: '+53', country: 'Cuba', flag: '\u{1F1E8}\u{1F1FA}' },
+  { code: '+54', country: 'Argentina', flag: '\u{1F1E6}\u{1F1F7}' },
+  { code: '+55', country: 'Brasil', flag: '\u{1F1E7}\u{1F1F7}' },
+  { code: '+56', country: 'Chile', flag: '\u{1F1E8}\u{1F1F1}' },
+  { code: '+57', country: 'Colombia', flag: '\u{1F1E8}\u{1F1F4}' },
+  { code: '+58', country: 'Venezuela', flag: '\u{1F1FB}\u{1F1EA}' },
+  { code: '+60', country: 'Malasia', flag: '\u{1F1F2}\u{1F1FE}' },
+  { code: '+61', country: 'Australia', flag: '\u{1F1E6}\u{1F1FA}' },
+  { code: '+62', country: 'Indonesia', flag: '\u{1F1EE}\u{1F1E9}' },
+  { code: '+63', country: 'Filipinas', flag: '\u{1F1F5}\u{1F1ED}' },
+  { code: '+64', country: 'Nueva Zelanda', flag: '\u{1F1F3}\u{1F1FF}' },
+  { code: '+65', country: 'Singapur', flag: '\u{1F1F8}\u{1F1EC}' },
+  { code: '+66', country: 'Tailandia', flag: '\u{1F1F9}\u{1F1ED}' },
+  { code: '+81', country: 'Japon', flag: '\u{1F1EF}\u{1F1F5}' },
+  { code: '+82', country: 'Corea del Sur', flag: '\u{1F1F0}\u{1F1F7}' },
+  { code: '+84', country: 'Vietnam', flag: '\u{1F1FB}\u{1F1F3}' },
+  { code: '+86', country: 'China', flag: '\u{1F1E8}\u{1F1F3}' },
+  { code: '+90', country: 'Turquia', flag: '\u{1F1F9}\u{1F1F7}' },
+  { code: '+91', country: 'India', flag: '\u{1F1EE}\u{1F1F3}' },
+  { code: '+92', country: 'Pakistan', flag: '\u{1F1F5}\u{1F1F0}' },
+  { code: '+93', country: 'Afganistan', flag: '\u{1F1E6}\u{1F1EB}' },
+  { code: '+94', country: 'Sri Lanka', flag: '\u{1F1F1}\u{1F1F0}' },
+  { code: '+95', country: 'Myanmar', flag: '\u{1F1F2}\u{1F1F2}' },
+  { code: '+212', country: 'Marruecos', flag: '\u{1F1F2}\u{1F1E6}' },
+  { code: '+213', country: 'Argelia', flag: '\u{1F1E9}\u{1F1FF}' },
+  { code: '+216', country: 'Tunez', flag: '\u{1F1F9}\u{1F1F3}' },
+  { code: '+218', country: 'Libia', flag: '\u{1F1F1}\u{1F1FE}' },
+  { code: '+220', country: 'Gambia', flag: '\u{1F1EC}\u{1F1F2}' },
+  { code: '+221', country: 'Senegal', flag: '\u{1F1F8}\u{1F1F3}' },
+  { code: '+234', country: 'Nigeria', flag: '\u{1F1F3}\u{1F1EC}' },
+  { code: '+254', country: 'Kenia', flag: '\u{1F1F0}\u{1F1EA}' },
+  { code: '+255', country: 'Tanzania', flag: '\u{1F1F9}\u{1F1FF}' },
+  { code: '+256', country: 'Uganda', flag: '\u{1F1FA}\u{1F1EC}' },
+  { code: '+260', country: 'Zambia', flag: '\u{1F1FF}\u{1F1F2}' },
+  { code: '+263', country: 'Zimbabue', flag: '\u{1F1FF}\u{1F1FC}' },
+  { code: '+351', country: 'Portugal', flag: '\u{1F1F5}\u{1F1F9}' },
+  { code: '+352', country: 'Luxemburgo', flag: '\u{1F1F1}\u{1F1FA}' },
+  { code: '+353', country: 'Irlanda', flag: '\u{1F1EE}\u{1F1EA}' },
+  { code: '+354', country: 'Islandia', flag: '\u{1F1EE}\u{1F1F8}' },
+  { code: '+358', country: 'Finlandia', flag: '\u{1F1EB}\u{1F1EE}' },
+  { code: '+370', country: 'Lituania', flag: '\u{1F1F1}\u{1F1F9}' },
+  { code: '+371', country: 'Letonia', flag: '\u{1F1F1}\u{1F1FB}' },
+  { code: '+372', country: 'Estonia', flag: '\u{1F1EA}\u{1F1EA}' },
+  { code: '+380', country: 'Ucrania', flag: '\u{1F1FA}\u{1F1E6}' },
+  { code: '+381', country: 'Serbia', flag: '\u{1F1F7}\u{1F1F8}' },
+  { code: '+385', country: 'Croacia', flag: '\u{1F1ED}\u{1F1F7}' },
+  { code: '+386', country: 'Eslovenia', flag: '\u{1F1F8}\u{1F1EE}' },
+  { code: '+420', country: 'Chequia', flag: '\u{1F1E8}\u{1F1FF}' },
+  { code: '+421', country: 'Eslovaquia', flag: '\u{1F1F8}\u{1F1F0}' },
+  { code: '+502', country: 'Guatemala', flag: '\u{1F1EC}\u{1F1F9}' },
+  { code: '+503', country: 'El Salvador', flag: '\u{1F1F8}\u{1F1FB}' },
+  { code: '+504', country: 'Honduras', flag: '\u{1F1ED}\u{1F1F3}' },
+  { code: '+505', country: 'Nicaragua', flag: '\u{1F1F3}\u{1F1EE}' },
+  { code: '+506', country: 'Costa Rica', flag: '\u{1F1E8}\u{1F1F7}' },
+  { code: '+507', country: 'Panama', flag: '\u{1F1F5}\u{1F1E6}' },
+  { code: '+509', country: 'Haiti', flag: '\u{1F1ED}\u{1F1F9}' },
+  { code: '+591', country: 'Bolivia', flag: '\u{1F1E7}\u{1F1F4}' },
+  { code: '+592', country: 'Guyana', flag: '\u{1F1EC}\u{1F1FE}' },
+  { code: '+593', country: 'Ecuador', flag: '\u{1F1EA}\u{1F1E8}' },
+  { code: '+595', country: 'Paraguay', flag: '\u{1F1F5}\u{1F1FE}' },
+  { code: '+598', country: 'Uruguay', flag: '\u{1F1FA}\u{1F1FE}' },
+  { code: '+670', country: 'Timor Oriental', flag: '\u{1F1F9}\u{1F1F1}' },
+  { code: '+673', country: 'Brunei', flag: '\u{1F1E7}\u{1F1F3}' },
+  { code: '+675', country: 'Papua Nueva Guinea', flag: '\u{1F1F5}\u{1F1EC}' },
+  { code: '+852', country: 'Hong Kong', flag: '\u{1F1ED}\u{1F1F0}' },
+  { code: '+853', country: 'Macao', flag: '\u{1F1F2}\u{1F1F4}' },
+  { code: '+855', country: 'Camboya', flag: '\u{1F1F0}\u{1F1ED}' },
+  { code: '+856', country: 'Laos', flag: '\u{1F1F1}\u{1F1E6}' },
+  { code: '+880', country: 'Bangladesh', flag: '\u{1F1E7}\u{1F1E9}' },
+  { code: '+886', country: 'Taiwan', flag: '\u{1F1F9}\u{1F1FC}' },
+  { code: '+960', country: 'Maldivas', flag: '\u{1F1F2}\u{1F1FB}' },
+  { code: '+961', country: 'Libano', flag: '\u{1F1F1}\u{1F1E7}' },
+  { code: '+962', country: 'Jordania', flag: '\u{1F1EF}\u{1F1F4}' },
+  { code: '+963', country: 'Siria', flag: '\u{1F1F8}\u{1F1FE}' },
+  { code: '+964', country: 'Irak', flag: '\u{1F1EE}\u{1F1F6}' },
+  { code: '+965', country: 'Kuwait', flag: '\u{1F1F0}\u{1F1FC}' },
+  { code: '+966', country: 'Arabia Saudita', flag: '\u{1F1F8}\u{1F1E6}' },
+  { code: '+968', country: 'Oman', flag: '\u{1F1F4}\u{1F1F2}' },
+  { code: '+970', country: 'Palestina', flag: '\u{1F1F5}\u{1F1F8}' },
+  { code: '+971', country: 'Emiratos Arabes', flag: '\u{1F1E6}\u{1F1EA}' },
+  { code: '+972', country: 'Israel', flag: '\u{1F1EE}\u{1F1F1}' },
+  { code: '+973', country: 'Barein', flag: '\u{1F1E7}\u{1F1ED}' },
+  { code: '+974', country: 'Catar', flag: '\u{1F1F6}\u{1F1E6}' },
+  { code: '+976', country: 'Mongolia', flag: '\u{1F1F2}\u{1F1F3}' },
+  { code: '+977', country: 'Nepal', flag: '\u{1F1F3}\u{1F1F5}' },
+  { code: '+992', country: 'Tayikistan', flag: '\u{1F1F9}\u{1F1EF}' },
+  { code: '+993', country: 'Turkmenistan', flag: '\u{1F1F9}\u{1F1F2}' },
+  { code: '+994', country: 'Azerbaiyan', flag: '\u{1F1E6}\u{1F1FF}' },
+  { code: '+995', country: 'Georgia', flag: '\u{1F1EC}\u{1F1EA}' },
+  { code: '+996', country: 'Kirguistan', flag: '\u{1F1F0}\u{1F1EC}' },
+  { code: '+998', country: 'Uzbekistan', flag: '\u{1F1FA}\u{1F1FF}' },
+  { code: '+1809', country: 'Rep. Dominicana', flag: '\u{1F1E9}\u{1F1F4}' },
+  { code: '+1787', country: 'Puerto Rico', flag: '\u{1F1F5}\u{1F1F7}' },
+];
+
+function renderCountryCodeDropdown(inputId, selectedCode) {
+  const sel = selectedCode || '+1';
+  const match = COUNTRY_CODES.find(c => c.code === sel) || COUNTRY_CODES[0];
+  return `
+    <div class="cc-dropdown-wrapper" id="${inputId}_wrapper">
+      <input type="hidden" id="${inputId}" value="${sel}">
+      <div class="cc-dropdown-trigger" onclick="toggleCCDropdown('${inputId}')" id="${inputId}_trigger">
+        <span id="${inputId}_display">${match.flag} ${match.code} ${match.country}</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="cc-dropdown-panel" id="${inputId}_panel" style="display:none">
+        <input class="cc-dropdown-search" placeholder="Buscar pais..." oninput="filterCCDropdown('${inputId}', this.value)" autocomplete="off">
+        <div class="cc-dropdown-list" id="${inputId}_list"></div>
+      </div>
+    </div>
+  `;
+}
+
+function toggleCCDropdown(inputId) {
+  const panel = document.getElementById(inputId + '_panel');
+  const trigger = document.getElementById(inputId + '_trigger');
+  const isOpen = panel.style.display !== 'none';
+  // close all other dropdowns first
+  document.querySelectorAll('.cc-dropdown-panel').forEach(p => { p.style.display = 'none'; });
+  document.querySelectorAll('.cc-dropdown-trigger').forEach(t => { t.classList.remove('open'); });
+  if (!isOpen) {
+    panel.style.display = 'flex';
+    trigger.classList.add('open');
+    const searchInput = panel.querySelector('.cc-dropdown-search');
+    searchInput.value = '';
+    searchInput.focus();
+    populateCCList(inputId, '');
+  }
+}
+
+function populateCCList(inputId, filter) {
+  const list = document.getElementById(inputId + '_list');
+  const currentVal = document.getElementById(inputId).value;
+  const lf = filter.toLowerCase();
+  const filtered = COUNTRY_CODES.filter(c =>
+    c.country.toLowerCase().includes(lf) || c.code.includes(lf)
+  );
+  list.innerHTML = filtered.map(c => `
+    <div class="cc-dropdown-item${c.code === currentVal ? ' selected' : ''}" onclick="selectCC('${inputId}', '${c.code}', '${c.flag}', '${c.country}')">
+      ${c.flag} <span style="min-width:50px;display:inline-block">${c.code}</span> ${c.country}
+    </div>
+  `).join('');
+}
+
+function filterCCDropdown(inputId, value) {
+  populateCCList(inputId, value);
+}
+
+function selectCC(inputId, code, flag, country) {
+  document.getElementById(inputId).value = code;
+  document.getElementById(inputId + '_display').textContent = flag + ' ' + code + ' ' + country;
+  document.getElementById(inputId + '_panel').style.display = 'none';
+  document.getElementById(inputId + '_trigger').classList.remove('open');
+}
+
+// Close dropdowns on outside click
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.cc-dropdown-wrapper')) {
+    document.querySelectorAll('.cc-dropdown-panel').forEach(p => { p.style.display = 'none'; });
+    document.querySelectorAll('.cc-dropdown-trigger').forEach(t => { t.classList.remove('open'); });
+  }
+});
 
 function formatMadrid(dateStr) {
   if (!dateStr) return '—';
@@ -176,6 +436,7 @@ async function render() {
     case 'airtime': await renderAirtime(m); break;
     case 'branding': await renderBranding(m); break;
     case 'activity': await renderActivity(m); break;
+    case 'notifications': await renderNotifications(m); break;
   }
 }
 
@@ -190,7 +451,7 @@ async function renderRequests(el) {
   const completed = reqs.filter(r => r.status !== 'pending');
   const pendingSubs = (subs || []).filter(s => s.status === 'pending');
 
-  const typeLabel = { activation: 'Activación', deactivation: 'Desactivación', recharge: 'Recarga', balance_update: 'Actualizar Saldo', account_creation: 'Creación de Cuenta', subuser_approval: 'Aprobación Sub-Usuario' };
+  const typeLabel = { activation: 'Activacion', deactivation: 'Desactivacion', recharge: 'Recarga', balance_update: 'Actualizar Saldo', account_creation: 'Creacion de Cuenta', subuser_approval: 'Aprobacion Sub-Usuario' };
 
   const totalPending = pending.length + pendingSubs.length;
 
@@ -202,14 +463,14 @@ async function renderRequests(el) {
       <div class="stat-card"><div class="label">Completadas</div><div class="value" style="color:var(--green)">${completed.filter(r=>r.status==='completed').length}</div></div>
       <div class="stat-card"><div class="label">Total</div><div class="value">${reqs.length}</div></div>
     </div>
-    ${pendingSubs.length > 0 ? `<div class="card"><div class="card-header"><h2>Sub-Usuarios Pendientes de Aprobación</h2></div>
+    ${pendingSubs.length > 0 ? `<div class="card"><div class="card-header"><h2>Sub-Usuarios Pendientes de Aprobacion</h2></div>
       ${pendingSubs.map(s => `
         <div class="request-card urgent">
-          <strong>Aprobación Sub-Usuario</strong> — <span class="badge badge-pending">Pendiente</span>
+          <strong>Aprobacion Sub-Usuario</strong> — <span class="badge badge-pending">Pendiente</span>
           <div class="request-meta">
             <span>Nombre: ${s.name}</span>
             <span>Email: ${s.email}</span>
-            <span>Teléfono: ${s.phone || '—'}</span>
+            <span>Telefono: ${s.phone || '—'}</span>
             <span>${formatMadrid(s.createdAt)}</span>
           </div>
           <div class="request-actions">
@@ -262,7 +523,7 @@ async function completeReq(reqId) {
 }
 
 async function rejectReq(reqId) {
-  if (!confirm('¿Rechazar esta solicitud?')) return;
+  if (!confirm('Rechazar esta solicitud?')) return;
   await api(`/api/admin/requests/${reqId}/reject`, { method: 'POST', body: '{}' });
   toast('Solicitud rechazada', 'info');
   render();
@@ -276,15 +537,22 @@ async function editSimThenComplete(reqId, simId) {
   mc.innerHTML = `
     <div class="modal-overlay">
       <div class="modal">
-        <h2>Cargar Datos de SIM — Activación</h2>
-        <p style="color:var(--gray-500);margin-bottom:16px;font-size:13px">Complete los datos de la SIM antes de confirmar la activación. El cliente recibirá un email de confirmación.</p>
+        <h2>Cargar Datos de SIM — Activacion</h2>
+        <p style="color:var(--gray-500);margin-bottom:16px;font-size:13px">Complete los datos de la SIM antes de confirmar la activacion. El cliente recibira un email de confirmacion.</p>
         <div class="form-row">
           <div class="form-group"><label>ICCID</label><input id="eIccid" value="${sim.iccid}"></div>
           <div class="form-group"><label>IMEI</label><input id="eImei" value="${sim.imei}"></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label>Número (MSISDN)</label><input id="eMsisdn" value="${sim.msisdn}" placeholder="+8816 ..."></div>
-          <div class="form-group"><label>Tipo de Tarjeta</label><input id="eCard" value="${sim.cardType}"></div>
+          <div class="form-group"><label>Numero (MSISDN)</label><input id="eMsisdn" value="${sim.msisdn}" placeholder="+8816 ..."></div>
+          <div class="form-group"><label>Tipo de Tarjeta</label>
+            <select id="eCard">
+              <option value="">-- Seleccionar --</option>
+              <option value="IRIDIUM" ${sim.cardType==='IRIDIUM'?'selected':''}>IRIDIUM</option>
+              <option value="INMARSAT" ${sim.cardType==='INMARSAT'?'selected':''}>INMARSAT</option>
+              <option value="PTT" ${sim.cardType==='PTT'?'selected':''}>PTT</option>
+            </select>
+          </div>
         </div>
         <div class="form-row">
           <div class="form-group"><label>PUK</label><input id="ePuk" value="${sim.puk}"></div>
@@ -292,10 +560,10 @@ async function editSimThenComplete(reqId, simId) {
         </div>
         <div class="form-row-3">
           <div class="form-group"><label>Saldo (min)</label><input type="number" id="eBal" value="${sim.balance}"></div>
-          <div class="form-group"><label>Fecha Activación</label><input type="date" id="eActDate" value="${sim.activationDate}"></div>
+          <div class="form-group"><label>Fecha Activacion</label><input type="date" id="eActDate" value="${sim.activationDate}"></div>
           <div class="form-group"><label>Fecha Vencimiento</label><input type="date" id="eExpDate" value="${sim.expiryDate}"></div>
         </div>
-        <div class="form-group"><label>Última Ubicación</label><input id="eLoc" value="${sim.lastLocation}" placeholder="Lat: ..., Lon: ..."></div>
+        <div class="form-group"><label>Ultima Ubicacion</label><input id="eLoc" value="${sim.lastLocation}" placeholder="Lat: ..., Lon: ..."></div>
         <div class="modal-actions">
           <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
           <button class="btn btn-coral" onclick="saveSimAndComplete('${simId}','${reqId}')">Guardar y Activar</button>
@@ -344,7 +612,7 @@ async function renderSims(el) {
         </div>
       </div>
       <table>
-        <thead><tr><th>Serial</th><th>Número</th><th>Cliente</th><th>Plan</th><th>Saldo</th><th>Estado</th><th>Última Actualización</th><th>Acciones</th></tr></thead>
+        <thead><tr><th>Serial</th><th>Numero</th><th>Cliente</th><th>Plan</th><th>Saldo</th><th>Estado</th><th>Ultima Actualizacion</th><th>Acciones</th></tr></thead>
         <tbody>
           ${sims.map(s => {
             const usr = users?.find(u => u.id === s.clientId);
@@ -358,7 +626,7 @@ async function renderSims(el) {
               <td><span class="badge badge-${s.status}">${s.status}</span></td>
               <td style="font-size:12px">${formatMadrid(s.lastUpdated)}</td>
               <td><button class="btn btn-outline btn-sm" onclick="editSim('${s.id}')">Editar</button>
-              <button class="btn btn-red btn-sm" onclick="deleteSim('${s.id}')">X</button></td>
+              <button class="btn btn-red btn-sm" onclick="deleteSim('${s.id}')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></td>
             </tr>`;
           }).join('')}
         </tbody>
@@ -373,7 +641,7 @@ function showBulkUpload() {
     <div class="modal-overlay">
       <div class="modal">
         <h2>Cargar SIMs desde archivo</h2>
-        <p style="color:var(--gray-500);font-size:13px;margin-bottom:16px">Suba un archivo CSV con una SIM por línea en formato: <code>serial,cardType</code></p>
+        <p style="color:var(--gray-500);font-size:13px;margin-bottom:16px">Suba un archivo CSV con una SIM por linea en formato: <code>serial,cardType</code></p>
         <div class="form-group">
           <label>Archivo CSV / XLSX</label>
           <input type="file" id="bulkFile" accept=".csv,.xlsx" style="padding:8px">
@@ -415,7 +683,7 @@ async function processBulkUpload() {
       return { serial: parts[0], cardType: parts[1] || '' };
     }).filter(s => s.serial);
 
-    if (sims.length === 0) return toast('No se encontraron SIMs válidas', 'error');
+    if (sims.length === 0) return toast('No se encontraron SIMs validas', 'error');
 
     const res = await api('/api/admin/sims/bulk', {
       method: 'POST',
@@ -456,27 +724,45 @@ async function editSim(simId) {
           <div class="form-group"><label>MSISDN</label><input id="eMsisdn" value="${sim.msisdn}"></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label>PUK</label><input id="ePuk" value="${sim.puk}"></div>
-          <div class="form-group"><label>PIN</label><input id="ePin" value="${sim.pin}"></div>
+          <div class="form-group"><label>PIN 1</label><input id="ePin" value="${sim.pin}"></div>
+          <div class="form-group"><label>PUK 1</label><input id="ePuk" value="${sim.puk}"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>PIN 2</label><input id="ePin2" value="${sim.pin2 || ''}"></div>
+          <div class="form-group"><label>PUK 2</label><input id="ePuk2" value="${sim.puk2 || ''}"></div>
         </div>
         <div class="form-row">
           <div class="form-group"><label>Servicio</label>
             <select id="eService"><option value="">—</option><option value="Pre-Pago" ${sim.serviceType==='Pre-Pago'?'selected':''}>Pre-Pago</option><option value="Post-Pago" ${sim.serviceType==='Post-Pago'?'selected':''}>Post-Pago</option></select>
           </div>
-          <div class="form-group"><label>Tipo Tarjeta</label><input id="eCard" value="${sim.cardType}"></div>
+          <div class="form-group"><label>Tipo Tarjeta</label>
+            <select id="eCard">
+              <option value="">-- Seleccionar --</option>
+              <option value="IRIDIUM" ${sim.cardType==='IRIDIUM'?'selected':''}>IRIDIUM</option>
+              <option value="INMARSAT" ${sim.cardType==='INMARSAT'?'selected':''}>INMARSAT</option>
+              <option value="PTT" ${sim.cardType==='PTT'?'selected':''}>PTT</option>
+            </select>
+          </div>
         </div>
-        <div class="form-group"><label>Plan</label><input id="ePlan" value="${sim.planType}" style="width:100%"></div>
+        <div class="form-row">
+          <div class="form-group"><label>Network</label><input id="eNetwork" value="${sim.network || ''}"></div>
+          <div class="form-group"><label>Plan</label><input id="ePlan" value="${sim.planType || ''}"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Telephony</label><input id="eTelephony" value="${sim.telephony || ''}"></div>
+          <div class="form-group"><label>Data</label><input id="eData" value="${sim.data || ''}"></div>
+        </div>
         <div class="form-row-3">
           <div class="form-group"><label>Saldo (min)</label><input type="number" id="eBal" value="${sim.balance}"></div>
           <div class="form-group"><label>Minutos Activos</label><input type="number" id="eMinAct" value="${sim.minutesActive}"></div>
           <div class="form-group"><label>Cargo Mensual</label><input type="number" id="eMonthly" value="${sim.monthlyCharge}"></div>
         </div>
         <div class="form-row-3">
-          <div class="form-group"><label>Fecha Activación</label><input type="date" id="eActDate" value="${sim.activationDate}"></div>
+          <div class="form-group"><label>Fecha Activacion</label><input type="date" id="eActDate" value="${sim.activationDate}"></div>
           <div class="form-group"><label>Fecha Vencimiento</label><input type="date" id="eExpDate" value="${sim.expiryDate}"></div>
-          <div class="form-group"><label>Última Conexión</label><input type="datetime-local" id="eLastConn" value="${sim.lastConnection ? sim.lastConnection.slice(0,16) : ''}"></div>
+          <div class="form-group"><label>Ultima Conexion</label><input type="datetime-local" id="eLastConn" value="${sim.lastConnection ? sim.lastConnection.slice(0,16) : ''}"></div>
         </div>
-        <div class="form-group"><label>Última Ubicación</label><input id="eLoc" value="${sim.lastLocation}"></div>
+        <div class="form-group"><label>Ultima Ubicacion</label><input id="eLoc" value="${sim.lastLocation}"></div>
         <div class="form-row">
           <div class="form-group"><label>Nombre</label><input id="eName" value="${sim.name}"></div>
           <div class="form-group"><label>Referencia</label><input id="eRef" value="${sim.reference}"></div>
@@ -502,6 +788,11 @@ async function saveSim(simId) {
       msisdn: document.getElementById('eMsisdn').value,
       puk: document.getElementById('ePuk').value,
       pin: document.getElementById('ePin').value,
+      pin2: document.getElementById('ePin2').value,
+      puk2: document.getElementById('ePuk2').value,
+      network: document.getElementById('eNetwork').value,
+      telephony: document.getElementById('eTelephony').value,
+      data: document.getElementById('eData').value,
       serviceType: document.getElementById('eService').value,
       cardType: document.getElementById('eCard').value,
       planType: document.getElementById('ePlan').value,
@@ -528,8 +819,15 @@ async function showAddSim() {
       <div class="modal">
         <h2>Nueva SIM</h2>
         <div class="form-group"><label>Serial</label><input id="nSerial" placeholder="8988169328..."></div>
-        <div class="form-group"><label>Tipo de Tarjeta</label><input id="nCard" placeholder="Iridium 9555"></div>
-        <p style="color:var(--gray-500);font-size:12px;margin-bottom:12px">La SIM se creará sin cliente asignado. Podrá asignarla después desde la tabla.</p>
+        <div class="form-group"><label>Tipo de Tarjeta</label>
+          <select id="nCard">
+            <option value="">-- Seleccionar --</option>
+            <option value="IRIDIUM">IRIDIUM</option>
+            <option value="INMARSAT">INMARSAT</option>
+            <option value="PTT">PTT</option>
+          </select>
+        </div>
+        <p style="color:var(--gray-500);font-size:12px;margin-bottom:12px">La SIM se creara sin cliente asignado. Podra asignarla despues desde la tabla.</p>
         <div class="modal-actions">
           <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
           <button class="btn btn-coral" onclick="addSim()">Crear SIM</button>
@@ -553,7 +851,7 @@ async function addSim() {
 }
 
 async function deleteSim(id) {
-  if (!confirm('¿Eliminar esta SIM?')) return;
+  if (!confirm('Eliminar esta SIM?')) return;
   await api(`/api/admin/sims/${id}`, { method: 'DELETE' });
   toast('SIM eliminada', 'info');
   render();
@@ -561,8 +859,10 @@ async function deleteSim(id) {
 
 // === ACCOUNTS (Cuentas) ===
 async function renderAccounts(el) {
-  const accounts = await api('/api/admin/accounts');
-  const users = await api('/api/admin/users');
+  const [accounts, users] = await Promise.all([
+    api('/api/accounts'),
+    api('/api/admin/users')
+  ]);
   if (!accounts) return;
 
   el.innerHTML = `
@@ -570,18 +870,16 @@ async function renderAccounts(el) {
     <div class="card">
       <div class="card-header"><h2>Todas las Cuentas</h2></div>
       <table>
-        <thead><tr><th>Nombre</th><th>Contacto</th><th>Email</th><th>Teléfono</th><th>Cliente</th><th>Fecha</th></tr></thead>
+        <thead><tr><th>Cuenta / Cliente</th><th>Contacto</th><th>Cliente</th><th>Fecha</th></tr></thead>
         <tbody>
           ${accounts.map(a => {
-            const usr = users?.find(u => u.id === a.clientId);
+            const usr = users?.find(u => u.id === (a.userId || a.clientId));
             return `
             <tr>
-              <td>${a.name || '—'}</td>
-              <td>${a.contact || '—'}</td>
-              <td>${a.email || '—'}</td>
-              <td>${a.phone || '—'}</td>
-              <td>${usr ? usr.name + ' (' + usr.company + ')' : (a.clientId || '—')}</td>
-              <td>${formatMadrid(a.createdAt)}</td>
+              <td><strong>${a.name || a.company || '—'}</strong><br><span style="font-size:12px;color:var(--gray-500)">${a.email || ''}</span></td>
+              <td>${a.contact || a.phone || '—'}</td>
+              <td>${usr ? usr.name + ' (' + (usr.company || '') + ')' : (a.userId || a.clientId || '—')}</td>
+              <td>${formatMadridDate(a.createdAt)}</td>
             </tr>`;
           }).join('')}
         </tbody>
@@ -594,12 +892,18 @@ async function renderAccounts(el) {
 async function renderUsers(el) {
   const users = await api('/api/admin/users');
   if (!users) return;
+  // Sort: admins first, then clients
+  users.sort((a, b) => {
+    if (a.role === 'admin' && b.role !== 'admin') return -1;
+    if (a.role !== 'admin' && b.role === 'admin') return 1;
+    return (a.name || '').localeCompare(b.name || '');
+  });
   el.innerHTML = `
     <div class="page-header"><h1>Usuarios</h1></div>
     <div class="card">
       <div class="card-header"><h2>Usuarios</h2><button class="btn btn-coral btn-sm" onclick="showAddUser()">+ Nuevo Usuario</button></div>
       <table>
-        <thead><tr><th>Nombre</th><th>Email</th><th>Empresa</th><th>Teléfono</th><th>Rol</th><th>Acciones</th></tr></thead>
+        <thead><tr><th>Nombre</th><th>Email</th><th>Empresa</th><th>Telefono</th><th>Rol</th><th>Acciones</th></tr></thead>
         <tbody>
           ${users.map(u => `
             <tr>
@@ -633,23 +937,13 @@ function showAddUser() {
         <div class="form-group"><label>Email</label><input id="nuEmail" type="email"></div>
         <div class="form-group"><label>Empresa</label><input id="nuCompany"></div>
         <div class="form-group">
-          <label>Teléfono</label>
+          <label>Telefono</label>
           <div class="phone-row">
-            <select id="nuCountryCode">
-              <option value="+1">+1</option>
-              <option value="+34">+34</option>
-              <option value="+52">+52</option>
-              <option value="+54">+54</option>
-              <option value="+56">+56</option>
-              <option value="+57">+57</option>
-              <option value="+58">+58</option>
-              <option value="+506">+506</option>
-              <option value="+507">+507</option>
-            </select>
-            <input id="nuPhone" placeholder="Número de teléfono">
+            ${renderCountryCodeDropdown('nuCountryCode', '+1')}
+            <input id="nuPhone" placeholder="Numero de telefono">
           </div>
         </div>
-        <div class="form-group"><label>Contraseña</label><input id="nuPass" type="text"></div>
+        <div class="form-group"><label>Contrasena</label><input id="nuPass" type="text"></div>
         <div class="modal-actions">
           <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
           <button class="btn btn-coral" onclick="addUser()">Crear Usuario</button>
@@ -693,19 +987,9 @@ async function showEditUser(userId) {
         </div>
         <div class="form-group"><label>Email</label><input id="euEmail" type="email" value="${u.email || ''}"></div>
         <div class="form-group">
-          <label>Teléfono</label>
+          <label>Telefono</label>
           <div class="phone-row">
-            <select id="euCountryCode">
-              <option value="+1" ${u.countryCode==='+1'?'selected':''}>+1</option>
-              <option value="+34" ${u.countryCode==='+34'?'selected':''}>+34</option>
-              <option value="+52" ${u.countryCode==='+52'?'selected':''}>+52</option>
-              <option value="+54" ${u.countryCode==='+54'?'selected':''}>+54</option>
-              <option value="+56" ${u.countryCode==='+56'?'selected':''}>+56</option>
-              <option value="+57" ${u.countryCode==='+57'?'selected':''}>+57</option>
-              <option value="+58" ${u.countryCode==='+58'?'selected':''}>+58</option>
-              <option value="+506" ${u.countryCode==='+506'?'selected':''}>+506</option>
-              <option value="+507" ${u.countryCode==='+507'?'selected':''}>+507</option>
-            </select>
+            ${renderCountryCodeDropdown('euCountryCode', u.countryCode || '+1')}
             <input id="euPhone" value="${u.phone || ''}">
           </div>
         </div>
@@ -715,15 +999,15 @@ async function showEditUser(userId) {
             <option value="admin" ${u.role==='admin'?'selected':''}>Admin</option>
           </select>
         </div>
-        <div class="form-group"><label>Dirección</label><input id="euAddress" value="${u.address || ''}"></div>
+        <div class="form-group"><label>Direccion</label><input id="euAddress" value="${u.address || ''}"></div>
         <div class="form-row-3">
           <div class="form-group"><label>Ciudad</label><input id="euCity" value="${u.city || ''}"></div>
-          <div class="form-group"><label>País</label><input id="euCountry" value="${u.country || ''}"></div>
-          <div class="form-group"><label>Código Postal</label><input id="euPostal" value="${u.postalCode || ''}"></div>
+          <div class="form-group"><label>Pais</label><input id="euCountry" value="${u.country || ''}"></div>
+          <div class="form-group"><label>Codigo Postal</label><input id="euPostal" value="${u.postalCode || ''}"></div>
         </div>
         <div class="form-group">
-          <label>Contraseña (dejar vacío para mantener actual)</label>
-          <input id="euPass" type="text" placeholder="Nueva contraseña...">
+          <label>Contrasena (dejar vacio para mantener actual)</label>
+          <input id="euPass" type="text" placeholder="Nueva contrasena...">
         </div>
         <div class="modal-actions">
           <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
@@ -766,17 +1050,20 @@ async function renderSubUsers(el) {
   if (!subs) return;
   const pending = subs.filter(s => s.status === 'pending');
   el.innerHTML = `
-    <div class="page-header"><h1>Sub-Usuarios</h1><p>${pending.length} pendientes de aprobación</p></div>
+    <div class="page-header"><h1>Sub-Usuarios</h1><p>${pending.length} pendientes de aprobacion</p></div>
     <div class="card">
       <table>
-        <thead><tr><th>Nombre</th><th>Email</th><th>Teléfono</th><th>Estado</th><th>Fecha</th><th>Acciones</th></tr></thead>
+        <thead><tr><th>Nombre</th><th>Email</th><th>Telefono</th><th>Estado</th><th>Fecha</th><th>Acciones</th></tr></thead>
         <tbody>
           ${subs.map(s => `
             <tr>
               <td>${s.name}</td><td>${s.email}</td><td>${s.phone||'—'}</td>
               <td><span class="badge badge-${s.status}">${s.status}</span></td>
               <td>${formatMadridDate(s.createdAt)}</td>
-              <td>${s.status === 'pending' ? `<button class="btn btn-green btn-sm" onclick="approveSub('${s.id}')">Aprobar</button> <button class="btn btn-red btn-sm" onclick="rejectSub('${s.id}')">Rechazar</button>` : '—'}</td>
+              <td>
+                ${s.status === 'pending' ? `<button class="btn btn-green btn-sm" onclick="approveSub('${s.id}')">Aprobar</button> <button class="btn btn-red btn-sm" onclick="rejectSub('${s.id}')">Rechazar</button>` : ''}
+                <button class="btn btn-red btn-sm" onclick="deleteSub('${s.id}')" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+              </td>
             </tr>
           `).join('')}
         </tbody>
@@ -797,6 +1084,13 @@ async function rejectSub(id) {
   render();
 }
 
+async function deleteSub(id) {
+  if (!confirm('Eliminar este sub-usuario?')) return;
+  await api(`/api/admin/subusers/${id}`, { method: 'DELETE' });
+  toast('Sub-usuario eliminado', 'info');
+  render();
+}
+
 // === AIRTIME ===
 let airtimeData = null;
 
@@ -804,11 +1098,8 @@ async function renderAirtime(el) {
   airtimeData = await api('/api/admin/plans');
   if (!airtimeData) airtimeData = {};
 
-  // Ensure it's an object with service types as keys and arrays of plan names as values
-  // Expected format: { "Pre-Pago": ["Plan A", "Plan B"], "Post-Pago": ["Plan C"] }
-
   el.innerHTML = `
-    <div class="page-header"><h1>Airtime — Planes</h1><p>Gestión de planes disponibles por tipo de servicio</p></div>
+    <div class="page-header"><h1>Airtime — Planes</h1><p>Gestion de planes disponibles por tipo de servicio</p></div>
     <div id="airtimeContent"></div>
     <div style="margin-top:16px;display:flex;gap:10px">
       <button class="btn btn-outline" onclick="addServiceType()">+ Nuevo Tipo de Servicio</button>
@@ -828,16 +1119,19 @@ function renderAirtimeContent() {
         <h3>${type}</h3>
         <div class="btn-header-group">
           <button class="btn btn-outline btn-sm" onclick="renameServiceType('${type}')">Renombrar</button>
-          <button class="btn btn-green btn-sm" onclick="addPlanToType('${type}')">+ Plan</button>
         </div>
       </div>
       ${(airtimeData[type] || []).map((plan, idx) => `
         <div class="plan-item">
           <span>${plan}</span>
-          <button onclick="removePlan('${type}', ${idx})" title="Eliminar">&times;</button>
+          <button onclick="removePlan('${type}', ${idx})" title="Eliminar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
       `).join('')}
       ${(airtimeData[type] || []).length === 0 ? '<p style="color:var(--gray-300);font-size:13px;padding:8px">Sin planes</p>' : ''}
+      <div class="add-plan-row">
+        <input id="newPlan_${type.replace(/[^a-zA-Z0-9]/g,'_')}" placeholder="Nombre del nuevo plan..." onkeydown="if(event.key==='Enter')addPlanInline('${type}')">
+        <button class="btn btn-green btn-sm" onclick="addPlanInline('${type}')">Agregar</button>
+      </div>
     </div>
   `).join('');
 
@@ -860,6 +1154,16 @@ function renameServiceType(oldName) {
   if (airtimeData[newName.trim()]) return toast('Ya existe ese tipo de servicio', 'error');
   airtimeData[newName.trim()] = airtimeData[oldName];
   delete airtimeData[oldName];
+  renderAirtimeContent();
+}
+
+function addPlanInline(type) {
+  const inputId = 'newPlan_' + type.replace(/[^a-zA-Z0-9]/g, '_');
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  const plan = input.value.trim();
+  if (!plan) return;
+  airtimeData[type].push(plan);
   renderAirtimeContent();
 }
 
@@ -886,19 +1190,112 @@ async function saveAirtime() {
 
 // === ACTIVITY ===
 async function renderActivity(el) {
-  const logs = await api('/api/activity');
+  const [logs, reqs] = await Promise.all([
+    api('/api/activity'),
+    api('/api/admin/requests')
+  ]);
   if (!logs) return;
+
+  const typeLabel = { activation: 'Activacion', deactivation: 'Desactivacion', recharge: 'Recarga', balance_update: 'Actualizar Saldo', account_creation: 'Creacion de Cuenta', subuser_approval: 'Aprobacion Sub-Usuario' };
+
+  // Merge requests into activity if not already present
+  const reqActivities = (reqs || []).map(r => ({
+    action: 'Solicitud: ' + (typeLabel[r.type] || r.type),
+    details: `Cliente: ${r.clientName || ''} | SIM: ${r.simSerial || ''} | Estado: ${r.status}`,
+    timestamp: r.createdAt,
+    _isReq: true
+  }));
+
+  // Combine and sort by date descending
+  const allActivity = [...logs];
+  // Add request entries that may not be in the activity log
+  reqActivities.forEach(ra => {
+    const exists = allActivity.some(a => a.details && a.details.includes(ra.details));
+    if (!exists) allActivity.push(ra);
+  });
+  allActivity.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
   el.innerHTML = `
-    <div class="page-header"><h1>Actividad</h1></div>
+    <div class="page-header"><h1>Actividad</h1><p>${allActivity.length} registros</p></div>
     <div class="card">
       <table>
-        <thead><tr><th>Acción</th><th>Detalles</th><th>Fecha</th></tr></thead>
+        <thead><tr><th>Accion</th><th>Detalles</th><th>Fecha</th></tr></thead>
         <tbody>
-          ${logs.map(l => `<tr><td><strong>${l.action}</strong></td><td>${l.details}</td><td>${formatMadrid(l.timestamp)}</td></tr>`).join('')}
+          ${allActivity.slice(0, 100).map(l => `<tr><td><strong>${l.action}</strong></td><td>${l.details}</td><td>${formatMadrid(l.timestamp)}</td></tr>`).join('')}
         </tbody>
       </table>
     </div>
   `;
+}
+
+// === NOTIFICATIONS ===
+async function renderNotifications(el) {
+  let settings = {};
+  try {
+    settings = await api('/api/admin/notifications') || {};
+  } catch(e) {
+    settings = {};
+  }
+
+  el.innerHTML = `
+    <div class="page-header"><h1>Notificaciones</h1><p>Configuracion de notificaciones por email</p></div>
+    <div class="card">
+      <div class="card-header"><h2>Configuracion General</h2></div>
+      <div class="form-group">
+        <label>Email de notificaciones admin</label>
+        <input id="notifAdminEmail" value="${settings.adminEmail || ''}" placeholder="admin@empresa.com">
+      </div>
+      <div class="toggle-row">
+        <label>Notificaciones al admin</label>
+        <label class="toggle-switch">
+          <input type="checkbox" id="notifAdmin" ${settings.notifyAdmin ? 'checked' : ''}>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <label>Notificaciones al cliente</label>
+        <label class="toggle-switch">
+          <input type="checkbox" id="notifClient" ${settings.notifyClient ? 'checked' : ''}>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><h2>Configuracion SMTP</h2></div>
+      <p style="color:var(--gray-500);font-size:13px;margin-bottom:16px">Configure SMTP para enviar emails reales. Sin configuracion, las notificaciones se registran en el log del servidor.</p>
+      <div class="form-row">
+        <div class="form-group"><label>SMTP Host</label><input id="smtpHost" value="${settings.smtpHost || ''}" placeholder="smtp.gmail.com"></div>
+        <div class="form-group"><label>SMTP Port</label><input id="smtpPort" type="number" value="${settings.smtpPort || ''}" placeholder="587"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>SMTP User</label><input id="smtpUser" value="${settings.smtpUser || ''}" placeholder="user@gmail.com"></div>
+        <div class="form-group"><label>SMTP Password</label><input id="smtpPass" type="password" value="${settings.smtpPassword || ''}" placeholder="********"></div>
+      </div>
+      <div class="form-group"><label>SMTP From</label><input id="smtpFrom" value="${settings.smtpFrom || ''}" placeholder="SkyConnect <noreply@skyconnect.com>"></div>
+    </div>
+    <div style="margin-top:16px">
+      <button class="btn btn-coral" onclick="saveNotifications()">Guardar</button>
+    </div>
+  `;
+}
+
+async function saveNotifications() {
+  const data = {
+    adminEmail: document.getElementById('notifAdminEmail').value,
+    notifyAdmin: document.getElementById('notifAdmin').checked,
+    notifyClient: document.getElementById('notifClient').checked,
+    smtpHost: document.getElementById('smtpHost').value,
+    smtpPort: parseInt(document.getElementById('smtpPort').value) || null,
+    smtpUser: document.getElementById('smtpUser').value,
+    smtpPassword: document.getElementById('smtpPass').value,
+    smtpFrom: document.getElementById('smtpFrom').value
+  };
+  const res = await api('/api/admin/notifications', {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  });
+  if (res?.error) return toast(res.error, 'error');
+  toast('Configuracion guardada', 'success');
 }
 
 // === BRANDING ===
@@ -910,7 +1307,7 @@ async function renderBranding(el) {
 
     <div class="card">
       <div class="card-header"><h2>Logo Principal (fondo claro)</h2></div>
-      <p style="color:var(--gray-500);font-size:13px;margin-bottom:16px">Este logo aparece en la página de login (fondo blanco). Use un PNG con fondo transparente y colores oscuros.</p>
+      <p style="color:var(--gray-500);font-size:13px;margin-bottom:16px">Este logo aparece en la pagina de login (fondo blanco). Use un PNG con fondo transparente y colores oscuros.</p>
       <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap">
         <div style="background:#fff;border:2px dashed var(--gray-200);border-radius:12px;padding:24px;min-width:220px;text-align:center">
           ${logoInfo?.hasLogo ? `<img src="/logo.png?t=${t}" style="max-width:200px;max-height:80px">` : '<span style="color:var(--gray-300)">Sin logo</span>'}
@@ -925,7 +1322,7 @@ async function renderBranding(el) {
 
     <div class="card">
       <div class="card-header"><h2>Logo Claro (fondo oscuro)</h2></div>
-      <p style="color:var(--gray-500);font-size:13px;margin-bottom:16px">Este logo aparece en el sidebar (fondo navy oscuro). Use un PNG con fondo transparente y colores claros/blancos. Si no sube uno, se usará el logo principal.</p>
+      <p style="color:var(--gray-500);font-size:13px;margin-bottom:16px">Este logo aparece en el sidebar (fondo navy oscuro). Use un PNG con fondo transparente y colores claros/blancos. Si no sube uno, se usara el logo principal.</p>
       <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap">
         <div style="background:var(--navy);border-radius:12px;padding:24px;min-width:220px;text-align:center">
           ${logoInfo?.hasLogoLight ? `<img src="/logo-light.png?t=${t}" style="max-width:200px;max-height:60px">` : (logoInfo?.hasLogo ? `<img src="/logo.png?t=${t}" style="max-width:200px;max-height:60px">` : '<span style="color:rgba(255,255,255,.3)">Sin logo</span>')}
@@ -938,7 +1335,7 @@ async function renderBranding(el) {
     </div>
 
     <div class="card" style="border-left:3px solid var(--blue)">
-      <p style="font-size:13px;color:var(--gray-500)"><strong style="color:var(--navy)">Consejo:</strong> El logo principal se usa en la pantalla de login (fondo blanco). El logo claro se usa en el sidebar (fondo azul marino). Si solo tiene un logo, súbalo como principal y también como logo claro si se ve bien sobre fondo oscuro.</p>
+      <p style="font-size:13px;color:var(--gray-500)"><strong style="color:var(--navy)">Consejo:</strong> El logo principal se usa en la pantalla de login (fondo blanco). El logo claro se usa en el sidebar (fondo azul marino). Si solo tiene un logo, subalo como principal y tambien como logo claro si se ve bien sobre fondo oscuro.</p>
     </div>
   `;
 }
@@ -961,7 +1358,7 @@ function uploadLogo(field, inputId) {
 }
 
 async function deleteLogo() {
-  if (!confirm('¿Eliminar todos los logos?')) return;
+  if (!confirm('Eliminar todos los logos?')) return;
   await api('/api/admin/logo', { method: 'DELETE' });
   toast('Logos eliminados', 'info');
   renderBranding(document.getElementById('main'));
