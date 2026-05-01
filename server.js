@@ -134,6 +134,18 @@ function createDefaultSim(overrides = {}) {
   };
 }
 
+function defaultPermissions() {
+  return {
+    canViewSims: true,
+    canActivate: false,
+    canDeactivate: false,
+    canRecharge: false,
+    canViewBilling: false,
+    canViewReports: false,
+    canManageAccounts: false
+  };
+}
+
 function createDefaultDB() {
   return {
     users: [
@@ -213,8 +225,15 @@ function createDefaultDB() {
     accounts: [],
     notificationSettings: {
       adminEmail: 'vanessacarreno91@gmail.com',
+      notifyAdmin: true,
+      notifyClient: true,
       clientNotifications: true,
-      adminNotifications: true
+      adminNotifications: true,
+      smtpHost: '',
+      smtpPort: 587,
+      smtpUser: '',
+      smtpPass: '',
+      smtpFrom: ''
     }
   };
 }
@@ -227,40 +246,52 @@ function sendNotification(subject, details, toClient) {
   const settings = db.notificationSettings || {
     adminEmail: ADMIN_EMAIL,
     clientNotifications: true,
-    adminNotifications: true
+    adminNotifications: true,
+    notifyAdmin: true,
+    notifyClient: true
   };
 
   // Determine recipient
   const to = toClient || settings.adminEmail || ADMIN_EMAIL;
 
   // Check if notifications are enabled
-  if (toClient && !settings.clientNotifications) {
+  const clientEnabled = settings.notifyClient !== undefined ? settings.notifyClient : settings.clientNotifications;
+  const adminEnabled = settings.notifyAdmin !== undefined ? settings.notifyAdmin : settings.adminNotifications;
+
+  if (toClient && !clientEnabled) {
     console.log(`\n📧 NOTIFICATION SKIPPED (client notifications disabled) → ${to}\n   Subject: ${subject}\n`);
     return;
   }
-  if (!toClient && !settings.adminNotifications) {
+  if (!toClient && !adminEnabled) {
     console.log(`\n📧 NOTIFICATION SKIPPED (admin notifications disabled) → ${to}\n   Subject: ${subject}\n`);
     return;
   }
 
   console.log(`\n📧 NOTIFICATION → ${to}\n   Subject: ${subject}\n   ${details}\n`);
 
+  // Determine SMTP config: prefer db settings, fall back to env vars
+  const smtpHost = settings.smtpHost || process.env.SMTP_HOST;
+  const smtpPort = settings.smtpPort || parseInt(process.env.SMTP_PORT || '587', 10);
+  const smtpUser = settings.smtpUser || process.env.SMTP_USER;
+  const smtpPass = settings.smtpPass || process.env.SMTP_PASS;
+  const smtpFrom = settings.smtpFrom || process.env.SMTP_FROM || (smtpUser ? `"SkyConnect" <${smtpUser}>` : '');
+  const smtpSecure = process.env.SMTP_SECURE === 'true';
+
   // Attempt to send real email via nodemailer if installed and configured
   try {
     const nodemailer = require('nodemailer');
-    const smtpHost = process.env.SMTP_HOST;
     if (smtpHost) {
       const transporter = nodemailer.createTransport({
         host: smtpHost,
-        port: parseInt(process.env.SMTP_PORT || '587', 10),
-        secure: process.env.SMTP_SECURE === 'true',
+        port: parseInt(smtpPort, 10),
+        secure: smtpSecure,
         auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS
+          user: smtpUser,
+          pass: smtpPass
         }
       });
       transporter.sendMail({
-        from: process.env.SMTP_FROM || `"SkyConnect" <${process.env.SMTP_USER}>`,
+        from: smtpFrom,
         to,
         subject,
         text: details
@@ -395,12 +426,59 @@ const server = http.createServer(async (req, res) => {
   if (method === 'POST' && pathname === '/api/login') {
     const { email, password } = await parseBody(req);
     const db = loadDB();
-    const user = db.users.find(u => u.email === email);
+
+    // Check users array first (includes sub-users that have been promoted)
+    let user = db.users.find(u => u.email === email);
+
+    // If not found in users, check approved sub-users that have a password
+    if (!user) {
+      const subuser = (db.subusers || []).find(s => s.email === email && s.status === 'approved' && s.password);
+      if (subuser) {
+        // Approved sub-user with password can log in — create a virtual user object
+        if (verifyPassword(password, subuser.password)) {
+          const sid = createSession({
+            userId: subuser.id,
+            role: 'subuser',
+            email: subuser.email,
+            name: subuser.name,
+            company: subuser.company || '',
+            parentClientId: subuser.parentClientId,
+            permissions: subuser.permissions || defaultPermissions()
+          });
+          return json(res, {
+            id: subuser.id,
+            name: subuser.name,
+            email: subuser.email,
+            company: subuser.company || '',
+            role: 'subuser',
+            parentClientId: subuser.parentClientId,
+            permissions: subuser.permissions || defaultPermissions()
+          }, 200, { 'Set-Cookie': sessionCookie(sid) });
+        } else {
+          return json(res, { error: 'Credenciales incorrectas' }, 401);
+        }
+      }
+    }
+
     if (!user || !verifyPassword(password, user.password)) {
       return json(res, { error: 'Credenciales incorrectas' }, 401);
     }
-    const sid = createSession({ userId: user.id, role: user.role, email: user.email, name: user.name, company: user.company });
-    return json(res, { id: user.id, name: user.name, email: user.email, company: user.company, role: user.role }, 200, {
+
+    const sessionData = {
+      userId: user.id, role: user.role, email: user.email, name: user.name, company: user.company
+    };
+    // If this is a subuser in the users array, include permissions and parentClientId
+    if (user.role === 'subuser') {
+      sessionData.parentClientId = user.parentClientId;
+      sessionData.permissions = user.permissions || defaultPermissions();
+    }
+    const sid = createSession(sessionData);
+    const responseData = { id: user.id, name: user.name, email: user.email, company: user.company, role: user.role };
+    if (user.role === 'subuser') {
+      responseData.parentClientId = user.parentClientId;
+      responseData.permissions = user.permissions || defaultPermissions();
+    }
+    return json(res, responseData, 200, {
       'Set-Cookie': sessionCookie(sid)
     });
   }
@@ -416,6 +494,35 @@ const server = http.createServer(async (req, res) => {
     const s = getSession(req);
     if (!s) return json(res, { error: 'No autorizado' }, 401);
     const db = loadDB();
+
+    // Check if session belongs to a subuser (could be in subusers array)
+    if (s.role === 'subuser') {
+      // Try users array first
+      const user = db.users.find(u => u.id === s.userId);
+      if (user) {
+        return json(res, {
+          id: user.id, name: user.name, email: user.email, company: user.company, role: user.role,
+          phone: user.phone || '', countryCode: user.countryCode || '',
+          address: user.address || '', city: user.city || '', country: user.country || '',
+          postalCode: user.postalCode || '', notifEmail: user.notifEmail || '', contactPerson: user.contactPerson || '',
+          parentClientId: user.parentClientId, permissions: user.permissions || defaultPermissions()
+        });
+      }
+      // Fall back to subusers array
+      const subuser = (db.subusers || []).find(su => su.id === s.userId);
+      if (subuser) {
+        return json(res, {
+          id: subuser.id, name: subuser.name, email: subuser.email, company: subuser.company || '',
+          role: 'subuser',
+          phone: subuser.phone || '', countryCode: '',
+          address: '', city: '', country: '', postalCode: '',
+          notifEmail: '', contactPerson: '',
+          parentClientId: subuser.parentClientId, permissions: subuser.permissions || defaultPermissions()
+        });
+      }
+      return json(res, { error: 'Usuario no encontrado' }, 404);
+    }
+
     const user = db.users.find(u => u.id === s.userId);
     if (!user) return json(res, { error: 'Usuario no encontrado' }, 404);
     return json(res, {
@@ -471,8 +578,8 @@ const server = http.createServer(async (req, res) => {
   if (method === 'POST' && pathname === '/api/accounts') {
     if (!session) return json(res, { error: 'No autorizado' }, 401);
     const body = await parseBody(req);
-    if (!body.name || !body.contact) {
-      return json(res, { error: 'Campos requeridos: name, contact' }, 400);
+    if (!body.name) {
+      return json(res, { error: 'Campo requerido: name' }, 400);
     }
     const db = loadDB();
     if (!db.accounts) db.accounts = [];
@@ -480,7 +587,7 @@ const server = http.createServer(async (req, res) => {
       id: uuid(),
       userId: session.userId,
       name: body.name,
-      contact: body.contact,
+      contact: body.contact || '',
       email: body.email || '',
       phone: body.phone || '',
       empresa: body.empresa || '',
@@ -505,7 +612,15 @@ const server = http.createServer(async (req, res) => {
   if (method === 'GET' && pathname === '/api/sims') {
     if (!session) return json(res, { error: 'No autorizado' }, 401);
     const db = loadDB();
-    const sims = session.role === 'admin' ? db.sims : db.sims.filter(s => s.clientId === session.userId);
+    let sims;
+    if (session.role === 'admin') {
+      sims = db.sims;
+    } else if (session.role === 'subuser') {
+      // Sub-users see the same SIMs as their parent client
+      sims = db.sims.filter(s => s.clientId === session.parentClientId || s.clientId === session.userId);
+    } else {
+      sims = db.sims.filter(s => s.clientId === session.userId);
+    }
     return json(res, sims);
   }
 
@@ -516,7 +631,9 @@ const server = http.createServer(async (req, res) => {
     const db = loadDB();
     const sim = db.sims.find(s => s.id === simMatch[1]);
     if (!sim) return json(res, { error: 'SIM no encontrada' }, 404);
-    if (session.role !== 'admin' && sim.clientId !== session.userId) return json(res, { error: 'Acceso denegado' }, 403);
+    if (session.role !== 'admin' && sim.clientId !== session.userId && (!session.parentClientId || sim.clientId !== session.parentClientId)) {
+      return json(res, { error: 'Acceso denegado' }, 403);
+    }
     return json(res, sim);
   }
 
@@ -526,7 +643,7 @@ const server = http.createServer(async (req, res) => {
     if (!session) return json(res, { error: 'No autorizado' }, 401);
     const db = loadDB();
     const sim = db.sims.find(s => s.id === actMatch[1]);
-    if (!sim || (session.role !== 'admin' && sim.clientId !== session.userId)) return json(res, { error: 'SIM no encontrada' }, 404);
+    if (!sim || (session.role !== 'admin' && sim.clientId !== session.userId && (!session.parentClientId || sim.clientId !== session.parentClientId))) return json(res, { error: 'SIM no encontrada' }, 404);
     if (sim.status !== 'inactive') return json(res, { error: 'La SIM no está inactiva' }, 400);
 
     const body = await parseBody(req);
@@ -553,7 +670,7 @@ const server = http.createServer(async (req, res) => {
     if (!session) return json(res, { error: 'No autorizado' }, 401);
     const db = loadDB();
     const sim = db.sims.find(s => s.id === deactMatch[1]);
-    if (!sim || (session.role !== 'admin' && sim.clientId !== session.userId)) return json(res, { error: 'SIM no encontrada' }, 404);
+    if (!sim || (session.role !== 'admin' && sim.clientId !== session.userId && (!session.parentClientId || sim.clientId !== session.parentClientId))) return json(res, { error: 'SIM no encontrada' }, 404);
     if (sim.status !== 'active') return json(res, { error: 'La SIM no está activa' }, 400);
 
     const request = {
@@ -577,7 +694,7 @@ const server = http.createServer(async (req, res) => {
     if (!session) return json(res, { error: 'No autorizado' }, 401);
     const db = loadDB();
     const sim = db.sims.find(s => s.id === balMatch[1]);
-    if (!sim || (session.role !== 'admin' && sim.clientId !== session.userId)) return json(res, { error: 'SIM no encontrada' }, 404);
+    if (!sim || (session.role !== 'admin' && sim.clientId !== session.userId && (!session.parentClientId || sim.clientId !== session.parentClientId))) return json(res, { error: 'SIM no encontrada' }, 404);
 
     const request = {
       id: uuid(), type: 'balance_update', simId: sim.id, simSerial: sim.serial,
@@ -598,7 +715,7 @@ const server = http.createServer(async (req, res) => {
     if (!session) return json(res, { error: 'No autorizado' }, 401);
     const db = loadDB();
     const sim = db.sims.find(s => s.id === rechMatch[1]);
-    if (!sim || (session.role !== 'admin' && sim.clientId !== session.userId)) return json(res, { error: 'SIM no encontrada' }, 404);
+    if (!sim || (session.role !== 'admin' && sim.clientId !== session.userId && (!session.parentClientId || sim.clientId !== session.parentClientId))) return json(res, { error: 'SIM no encontrada' }, 404);
 
     const body = await parseBody(req);
     const request = {
@@ -621,7 +738,7 @@ const server = http.createServer(async (req, res) => {
     if (!session) return json(res, { error: 'No autorizado' }, 401);
     const db = loadDB();
     const sim = db.sims.find(s => s.id === assignMatch[1]);
-    if (!sim || (session.role !== 'admin' && sim.clientId !== session.userId)) return json(res, { error: 'SIM no encontrada' }, 404);
+    if (!sim || (session.role !== 'admin' && sim.clientId !== session.userId && (!session.parentClientId || sim.clientId !== session.parentClientId))) return json(res, { error: 'SIM no encontrada' }, 404);
 
     const body = await parseBody(req);
     if (body.name !== undefined) sim.name = body.name;
@@ -638,7 +755,8 @@ const server = http.createServer(async (req, res) => {
     if (!session) return json(res, { error: 'No autorizado' }, 401);
     const db = loadDB();
     const subs = session.role === 'admin' ? db.subusers : db.subusers.filter(s => s.parentClientId === session.userId);
-    return json(res, subs);
+    // Strip passwords from response
+    return json(res, subs.map(s => ({ ...s, password: undefined })));
   }
 
   // POST /api/subusers
@@ -649,17 +767,24 @@ const server = http.createServer(async (req, res) => {
       return json(res, { error: 'Campo requerido: email' }, 400);
     }
     const db = loadDB();
+    // Check email uniqueness across users and subusers
+    if (db.users.find(u => u.email === body.email) || db.subusers.find(s => s.email === body.email)) {
+      return json(res, { error: 'Email ya existe' }, 400);
+    }
     const subuser = {
       id: uuid(), parentClientId: session.userId,
       name: body.name || '', email: body.email, phone: body.phone || '',
       empresa: body.empresa || '',
+      company: body.company || session.company || '',
+      password: body.password ? hashPassword(body.password) : '',
+      permissions: body.permissions || defaultPermissions(),
       status: 'pending', createdAt: new Date().toISOString(), approvedAt: null
     };
     db.subusers.push(subuser);
     logActivity(db, session.userId, 'Nuevo Sub-usuario Solicitado', `${body.name || ''} (${body.email})`);
     saveDB(db);
     sendNotification(`Nuevo Sub-usuario - ${body.name || body.email}`, `Cliente: ${session.name} | Sub-usuario: ${body.name || ''} (${body.email})`);
-    return json(res, { ok: true, subuser });
+    return json(res, { ok: true, subuser: { ...subuser, password: undefined } });
   }
 
   // DELETE /api/subusers/:id — client requests deletion of their own sub-user
@@ -700,11 +825,19 @@ const server = http.createServer(async (req, res) => {
   if (method === 'GET' && pathname === '/api/admin/notifications') {
     if (!session || session.role !== 'admin') return json(res, { error: 'Acceso denegado' }, 403);
     const db = loadDB();
-    const settings = db.notificationSettings || {
+    const defaults = {
       adminEmail: ADMIN_EMAIL,
+      notifyAdmin: true,
+      notifyClient: true,
       clientNotifications: true,
-      adminNotifications: true
+      adminNotifications: true,
+      smtpHost: '',
+      smtpPort: 587,
+      smtpUser: '',
+      smtpPass: '',
+      smtpFrom: ''
     };
+    const settings = { ...defaults, ...(db.notificationSettings || {}) };
     return json(res, settings);
   }
 
@@ -713,10 +846,18 @@ const server = http.createServer(async (req, res) => {
     if (!session || session.role !== 'admin') return json(res, { error: 'Acceso denegado' }, 403);
     const body = await parseBody(req);
     const db = loadDB();
+    const prev = db.notificationSettings || {};
     db.notificationSettings = {
-      adminEmail: body.adminEmail !== undefined ? body.adminEmail : (db.notificationSettings && db.notificationSettings.adminEmail) || ADMIN_EMAIL,
-      clientNotifications: body.clientNotifications !== undefined ? body.clientNotifications : (db.notificationSettings && db.notificationSettings.clientNotifications !== undefined ? db.notificationSettings.clientNotifications : true),
-      adminNotifications: body.adminNotifications !== undefined ? body.adminNotifications : (db.notificationSettings && db.notificationSettings.adminNotifications !== undefined ? db.notificationSettings.adminNotifications : true)
+      adminEmail: body.adminEmail !== undefined ? body.adminEmail : (prev.adminEmail || ADMIN_EMAIL),
+      notifyAdmin: body.notifyAdmin !== undefined ? body.notifyAdmin : (prev.notifyAdmin !== undefined ? prev.notifyAdmin : true),
+      notifyClient: body.notifyClient !== undefined ? body.notifyClient : (prev.notifyClient !== undefined ? prev.notifyClient : true),
+      clientNotifications: body.clientNotifications !== undefined ? body.clientNotifications : (body.notifyClient !== undefined ? body.notifyClient : (prev.clientNotifications !== undefined ? prev.clientNotifications : true)),
+      adminNotifications: body.adminNotifications !== undefined ? body.adminNotifications : (body.notifyAdmin !== undefined ? body.notifyAdmin : (prev.adminNotifications !== undefined ? prev.adminNotifications : true)),
+      smtpHost: body.smtpHost !== undefined ? body.smtpHost : (prev.smtpHost || ''),
+      smtpPort: body.smtpPort !== undefined ? body.smtpPort : (prev.smtpPort || 587),
+      smtpUser: body.smtpUser !== undefined ? body.smtpUser : (prev.smtpUser || ''),
+      smtpPass: body.smtpPass !== undefined ? body.smtpPass : (prev.smtpPass || ''),
+      smtpFrom: body.smtpFrom !== undefined ? body.smtpFrom : (prev.smtpFrom || '')
     };
     saveDB(db);
     return json(res, { ok: true, notificationSettings: db.notificationSettings });
@@ -742,6 +883,8 @@ const server = http.createServer(async (req, res) => {
     if (request.type === 'subuser_deletion') {
       // Remove the sub-user
       db.subusers = db.subusers.filter(s => s.id !== request.subuserId);
+      // Also remove from users array if they were promoted
+      db.users = db.users.filter(u => u.id !== request.subuserId);
       logActivity(db, request.clientId, 'Sub-usuario Eliminado', `${request.subuserName} (${request.subuserEmail})`);
       saveDB(db);
       return json(res, { ok: true, request });
@@ -882,7 +1025,7 @@ const server = http.createServer(async (req, res) => {
     const body = await parseBody(req);
     const db = loadDB();
     if (db.users.find(u => u.email === body.email)) return json(res, { error: 'Email ya existe' }, 400);
-    const role = (body.role === 'admin' || body.role === 'client') ? body.role : 'client';
+    const role = (body.role === 'admin' || body.role === 'client' || body.role === 'subuser') ? body.role : 'client';
     const user = {
       id: 'usr_' + uuid().slice(0, 8),
       email: body.email,
@@ -897,6 +1040,10 @@ const server = http.createServer(async (req, res) => {
       country: body.country || '',
       postalCode: body.postalCode || ''
     };
+    if (role === 'subuser') {
+      user.parentClientId = body.parentClientId || '';
+      user.permissions = body.permissions || defaultPermissions();
+    }
     db.users.push(user);
     saveDB(db);
     return json(res, { ok: true, user: { ...user, password: undefined } });
@@ -914,11 +1061,17 @@ const server = http.createServer(async (req, res) => {
     for (const f of fields) {
       if (body[f] !== undefined) user[f] = body[f];
     }
-    if (body.role === 'admin' || body.role === 'client') {
+    if (body.role === 'admin' || body.role === 'client' || body.role === 'subuser') {
       user.role = body.role;
     }
     if (body.password) {
       user.password = hashPassword(body.password);
+    }
+    if (body.permissions !== undefined) {
+      user.permissions = body.permissions;
+    }
+    if (body.parentClientId !== undefined) {
+      user.parentClientId = body.parentClientId;
     }
     saveDB(db);
     return json(res, { ok: true, user: { ...user, password: undefined } });
@@ -954,9 +1107,34 @@ const server = http.createServer(async (req, res) => {
     if (!su) return json(res, { error: 'Sub-usuario no encontrado' }, 404);
     su.status = 'approved';
     su.approvedAt = new Date().toISOString();
+
+    // If the sub-user has a password, also create them as a user in the users array
+    if (su.password) {
+      // Check if user already exists
+      if (!db.users.find(u => u.email === su.email)) {
+        const newUser = {
+          id: su.id,
+          email: su.email,
+          password: su.password,
+          name: su.name,
+          company: su.company || '',
+          role: 'subuser',
+          parentClientId: su.parentClientId,
+          permissions: su.permissions || defaultPermissions(),
+          phone: su.phone || '',
+          countryCode: '',
+          address: '',
+          city: '',
+          country: '',
+          postalCode: ''
+        };
+        db.users.push(newUser);
+      }
+    }
+
     logActivity(db, su.parentClientId, 'Sub-usuario Aprobado', su.name);
     saveDB(db);
-    return json(res, { ok: true, subuser: su });
+    return json(res, { ok: true, subuser: { ...su, password: undefined } });
   }
 
   // POST /api/admin/subusers/:id/reject
@@ -972,6 +1150,45 @@ const server = http.createServer(async (req, res) => {
     return json(res, { ok: true });
   }
 
+  // PATCH /api/admin/subusers/:id — edit sub-user (name, email, company, password, permissions)
+  const adminPatchSubMatch = pathname.match(/^\/api\/admin\/subusers\/([^/]+)$/);
+  if (method === 'PATCH' && adminPatchSubMatch) {
+    if (!session || session.role !== 'admin') return json(res, { error: 'Acceso denegado' }, 403);
+    const db = loadDB();
+    const su = db.subusers.find(s => s.id === adminPatchSubMatch[1]);
+    if (!su) return json(res, { error: 'Sub-usuario no encontrado' }, 404);
+    const body = await parseBody(req);
+
+    const fields = ['name', 'email', 'company', 'phone', 'empresa'];
+    for (const f of fields) {
+      if (body[f] !== undefined) su[f] = body[f];
+    }
+    if (body.password) {
+      su.password = hashPassword(body.password);
+    }
+    if (body.permissions !== undefined) {
+      su.permissions = body.permissions;
+    }
+
+    // Also update the corresponding user in the users array if it exists
+    const correspondingUser = db.users.find(u => u.id === su.id);
+    if (correspondingUser) {
+      for (const f of fields) {
+        if (body[f] !== undefined) correspondingUser[f] = body[f];
+      }
+      if (body.password) {
+        correspondingUser.password = su.password;
+      }
+      if (body.permissions !== undefined) {
+        correspondingUser.permissions = body.permissions;
+      }
+    }
+
+    logActivity(db, su.parentClientId, 'Sub-usuario Editado por Admin', `${su.name} (${su.email})`);
+    saveDB(db);
+    return json(res, { ok: true, subuser: { ...su, password: undefined } });
+  }
+
   // DELETE /api/admin/subusers/:id — admin directly deletes a sub-user
   const adminDeleteSubMatch = pathname.match(/^\/api\/admin\/subusers\/([^/]+)$/);
   if (method === 'DELETE' && adminDeleteSubMatch) {
@@ -980,6 +1197,8 @@ const server = http.createServer(async (req, res) => {
     const su = db.subusers.find(s => s.id === adminDeleteSubMatch[1]);
     if (!su) return json(res, { error: 'Sub-usuario no encontrado' }, 404);
     db.subusers = db.subusers.filter(s => s.id !== adminDeleteSubMatch[1]);
+    // Also remove from users array if they were promoted
+    db.users = db.users.filter(u => u.id !== adminDeleteSubMatch[1]);
     logActivity(db, su.parentClientId, 'Sub-usuario Eliminado por Admin', su.name);
     saveDB(db);
     return json(res, { ok: true });
