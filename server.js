@@ -108,6 +108,11 @@ function createDefaultSim(overrides = {}) {
     msisdn: '',
     puk: '',
     pin: '',
+    puk2: '',
+    pin2: '',
+    network: '',
+    telephony: '',
+    simData: '',
     balance: 0,
     dataUsed: 0,
     dataTotal: 0,
@@ -123,7 +128,6 @@ function createDefaultSim(overrides = {}) {
     name: '',
     reference: '',
     subClient: '',
-    vessel: '',
     lastUpdated: new Date().toISOString(),
     operations: [],
     ...overrides
@@ -166,21 +170,23 @@ function createDefaultDB() {
       {
         id: 'sim_001', serial: '8988169328001000001', clientId: 'usr_demo1',
         status: 'inactive', iccid: '', imei: '', msisdn: '', puk: '', pin: '',
+        puk2: '', pin2: '', network: '', telephony: '', simData: '',
         balance: 0, dataUsed: 0, dataTotal: 0, lastLocation: '',
         expiryDate: '', activationDate: '', lastConnection: '',
         planType: '', serviceType: '', cardType: 'Iridium 9555',
         minutesActive: 0, monthlyCharge: 0, name: '', reference: '',
-        subClient: '', vessel: '',
+        subClient: '',
         lastUpdated: new Date().toISOString(), operations: []
       },
       {
         id: 'sim_002', serial: '8988169328001000002', clientId: 'usr_demo1',
         status: 'inactive', iccid: '', imei: '', msisdn: '', puk: '', pin: '',
+        puk2: '', pin2: '', network: '', telephony: '', simData: '',
         balance: 0, dataUsed: 0, dataTotal: 0, lastLocation: '',
         expiryDate: '', activationDate: '', lastConnection: '',
         planType: '', serviceType: '', cardType: 'Iridium 9575',
         minutesActive: 0, monthlyCharge: 0, name: '', reference: '',
-        subClient: '', vessel: '',
+        subClient: '',
         lastUpdated: new Date().toISOString(), operations: []
       },
       {
@@ -188,6 +194,7 @@ function createDefaultDB() {
         status: 'active',
         iccid: '89881693280010000034F', imei: '300125060000030',
         msisdn: '+8816 2365 0003', puk: '12345678', pin: '1234',
+        puk2: '', pin2: '', network: 'Iridium', telephony: '', simData: '',
         balance: 85, dataUsed: 12, dataTotal: 100,
         lastLocation: 'Lat: 19.4326, Lon: -99.1332',
         expiryDate: '2026-09-15', activationDate: '2026-01-10',
@@ -196,14 +203,19 @@ function createDefaultDB() {
         serviceType: 'Pre-Pago', cardType: 'Iridium 9555',
         minutesActive: 15, monthlyCharge: 0,
         name: 'Unidad Planta Norte', reference: 'PN-001',
-        subClient: '', vessel: '',
+        subClient: '',
         lastUpdated: new Date().toISOString(), operations: []
       }
     ],
     subusers: [],
     requests: [],
     activityLog: [],
-    accounts: []
+    accounts: [],
+    notificationSettings: {
+      adminEmail: 'vanessacarreno91@gmail.com',
+      clientNotifications: true,
+      adminNotifications: true
+    }
   };
 }
 
@@ -211,7 +223,26 @@ function createDefaultDB() {
 // NOTIFICATION (console log + optional nodemailer)
 // =====================================================
 function sendNotification(subject, details, toClient) {
-  const to = toClient || ADMIN_EMAIL;
+  const db = loadDB();
+  const settings = db.notificationSettings || {
+    adminEmail: ADMIN_EMAIL,
+    clientNotifications: true,
+    adminNotifications: true
+  };
+
+  // Determine recipient
+  const to = toClient || settings.adminEmail || ADMIN_EMAIL;
+
+  // Check if notifications are enabled
+  if (toClient && !settings.clientNotifications) {
+    console.log(`\n📧 NOTIFICATION SKIPPED (client notifications disabled) → ${to}\n   Subject: ${subject}\n`);
+    return;
+  }
+  if (!toClient && !settings.adminNotifications) {
+    console.log(`\n📧 NOTIFICATION SKIPPED (admin notifications disabled) → ${to}\n   Subject: ${subject}\n`);
+    return;
+  }
+
   console.log(`\n📧 NOTIFICATION → ${to}\n   Subject: ${subject}\n   ${details}\n`);
 
   // Attempt to send real email via nodemailer if installed and configured
@@ -440,8 +471,8 @@ const server = http.createServer(async (req, res) => {
   if (method === 'POST' && pathname === '/api/accounts') {
     if (!session) return json(res, { error: 'No autorizado' }, 401);
     const body = await parseBody(req);
-    if (!body.name || !body.contact || !body.email) {
-      return json(res, { error: 'Campos requeridos: name, contact, email' }, 400);
+    if (!body.name || !body.contact) {
+      return json(res, { error: 'Campos requeridos: name, contact' }, 400);
     }
     const db = loadDB();
     if (!db.accounts) db.accounts = [];
@@ -450,8 +481,9 @@ const server = http.createServer(async (req, res) => {
       userId: session.userId,
       name: body.name,
       contact: body.contact,
-      email: body.email,
+      email: body.email || '',
       phone: body.phone || '',
+      empresa: body.empresa || '',
       status: 'approved',
       createdAt: new Date().toISOString()
     };
@@ -595,7 +627,6 @@ const server = http.createServer(async (req, res) => {
     if (body.name !== undefined) sim.name = body.name;
     if (body.reference !== undefined) sim.reference = body.reference;
     if (body.subClient !== undefined) sim.subClient = body.subClient;
-    if (body.vessel !== undefined) sim.vessel = body.vessel;
     sim.lastUpdated = new Date().toISOString();
     logActivity(db, session.userId, 'Asignación Actualizada', `SIM ${sim.serial} - ${sim.name}`);
     saveDB(db);
@@ -614,17 +645,43 @@ const server = http.createServer(async (req, res) => {
   if (method === 'POST' && pathname === '/api/subusers') {
     if (!session) return json(res, { error: 'No autorizado' }, 401);
     const body = await parseBody(req);
+    if (!body.email) {
+      return json(res, { error: 'Campo requerido: email' }, 400);
+    }
     const db = loadDB();
     const subuser = {
       id: uuid(), parentClientId: session.userId,
-      name: body.name, email: body.email, phone: body.phone || '',
+      name: body.name || '', email: body.email, phone: body.phone || '',
+      empresa: body.empresa || '',
       status: 'pending', createdAt: new Date().toISOString(), approvedAt: null
     };
     db.subusers.push(subuser);
-    logActivity(db, session.userId, 'Nuevo Sub-usuario Solicitado', `${body.name} (${body.email})`);
+    logActivity(db, session.userId, 'Nuevo Sub-usuario Solicitado', `${body.name || ''} (${body.email})`);
     saveDB(db);
-    sendNotification(`Nuevo Sub-usuario - ${body.name}`, `Cliente: ${session.name} | Sub-usuario: ${body.name} (${body.email})`);
+    sendNotification(`Nuevo Sub-usuario - ${body.name || body.email}`, `Cliente: ${session.name} | Sub-usuario: ${body.name || ''} (${body.email})`);
     return json(res, { ok: true, subuser });
+  }
+
+  // DELETE /api/subusers/:id — client requests deletion of their own sub-user
+  const deleteSubuserMatch = pathname.match(/^\/api\/subusers\/([^/]+)$/);
+  if (method === 'DELETE' && deleteSubuserMatch) {
+    if (!session) return json(res, { error: 'No autorizado' }, 401);
+    const db = loadDB();
+    const su = db.subusers.find(s => s.id === deleteSubuserMatch[1] && s.parentClientId === session.userId);
+    if (!su) return json(res, { error: 'Sub-usuario no encontrado' }, 404);
+    // Create a deletion request (pending admin approval)
+    const request = {
+      id: uuid(), type: 'subuser_deletion', subuserId: su.id,
+      subuserName: su.name, subuserEmail: su.email,
+      clientId: session.userId, clientName: session.name, clientEmail: session.email,
+      company: session.company, status: 'pending',
+      createdAt: new Date().toISOString(), completedAt: null
+    };
+    db.requests.unshift(request);
+    logActivity(db, session.userId, 'Solicitud de Eliminación de Sub-usuario', `${su.name} (${su.email})`);
+    saveDB(db);
+    sendNotification(`Eliminar Sub-usuario - ${su.name}`, `Cliente: ${session.name} | Sub-usuario: ${su.name} (${su.email})`);
+    return json(res, { ok: true, message: 'Solicitud de eliminación enviada' });
   }
 
   // GET /api/activity
@@ -638,6 +695,32 @@ const server = http.createServer(async (req, res) => {
   // =====================================================
   // ADMIN ROUTES
   // =====================================================
+
+  // GET /api/admin/notifications
+  if (method === 'GET' && pathname === '/api/admin/notifications') {
+    if (!session || session.role !== 'admin') return json(res, { error: 'Acceso denegado' }, 403);
+    const db = loadDB();
+    const settings = db.notificationSettings || {
+      adminEmail: ADMIN_EMAIL,
+      clientNotifications: true,
+      adminNotifications: true
+    };
+    return json(res, settings);
+  }
+
+  // PUT /api/admin/notifications
+  if (method === 'PUT' && pathname === '/api/admin/notifications') {
+    if (!session || session.role !== 'admin') return json(res, { error: 'Acceso denegado' }, 403);
+    const body = await parseBody(req);
+    const db = loadDB();
+    db.notificationSettings = {
+      adminEmail: body.adminEmail !== undefined ? body.adminEmail : (db.notificationSettings && db.notificationSettings.adminEmail) || ADMIN_EMAIL,
+      clientNotifications: body.clientNotifications !== undefined ? body.clientNotifications : (db.notificationSettings && db.notificationSettings.clientNotifications !== undefined ? db.notificationSettings.clientNotifications : true),
+      adminNotifications: body.adminNotifications !== undefined ? body.adminNotifications : (db.notificationSettings && db.notificationSettings.adminNotifications !== undefined ? db.notificationSettings.adminNotifications : true)
+    };
+    saveDB(db);
+    return json(res, { ok: true, notificationSettings: db.notificationSettings });
+  }
 
   // GET /api/admin/requests
   if (method === 'GET' && pathname === '/api/admin/requests') {
@@ -655,6 +738,15 @@ const server = http.createServer(async (req, res) => {
 
     request.status = 'completed';
     request.completedAt = new Date().toISOString();
+
+    if (request.type === 'subuser_deletion') {
+      // Remove the sub-user
+      db.subusers = db.subusers.filter(s => s.id !== request.subuserId);
+      logActivity(db, request.clientId, 'Sub-usuario Eliminado', `${request.subuserName} (${request.subuserEmail})`);
+      saveDB(db);
+      return json(res, { ok: true, request });
+    }
+
     const sim = db.sims.find(s => s.id === request.simId);
 
     if (request.type === 'activation' && sim) {
@@ -693,6 +785,13 @@ const server = http.createServer(async (req, res) => {
     if (!request) return json(res, { error: 'Solicitud no encontrada' }, 404);
     request.status = 'rejected';
     request.completedAt = new Date().toISOString();
+
+    if (request.type === 'subuser_deletion') {
+      logActivity(db, request.clientId, 'Eliminación de Sub-usuario Rechazada', `${request.subuserName}`);
+      saveDB(db);
+      return json(res, { ok: true });
+    }
+
     const sim = db.sims.find(s => s.id === request.simId);
     if (sim && sim.status === 'processing') {
       sim.status = request.type === 'activation' ? 'inactive' : 'active';
@@ -714,9 +813,10 @@ const server = http.createServer(async (req, res) => {
     const sim = db.sims.find(s => s.id === adminSimMatch[1]);
     if (!sim) return json(res, { error: 'SIM no encontrada' }, 404);
     const body = await parseBody(req);
-    const fields = ['serial','iccid','imei','msisdn','puk','pin','balance','dataUsed','dataTotal',
+    const fields = ['serial','iccid','imei','msisdn','puk','pin','puk2','pin2','network','telephony','simData',
+      'balance','dataUsed','dataTotal',
       'lastLocation','expiryDate','activationDate','lastConnection','planType','serviceType',
-      'cardType','minutesActive','monthlyCharge','name','reference','subClient','vessel','status','clientId'];
+      'cardType','minutesActive','monthlyCharge','name','reference','subClient','status','clientId'];
     for (const f of fields) { if (body[f] !== undefined) sim[f] = body[f]; }
     sim.lastUpdated = new Date().toISOString();
     saveDB(db);
@@ -868,6 +968,19 @@ const server = http.createServer(async (req, res) => {
     if (!su) return json(res, { error: 'Sub-usuario no encontrado' }, 404);
     su.status = 'rejected';
     logActivity(db, su.parentClientId, 'Sub-usuario Rechazado', su.name);
+    saveDB(db);
+    return json(res, { ok: true });
+  }
+
+  // DELETE /api/admin/subusers/:id — admin directly deletes a sub-user
+  const adminDeleteSubMatch = pathname.match(/^\/api\/admin\/subusers\/([^/]+)$/);
+  if (method === 'DELETE' && adminDeleteSubMatch) {
+    if (!session || session.role !== 'admin') return json(res, { error: 'Acceso denegado' }, 403);
+    const db = loadDB();
+    const su = db.subusers.find(s => s.id === adminDeleteSubMatch[1]);
+    if (!su) return json(res, { error: 'Sub-usuario no encontrado' }, 404);
+    db.subusers = db.subusers.filter(s => s.id !== adminDeleteSubMatch[1]);
+    logActivity(db, su.parentClientId, 'Sub-usuario Eliminado por Admin', su.name);
     saveDB(db);
     return json(res, { ok: true });
   }
