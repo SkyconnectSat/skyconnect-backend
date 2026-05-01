@@ -146,7 +146,237 @@ function defaultPermissions() {
   };
 }
 
+// =====================================================
+// EMAIL TEMPLATE HTML BUILDER
+// =====================================================
+function buildEmailHtml(title, bodyContent) {
+  return `<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>${title}</title></head>
+<body style="margin:0;padding:0;background-color:#f4f6f9;font-family:Arial,Helvetica,sans-serif;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f6f9;padding:20px 0;">
+<tr><td align="center">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+<!-- HEADER -->
+<tr><td style="background-color:#0d2137;padding:28px 40px;text-align:center;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+<td style="text-align:center;">
+<span style="font-size:28px;font-weight:700;color:#ffffff;letter-spacing:3px;">SKY</span><span style="font-size:28px;font-weight:700;color:#e63956;letter-spacing:3px;">CONNECT</span>
+<br><span style="font-size:12px;color:#8899aa;letter-spacing:2px;text-transform:uppercase;">Anywhere. Anytime.</span>
+</td>
+</tr></table>
+</td></tr>
+<!-- ACCENT BAR -->
+<tr><td style="height:4px;background:linear-gradient(90deg,#e63956,#0d2137);"></td></tr>
+<!-- BODY -->
+<tr><td style="padding:36px 40px 30px 40px;">
+${bodyContent}
+</td></tr>
+<!-- FOOTER -->
+<tr><td style="background-color:#f8f9fb;padding:24px 40px;border-top:1px solid #e8ecf1;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="text-align:center;">
+<p style="margin:0 0 6px 0;font-size:13px;color:#0d2137;font-weight:600;">SkyConnect Satellite Services</p>
+<p style="margin:0 0 10px 0;font-size:11px;color:#8899aa;">Comunicaciones satelitales confiables en cualquier lugar del mundo.</p>
+<p style="margin:0;font-size:10px;color:#aab4c0;">Este correo fue generado autom&aacute;ticamente. Por favor no responda directamente a este mensaje.<br>&copy; ${new Date().getFullYear()} SkyConnect. Todos los derechos reservados.</p>
+</td></tr></table>
+</td></tr>
+</table>
+</td></tr></table>
+</body></html>`;
+}
+
 function createDefaultDB() {
+  // Build email template HTML bodies
+  const tplBodies = {};
+
+  tplBodies.activation_request_admin = buildEmailHtml('Nueva Solicitud de Activación', `
+<h2 style="margin:0 0 8px 0;font-size:22px;color:#0d2137;">Nueva Solicitud de Activaci&oacute;n</h2>
+<p style="margin:0 0 20px 0;font-size:14px;color:#e63956;font-weight:600;">Se requiere acci&oacute;n administrativa</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+<tr><td style="padding:12px 16px;background-color:#f0f4f8;border-left:4px solid #e63956;border-radius:4px;">
+<p style="margin:0 0 4px 0;font-size:13px;color:#6b7c8f;">Cliente</p>
+<p style="margin:0;font-size:16px;color:#0d2137;font-weight:600;">{{clientName}} — {{company}}</p>
+</td></tr>
+</table>
+<table role="presentation" width="100%" cellpadding="8" cellspacing="0" style="border:1px solid #e8ecf1;border-radius:6px;margin-bottom:24px;">
+<tr style="background-color:#f8f9fb;"><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;width:40%;">SIM Serial</td><td style="font-size:14px;color:#0d2137;font-weight:600;padding:10px 16px;">{{simSerial}}</td></tr>
+<tr><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;border-top:1px solid #e8ecf1;">N&uacute;mero (MSISDN)</td><td style="font-size:14px;color:#0d2137;padding:10px 16px;border-top:1px solid #e8ecf1;">{{simNumber}}</td></tr>
+<tr style="background-color:#f8f9fb;"><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;border-top:1px solid #e8ecf1;">Tipo de Servicio</td><td style="font-size:14px;color:#0d2137;padding:10px 16px;border-top:1px solid #e8ecf1;">{{serviceType}}</td></tr>
+<tr><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;border-top:1px solid #e8ecf1;">Plan Solicitado</td><td style="font-size:14px;color:#0d2137;padding:10px 16px;border-top:1px solid #e8ecf1;">{{planType}}</td></tr>
+<tr style="background-color:#f8f9fb;"><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;border-top:1px solid #e8ecf1;">Fecha de Solicitud</td><td style="font-size:14px;color:#0d2137;padding:10px 16px;border-top:1px solid #e8ecf1;">{{date}}</td></tr>
+</table>
+<p style="margin:0;font-size:13px;color:#6b7c8f;">Ingrese al panel de administraci&oacute;n para procesar esta solicitud.</p>`);
+
+  tplBodies.deactivation_request_admin = buildEmailHtml('Nueva Solicitud de Desactivación', `
+<h2 style="margin:0 0 8px 0;font-size:22px;color:#0d2137;">Nueva Solicitud de Desactivaci&oacute;n</h2>
+<p style="margin:0 0 20px 0;font-size:14px;color:#e63956;font-weight:600;">Se requiere acci&oacute;n administrativa</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+<tr><td style="padding:12px 16px;background-color:#f0f4f8;border-left:4px solid #e63956;border-radius:4px;">
+<p style="margin:0 0 4px 0;font-size:13px;color:#6b7c8f;">Cliente</p>
+<p style="margin:0;font-size:16px;color:#0d2137;font-weight:600;">{{clientName}} — {{company}}</p>
+</td></tr>
+</table>
+<table role="presentation" width="100%" cellpadding="8" cellspacing="0" style="border:1px solid #e8ecf1;border-radius:6px;margin-bottom:24px;">
+<tr style="background-color:#f8f9fb;"><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;width:40%;">SIM Serial</td><td style="font-size:14px;color:#0d2137;font-weight:600;padding:10px 16px;">{{simSerial}}</td></tr>
+<tr><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;border-top:1px solid #e8ecf1;">N&uacute;mero (MSISDN)</td><td style="font-size:14px;color:#0d2137;padding:10px 16px;border-top:1px solid #e8ecf1;">{{simNumber}}</td></tr>
+<tr style="background-color:#f8f9fb;"><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;border-top:1px solid #e8ecf1;">Fecha de Solicitud</td><td style="font-size:14px;color:#0d2137;padding:10px 16px;border-top:1px solid #e8ecf1;">{{date}}</td></tr>
+</table>
+<p style="margin:0;font-size:13px;color:#6b7c8f;">El cliente ha solicitado la desactivaci&oacute;n de esta l&iacute;nea. Ingrese al panel para procesar.</p>`);
+
+  tplBodies.recharge_request_admin = buildEmailHtml('Nueva Solicitud de Recarga', `
+<h2 style="margin:0 0 8px 0;font-size:22px;color:#0d2137;">Nueva Solicitud de Recarga</h2>
+<p style="margin:0 0 20px 0;font-size:14px;color:#e63956;font-weight:600;">Se requiere acci&oacute;n administrativa</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+<tr><td style="padding:12px 16px;background-color:#f0f4f8;border-left:4px solid #e63956;border-radius:4px;">
+<p style="margin:0 0 4px 0;font-size:13px;color:#6b7c8f;">Cliente</p>
+<p style="margin:0;font-size:16px;color:#0d2137;font-weight:600;">{{clientName}} — {{company}}</p>
+</td></tr>
+</table>
+<table role="presentation" width="100%" cellpadding="8" cellspacing="0" style="border:1px solid #e8ecf1;border-radius:6px;margin-bottom:24px;">
+<tr style="background-color:#f8f9fb;"><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;width:40%;">SIM Serial</td><td style="font-size:14px;color:#0d2137;font-weight:600;padding:10px 16px;">{{simSerial}}</td></tr>
+<tr><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;border-top:1px solid #e8ecf1;">N&uacute;mero (MSISDN)</td><td style="font-size:14px;color:#0d2137;padding:10px 16px;border-top:1px solid #e8ecf1;">{{simNumber}}</td></tr>
+<tr style="background-color:#f8f9fb;"><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;border-top:1px solid #e8ecf1;">Plan de Recarga</td><td style="font-size:14px;color:#0d2137;font-weight:600;padding:10px 16px;border-top:1px solid #e8ecf1;">{{planType}}</td></tr>
+<tr><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;border-top:1px solid #e8ecf1;">Fecha de Solicitud</td><td style="font-size:14px;color:#0d2137;padding:10px 16px;border-top:1px solid #e8ecf1;">{{date}}</td></tr>
+</table>
+<p style="margin:0;font-size:13px;color:#6b7c8f;">Ingrese al panel de administraci&oacute;n para aplicar la recarga.</p>`);
+
+  tplBodies.subuser_pending_admin = buildEmailHtml('Nuevo Sub-Usuario Pendiente', `
+<h2 style="margin:0 0 8px 0;font-size:22px;color:#0d2137;">Nuevo Sub-Usuario Pendiente de Aprobaci&oacute;n</h2>
+<p style="margin:0 0 20px 0;font-size:14px;color:#e63956;font-weight:600;">Se requiere revisi&oacute;n y aprobaci&oacute;n</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+<tr><td style="padding:12px 16px;background-color:#f0f4f8;border-left:4px solid #0d2137;border-radius:4px;">
+<p style="margin:0 0 4px 0;font-size:13px;color:#6b7c8f;">Solicitado por</p>
+<p style="margin:0;font-size:16px;color:#0d2137;font-weight:600;">{{clientName}} — {{company}}</p>
+</td></tr>
+</table>
+<table role="presentation" width="100%" cellpadding="8" cellspacing="0" style="border:1px solid #e8ecf1;border-radius:6px;margin-bottom:24px;">
+<tr style="background-color:#f8f9fb;"><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;width:40%;">Nombre</td><td style="font-size:14px;color:#0d2137;font-weight:600;padding:10px 16px;">{{subuserName}}</td></tr>
+<tr><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;border-top:1px solid #e8ecf1;">Email</td><td style="font-size:14px;color:#0d2137;padding:10px 16px;border-top:1px solid #e8ecf1;">{{subuserEmail}}</td></tr>
+<tr style="background-color:#f8f9fb;"><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;border-top:1px solid #e8ecf1;">Fecha</td><td style="font-size:14px;color:#0d2137;padding:10px 16px;border-top:1px solid #e8ecf1;">{{date}}</td></tr>
+</table>
+<p style="margin:0;font-size:13px;color:#6b7c8f;">Ingrese al panel de administraci&oacute;n para aprobar o rechazar este sub-usuario.</p>`);
+
+  tplBodies.activation_inprocess_client = buildEmailHtml('Activación en Proceso', `
+<h2 style="margin:0 0 8px 0;font-size:22px;color:#0d2137;">Su Solicitud Est&aacute; en Proceso</h2>
+<p style="margin:0 0 24px 0;font-size:15px;color:#444d56;line-height:1.6;">Estimado/a <strong>{{clientName}}</strong>,</p>
+<p style="margin:0 0 20px 0;font-size:14px;color:#444d56;line-height:1.6;">Hemos recibido su solicitud de <strong>activaci&oacute;n</strong> y nuestro equipo ya est&aacute; trabajando en ella. Le notificaremos tan pronto como su l&iacute;nea est&eacute; activa.</p>
+<table role="presentation" width="100%" cellpadding="8" cellspacing="0" style="border:1px solid #e8ecf1;border-radius:6px;margin-bottom:24px;">
+<tr style="background-color:#f8f9fb;"><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;width:40%;">SIM Serial</td><td style="font-size:14px;color:#0d2137;font-weight:600;padding:10px 16px;">{{simSerial}}</td></tr>
+<tr><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;border-top:1px solid #e8ecf1;">Tipo de Servicio</td><td style="font-size:14px;color:#0d2137;padding:10px 16px;border-top:1px solid #e8ecf1;">{{serviceType}}</td></tr>
+<tr style="background-color:#f8f9fb;"><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;border-top:1px solid #e8ecf1;">Plan</td><td style="font-size:14px;color:#0d2137;padding:10px 16px;border-top:1px solid #e8ecf1;">{{planType}}</td></tr>
+<tr><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;border-top:1px solid #e8ecf1;">Estado</td><td style="font-size:14px;padding:10px 16px;border-top:1px solid #e8ecf1;"><span style="background-color:#fff3e0;color:#e65100;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;">En Proceso</span></td></tr>
+</table>
+<p style="margin:0;font-size:13px;color:#6b7c8f;">Gracias por confiar en SkyConnect. Si tiene alguna pregunta, no dude en contactarnos.</p>`);
+
+  tplBodies.deactivation_inprocess_client = buildEmailHtml('Desactivación en Proceso', `
+<h2 style="margin:0 0 8px 0;font-size:22px;color:#0d2137;">Su Solicitud Est&aacute; en Proceso</h2>
+<p style="margin:0 0 24px 0;font-size:15px;color:#444d56;line-height:1.6;">Estimado/a <strong>{{clientName}}</strong>,</p>
+<p style="margin:0 0 20px 0;font-size:14px;color:#444d56;line-height:1.6;">Hemos recibido su solicitud de <strong>desactivaci&oacute;n</strong> y nuestro equipo la est&aacute; procesando. Le confirmaremos cuando se complete.</p>
+<table role="presentation" width="100%" cellpadding="8" cellspacing="0" style="border:1px solid #e8ecf1;border-radius:6px;margin-bottom:24px;">
+<tr style="background-color:#f8f9fb;"><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;width:40%;">SIM Serial</td><td style="font-size:14px;color:#0d2137;font-weight:600;padding:10px 16px;">{{simSerial}}</td></tr>
+<tr><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;border-top:1px solid #e8ecf1;">N&uacute;mero (MSISDN)</td><td style="font-size:14px;color:#0d2137;padding:10px 16px;border-top:1px solid #e8ecf1;">{{simNumber}}</td></tr>
+<tr style="background-color:#f8f9fb;"><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;border-top:1px solid #e8ecf1;">Estado</td><td style="font-size:14px;padding:10px 16px;border-top:1px solid #e8ecf1;"><span style="background-color:#fff3e0;color:#e65100;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;">En Proceso</span></td></tr>
+</table>
+<p style="margin:0;font-size:13px;color:#6b7c8f;">Si tiene alguna pregunta sobre esta solicitud, no dude en contactarnos.</p>`);
+
+  tplBodies.recharge_inprocess_client = buildEmailHtml('Recarga en Proceso', `
+<h2 style="margin:0 0 8px 0;font-size:22px;color:#0d2137;">Su Solicitud de Recarga Est&aacute; en Proceso</h2>
+<p style="margin:0 0 24px 0;font-size:15px;color:#444d56;line-height:1.6;">Estimado/a <strong>{{clientName}}</strong>,</p>
+<p style="margin:0 0 20px 0;font-size:14px;color:#444d56;line-height:1.6;">Hemos recibido su solicitud de <strong>recarga</strong> y nuestro equipo la est&aacute; procesando. Le notificaremos cuando la recarga haya sido aplicada exitosamente.</p>
+<table role="presentation" width="100%" cellpadding="8" cellspacing="0" style="border:1px solid #e8ecf1;border-radius:6px;margin-bottom:24px;">
+<tr style="background-color:#f8f9fb;"><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;width:40%;">SIM Serial</td><td style="font-size:14px;color:#0d2137;font-weight:600;padding:10px 16px;">{{simSerial}}</td></tr>
+<tr><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;border-top:1px solid #e8ecf1;">N&uacute;mero (MSISDN)</td><td style="font-size:14px;color:#0d2137;padding:10px 16px;border-top:1px solid #e8ecf1;">{{simNumber}}</td></tr>
+<tr style="background-color:#f8f9fb;"><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;border-top:1px solid #e8ecf1;">Plan de Recarga</td><td style="font-size:14px;color:#0d2137;font-weight:600;padding:10px 16px;border-top:1px solid #e8ecf1;">{{planType}}</td></tr>
+<tr><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;border-top:1px solid #e8ecf1;">Estado</td><td style="font-size:14px;padding:10px 16px;border-top:1px solid #e8ecf1;"><span style="background-color:#fff3e0;color:#e65100;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;">En Proceso</span></td></tr>
+</table>
+<p style="margin:0;font-size:13px;color:#6b7c8f;">Gracias por elegir SkyConnect para sus comunicaciones satelitales.</p>`);
+
+  tplBodies.activation_completed_client = buildEmailHtml('SIM Activada Exitosamente', `
+<h2 style="margin:0 0 8px 0;font-size:22px;color:#0d2137;">&#127881; SIM Activada Exitosamente</h2>
+<p style="margin:0 0 24px 0;font-size:15px;color:#444d56;line-height:1.6;">Estimado/a <strong>{{clientName}}</strong>,</p>
+<p style="margin:0 0 20px 0;font-size:14px;color:#444d56;line-height:1.6;">Nos complace informarle que su SIM ha sido <strong style="color:#2e7d32;">activada exitosamente</strong>. A continuaci&oacute;n los detalles de su l&iacute;nea:</p>
+<table role="presentation" width="100%" cellpadding="8" cellspacing="0" style="border:1px solid #e8ecf1;border-radius:6px;margin-bottom:24px;">
+<tr style="background-color:#e8f5e9;"><td style="font-size:13px;color:#2e7d32;padding:10px 16px;width:40%;font-weight:600;">Estado</td><td style="font-size:14px;color:#2e7d32;font-weight:700;padding:10px 16px;">&#10003; ACTIVA</td></tr>
+<tr><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;border-top:1px solid #e8ecf1;">SIM Serial</td><td style="font-size:14px;color:#0d2137;font-weight:600;padding:10px 16px;border-top:1px solid #e8ecf1;">{{simSerial}}</td></tr>
+<tr style="background-color:#f8f9fb;"><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;border-top:1px solid #e8ecf1;">N&uacute;mero (MSISDN)</td><td style="font-size:14px;color:#0d2137;font-weight:600;padding:10px 16px;border-top:1px solid #e8ecf1;">{{simNumber}}</td></tr>
+<tr><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;border-top:1px solid #e8ecf1;">Plan</td><td style="font-size:14px;color:#0d2137;padding:10px 16px;border-top:1px solid #e8ecf1;">{{planType}}</td></tr>
+<tr style="background-color:#f8f9fb;"><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;border-top:1px solid #e8ecf1;">Servicio</td><td style="font-size:14px;color:#0d2137;padding:10px 16px;border-top:1px solid #e8ecf1;">{{serviceType}}</td></tr>
+<tr><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;border-top:1px solid #e8ecf1;">Fecha</td><td style="font-size:14px;color:#0d2137;padding:10px 16px;border-top:1px solid #e8ecf1;">{{date}}</td></tr>
+</table>
+<p style="margin:0 0 8px 0;font-size:14px;color:#444d56;">Puede consultar el estado de su SIM en cualquier momento desde su panel de cliente.</p>
+<p style="margin:0;font-size:13px;color:#6b7c8f;">Gracias por confiar en SkyConnect.</p>`);
+
+  tplBodies.deactivation_completed_client = buildEmailHtml('SIM Desactivada', `
+<h2 style="margin:0 0 8px 0;font-size:22px;color:#0d2137;">SIM Desactivada</h2>
+<p style="margin:0 0 24px 0;font-size:15px;color:#444d56;line-height:1.6;">Estimado/a <strong>{{clientName}}</strong>,</p>
+<p style="margin:0 0 20px 0;font-size:14px;color:#444d56;line-height:1.6;">Le confirmamos que su SIM ha sido <strong>desactivada</strong> seg&uacute;n su solicitud.</p>
+<table role="presentation" width="100%" cellpadding="8" cellspacing="0" style="border:1px solid #e8ecf1;border-radius:6px;margin-bottom:24px;">
+<tr style="background-color:#fce4ec;"><td style="font-size:13px;color:#c62828;padding:10px 16px;width:40%;font-weight:600;">Estado</td><td style="font-size:14px;color:#c62828;font-weight:700;padding:10px 16px;">INACTIVA</td></tr>
+<tr><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;border-top:1px solid #e8ecf1;">SIM Serial</td><td style="font-size:14px;color:#0d2137;font-weight:600;padding:10px 16px;border-top:1px solid #e8ecf1;">{{simSerial}}</td></tr>
+<tr style="background-color:#f8f9fb;"><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;border-top:1px solid #e8ecf1;">N&uacute;mero (MSISDN)</td><td style="font-size:14px;color:#0d2137;padding:10px 16px;border-top:1px solid #e8ecf1;">{{simNumber}}</td></tr>
+<tr><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;border-top:1px solid #e8ecf1;">Fecha</td><td style="font-size:14px;color:#0d2137;padding:10px 16px;border-top:1px solid #e8ecf1;">{{date}}</td></tr>
+</table>
+<p style="margin:0 0 8px 0;font-size:14px;color:#444d56;">Si desea reactivar esta l&iacute;nea en el futuro, puede hacerlo desde su panel de cliente.</p>
+<p style="margin:0;font-size:13px;color:#6b7c8f;">Gracias por su preferencia.</p>`);
+
+  tplBodies.recharge_completed_client = buildEmailHtml('Recarga Aplicada Exitosamente', `
+<h2 style="margin:0 0 8px 0;font-size:22px;color:#0d2137;">&#9889; Recarga Aplicada Exitosamente</h2>
+<p style="margin:0 0 24px 0;font-size:15px;color:#444d56;line-height:1.6;">Estimado/a <strong>{{clientName}}</strong>,</p>
+<p style="margin:0 0 20px 0;font-size:14px;color:#444d56;line-height:1.6;">Su recarga ha sido <strong style="color:#2e7d32;">aplicada exitosamente</strong>. Su l&iacute;nea satelital est&aacute; lista para usar.</p>
+<table role="presentation" width="100%" cellpadding="8" cellspacing="0" style="border:1px solid #e8ecf1;border-radius:6px;margin-bottom:24px;">
+<tr style="background-color:#e8f5e9;"><td style="font-size:13px;color:#2e7d32;padding:10px 16px;width:40%;font-weight:600;">Estado</td><td style="font-size:14px;color:#2e7d32;font-weight:700;padding:10px 16px;">&#10003; Recarga Completada</td></tr>
+<tr><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;border-top:1px solid #e8ecf1;">SIM Serial</td><td style="font-size:14px;color:#0d2137;font-weight:600;padding:10px 16px;border-top:1px solid #e8ecf1;">{{simSerial}}</td></tr>
+<tr style="background-color:#f8f9fb;"><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;border-top:1px solid #e8ecf1;">N&uacute;mero (MSISDN)</td><td style="font-size:14px;color:#0d2137;padding:10px 16px;border-top:1px solid #e8ecf1;">{{simNumber}}</td></tr>
+<tr><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;border-top:1px solid #e8ecf1;">Plan Aplicado</td><td style="font-size:14px;color:#0d2137;font-weight:600;padding:10px 16px;border-top:1px solid #e8ecf1;">{{planType}}</td></tr>
+<tr style="background-color:#f8f9fb;"><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;border-top:1px solid #e8ecf1;">Fecha</td><td style="font-size:14px;color:#0d2137;padding:10px 16px;border-top:1px solid #e8ecf1;">{{date}}</td></tr>
+</table>
+<p style="margin:0;font-size:13px;color:#6b7c8f;">Puede consultar su saldo actualizado desde su panel de cliente.</p>`);
+
+  tplBodies.request_rejected_client = buildEmailHtml('Solicitud Rechazada', `
+<h2 style="margin:0 0 8px 0;font-size:22px;color:#0d2137;">Solicitud No Procesada</h2>
+<p style="margin:0 0 24px 0;font-size:15px;color:#444d56;line-height:1.6;">Estimado/a <strong>{{clientName}}</strong>,</p>
+<p style="margin:0 0 20px 0;font-size:14px;color:#444d56;line-height:1.6;">Lamentamos informarle que su solicitud de <strong>{{requestType}}</strong> para la SIM <strong>{{simSerial}}</strong> no ha podido ser procesada en esta ocasi&oacute;n.</p>
+<table role="presentation" width="100%" cellpadding="8" cellspacing="0" style="border:1px solid #e8ecf1;border-radius:6px;margin-bottom:24px;">
+<tr style="background-color:#fff3e0;"><td style="font-size:13px;color:#e65100;padding:10px 16px;width:40%;font-weight:600;">Estado</td><td style="font-size:14px;color:#e65100;font-weight:700;padding:10px 16px;">Rechazada</td></tr>
+<tr><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;border-top:1px solid #e8ecf1;">Tipo de Solicitud</td><td style="font-size:14px;color:#0d2137;padding:10px 16px;border-top:1px solid #e8ecf1;">{{requestType}}</td></tr>
+<tr style="background-color:#f8f9fb;"><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;border-top:1px solid #e8ecf1;">SIM Serial</td><td style="font-size:14px;color:#0d2137;font-weight:600;padding:10px 16px;border-top:1px solid #e8ecf1;">{{simSerial}}</td></tr>
+<tr><td style="font-size:13px;color:#6b7c8f;padding:10px 16px;border-top:1px solid #e8ecf1;">Fecha</td><td style="font-size:14px;color:#0d2137;padding:10px 16px;border-top:1px solid #e8ecf1;">{{date}}</td></tr>
+</table>
+<p style="margin:0 0 12px 0;font-size:14px;color:#444d56;">Si considera que esto es un error o necesita m&aacute;s informaci&oacute;n, por favor cont&aacute;ctenos y con gusto le asistiremos.</p>
+<p style="margin:0;font-size:13px;color:#6b7c8f;">Lamentamos las molestias. Estamos a su disposici&oacute;n.</p>`);
+
+  tplBodies.subuser_approved = buildEmailHtml('Cuenta Aprobada', `
+<h2 style="margin:0 0 8px 0;font-size:22px;color:#0d2137;">&#127881; Su Cuenta Ha Sido Aprobada</h2>
+<p style="margin:0 0 24px 0;font-size:15px;color:#444d56;line-height:1.6;">Estimado/a <strong>{{subuserName}}</strong>,</p>
+<p style="margin:0 0 20px 0;font-size:14px;color:#444d56;line-height:1.6;">Nos complace informarle que su cuenta de sub-usuario en la plataforma <strong>SkyConnect</strong> ha sido <strong style="color:#2e7d32;">aprobada</strong>. Ya puede acceder al sistema.</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+<tr><td style="padding:20px;background-color:#e8f5e9;border-radius:8px;text-align:center;">
+<p style="margin:0 0 12px 0;font-size:14px;color:#2e7d32;font-weight:600;">Datos de Acceso</p>
+<p style="margin:0 0 6px 0;font-size:13px;color:#444d56;">Email: <strong>{{subuserEmail}}</strong></p>
+<p style="margin:0 0 16px 0;font-size:13px;color:#444d56;">Contrase&ntilde;a: La que usted proporcion&oacute; al registrarse</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;"><tr>
+<td style="background-color:#0d2137;border-radius:6px;padding:12px 32px;">
+<span style="color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;">Iniciar Sesi&oacute;n</span>
+</td>
+</tr></table>
+</td></tr>
+</table>
+<p style="margin:0 0 8px 0;font-size:14px;color:#444d56;">Empresa asociada: <strong>{{company}}</strong></p>
+<p style="margin:0;font-size:13px;color:#6b7c8f;">Bienvenido/a a SkyConnect. Si tiene alguna pregunta, no dude en contactarnos.</p>`);
+
+  tplBodies.subuser_rejected = buildEmailHtml('Solicitud de Cuenta Rechazada', `
+<h2 style="margin:0 0 8px 0;font-size:22px;color:#0d2137;">Solicitud de Cuenta No Aprobada</h2>
+<p style="margin:0 0 24px 0;font-size:15px;color:#444d56;line-height:1.6;">Estimado/a <strong>{{subuserName}}</strong>,</p>
+<p style="margin:0 0 20px 0;font-size:14px;color:#444d56;line-height:1.6;">Lamentamos informarle que su solicitud de cuenta de sub-usuario en la plataforma <strong>SkyConnect</strong> no ha sido aprobada en esta ocasi&oacute;n.</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+<tr><td style="padding:16px 20px;background-color:#fff3e0;border-left:4px solid #e65100;border-radius:4px;">
+<p style="margin:0 0 4px 0;font-size:13px;color:#e65100;font-weight:600;">Estado: Rechazada</p>
+<p style="margin:0;font-size:13px;color:#444d56;">Email registrado: {{subuserEmail}}</p>
+</td></tr>
+</table>
+<p style="margin:0 0 12px 0;font-size:14px;color:#444d56;">Si cree que esto es un error o desea obtener m&aacute;s informaci&oacute;n, por favor comun&iacute;quese con el administrador de su empresa o con nuestro equipo de soporte.</p>
+<p style="margin:0;font-size:13px;color:#6b7c8f;">Agradecemos su inter&eacute;s en SkyConnect.</p>`);
+
   return {
     users: [
       {
@@ -234,76 +464,159 @@ function createDefaultDB() {
       smtpUser: '',
       smtpPass: '',
       smtpFrom: ''
+    },
+    emailTemplates: {
+      activation_request_admin: {
+        name: 'Nueva Activación — Admin',
+        subject: 'Nueva solicitud de activación — SIM {{simSerial}}',
+        fromEmail: '',
+        htmlBody: tplBodies.activation_request_admin
+      },
+      deactivation_request_admin: {
+        name: 'Nueva Desactivación — Admin',
+        subject: 'Nueva solicitud de desactivación — SIM {{simSerial}}',
+        fromEmail: '',
+        htmlBody: tplBodies.deactivation_request_admin
+      },
+      recharge_request_admin: {
+        name: 'Nueva Recarga — Admin',
+        subject: 'Nueva solicitud de recarga — SIM {{simSerial}}',
+        fromEmail: '',
+        htmlBody: tplBodies.recharge_request_admin
+      },
+      subuser_pending_admin: {
+        name: 'Nuevo Sub-Usuario Pendiente — Admin',
+        subject: 'Nuevo sub-usuario pendiente de aprobación — {{subuserName}}',
+        fromEmail: '',
+        htmlBody: tplBodies.subuser_pending_admin
+      },
+      activation_inprocess_client: {
+        name: 'Activación en Proceso — Cliente',
+        subject: 'Su solicitud de activación está en proceso — SIM {{simSerial}}',
+        fromEmail: '',
+        htmlBody: tplBodies.activation_inprocess_client
+      },
+      deactivation_inprocess_client: {
+        name: 'Desactivación en Proceso — Cliente',
+        subject: 'Su solicitud de desactivación está en proceso — SIM {{simSerial}}',
+        fromEmail: '',
+        htmlBody: tplBodies.deactivation_inprocess_client
+      },
+      recharge_inprocess_client: {
+        name: 'Recarga en Proceso — Cliente',
+        subject: 'Su solicitud de recarga está en proceso — SIM {{simSerial}}',
+        fromEmail: '',
+        htmlBody: tplBodies.recharge_inprocess_client
+      },
+      activation_completed_client: {
+        name: 'Activación Completada — Cliente',
+        subject: 'SIM activada exitosamente — {{simSerial}}',
+        fromEmail: '',
+        htmlBody: tplBodies.activation_completed_client
+      },
+      deactivation_completed_client: {
+        name: 'Desactivación Completada — Cliente',
+        subject: 'SIM desactivada — {{simSerial}}',
+        fromEmail: '',
+        htmlBody: tplBodies.deactivation_completed_client
+      },
+      recharge_completed_client: {
+        name: 'Recarga Completada — Cliente',
+        subject: 'Recarga aplicada exitosamente — SIM {{simSerial}}',
+        fromEmail: '',
+        htmlBody: tplBodies.recharge_completed_client
+      },
+      request_rejected_client: {
+        name: 'Solicitud Rechazada — Cliente',
+        subject: 'Solicitud rechazada — SIM {{simSerial}}',
+        fromEmail: '',
+        htmlBody: tplBodies.request_rejected_client
+      },
+      subuser_approved: {
+        name: 'Sub-Usuario Aprobado',
+        subject: 'Su cuenta ha sido aprobada — SkyConnect',
+        fromEmail: '',
+        htmlBody: tplBodies.subuser_approved
+      },
+      subuser_rejected: {
+        name: 'Sub-Usuario Rechazado',
+        subject: 'Solicitud de cuenta rechazada — SkyConnect',
+        fromEmail: '',
+        htmlBody: tplBodies.subuser_rejected
+      }
     }
   };
 }
 
 // =====================================================
-// NOTIFICATION (console log + optional nodemailer)
+// TEMPLATE-BASED EMAIL NOTIFICATION
 // =====================================================
-function sendNotification(subject, details, toClient) {
+function sendTemplateEmail(templateId, variables, recipientEmail) {
   const db = loadDB();
-  const settings = db.notificationSettings || {
-    adminEmail: ADMIN_EMAIL,
-    clientNotifications: true,
-    adminNotifications: true,
-    notifyAdmin: true,
-    notifyClient: true
-  };
+  const settings = db.notificationSettings || {};
+  const templates = db.emailTemplates || {};
+  const template = templates[templateId];
 
-  // Determine recipient
-  const to = toClient || settings.adminEmail || ADMIN_EMAIL;
-
-  // Check if notifications are enabled
-  const clientEnabled = settings.notifyClient !== undefined ? settings.notifyClient : settings.clientNotifications;
-  const adminEnabled = settings.notifyAdmin !== undefined ? settings.notifyAdmin : settings.adminNotifications;
-
-  if (toClient && !clientEnabled) {
-    console.log(`\n📧 NOTIFICATION SKIPPED (client notifications disabled) → ${to}\n   Subject: ${subject}\n`);
-    return;
-  }
-  if (!toClient && !adminEnabled) {
-    console.log(`\n📧 NOTIFICATION SKIPPED (admin notifications disabled) → ${to}\n   Subject: ${subject}\n`);
+  if (!template) {
+    console.log(`⚠️ Email template "${templateId}" not found`);
     return;
   }
 
-  console.log(`\n📧 NOTIFICATION → ${to}\n   Subject: ${subject}\n   ${details}\n`);
+  // Replace variables in subject and body
+  let subject = template.subject;
+  let htmlBody = template.htmlBody;
 
-  // Determine SMTP config: prefer db settings, fall back to env vars
+  for (const [key, value] of Object.entries(variables)) {
+    const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
+    subject = subject.replace(regex, value || '');
+    htmlBody = htmlBody.replace(regex, value || '');
+  }
+
+  // Also replace {{date}} with current date formatted
+  const now = new Date().toLocaleString('es-ES', { timeZone: 'Europe/Madrid' });
+  subject = subject.replace(/\{\{date\}\}/g, now);
+  htmlBody = htmlBody.replace(/\{\{date\}\}/g, now);
+
+  const fromEmail = template.fromEmail || settings.smtpFrom || settings.smtpUser || '';
+
+  console.log(`\n📧 EMAIL [${templateId}] → ${recipientEmail}\n   From: ${fromEmail}\n   Subject: ${subject}\n`);
+
+  // Send via nodemailer if configured
   const smtpHost = settings.smtpHost || process.env.SMTP_HOST;
   const smtpPort = settings.smtpPort || parseInt(process.env.SMTP_PORT || '587', 10);
   const smtpUser = settings.smtpUser || process.env.SMTP_USER;
-  const smtpPass = settings.smtpPass || process.env.SMTP_PASS;
-  const smtpFrom = settings.smtpFrom || process.env.SMTP_FROM || (smtpUser ? `"SkyConnect" <${smtpUser}>` : '');
-  const smtpSecure = process.env.SMTP_SECURE === 'true';
+  const smtpPass = settings.smtpPassword || settings.smtpPass || process.env.SMTP_PASS;
+  const smtpSecure = (settings.smtpPort === 465) || process.env.SMTP_SECURE === 'true';
 
-  // Attempt to send real email via nodemailer if installed and configured
   try {
     const nodemailer = require('nodemailer');
-    if (smtpHost) {
+    if (smtpHost && smtpUser) {
       const transporter = nodemailer.createTransport({
         host: smtpHost,
-        port: parseInt(smtpPort, 10),
+        port: smtpPort,
         secure: smtpSecure,
-        auth: {
-          user: smtpUser,
-          pass: smtpPass
-        }
+        auth: { user: smtpUser, pass: smtpPass }
       });
       transporter.sendMail({
-        from: smtpFrom,
-        to,
+        from: fromEmail || `"SkyConnect" <${smtpUser}>`,
+        to: recipientEmail,
         subject,
-        text: details
+        html: htmlBody
       }).then(() => {
-        console.log(`   ✅ Email sent successfully to ${to}`);
+        console.log(`   ✅ Email sent successfully to ${recipientEmail}`);
       }).catch((err) => {
-        console.log(`   ⚠️  Email send failed: ${err.message}`);
+        console.log(`   ⚠️ Email send failed: ${err.message}`);
       });
     }
   } catch (e) {
-    // nodemailer not installed — that's fine, console.log above already logged it
+    // nodemailer not installed
   }
+}
+
+// Deprecated: kept for reference but no longer called
+function sendNotification(subject, details, toClient) {
+  console.log(`⚠️ sendNotification() is deprecated. Use sendTemplateEmail() instead.`);
+  console.log(`   Subject: ${subject} | To: ${toClient || 'admin'}`);
 }
 
 function logActivity(db, clientId, action, details) {
@@ -609,6 +922,113 @@ const server = http.createServer(async (req, res) => {
     return json(res, accounts);
   }
 
+  // POST /api/admin/accounts — admin creates and optionally assigns account
+  if (method === 'POST' && pathname === '/api/admin/accounts') {
+    if (!session || session.role !== 'admin') return json(res, { error: 'No autorizado' }, 403);
+    const body = await parseBody(req);
+    if (!body.name) return json(res, { error: 'Campo requerido: name' }, 400);
+    const db = loadDB();
+    if (!db.accounts) db.accounts = [];
+    const account = {
+      id: uuid(),
+      userId: body.userId || '',
+      name: body.name,
+      contact: body.contact || '',
+      email: body.email || '',
+      phone: body.phone || '',
+      status: 'approved',
+      createdAt: new Date().toISOString()
+    };
+    db.accounts.push(account);
+    saveDB(db);
+    return json(res, { ok: true, account });
+  }
+
+  // POST /api/admin/accounts/:id/assign
+  if (method === 'POST' && pathname.match(/^\/api\/admin\/accounts\/[^/]+\/assign$/)) {
+    if (!session || session.role !== 'admin') return json(res, { error: 'No autorizado' }, 403);
+    const accountId = pathname.split('/')[4];
+    const body = await parseBody(req);
+    const db = loadDB();
+    if (!db.accounts) db.accounts = [];
+    const account = db.accounts.find(a => a.id === accountId);
+    if (!account) return json(res, { error: 'Cuenta no encontrada' }, 404);
+    account.userId = body.userId || '';
+    account.clientId = body.userId || '';
+    saveDB(db);
+    return json(res, { ok: true, account });
+  }
+
+  // DELETE /api/admin/accounts/:id
+  if (method === 'DELETE' && pathname.match(/^\/api\/admin\/accounts\/[^/]+$/) && !pathname.includes('delete-requests')) {
+    if (!session || session.role !== 'admin') return json(res, { error: 'No autorizado' }, 403);
+    const accountId = pathname.split('/')[4];
+    const db = loadDB();
+    if (!db.accounts) db.accounts = [];
+    db.accounts = db.accounts.filter(a => a.id !== accountId);
+    saveDB(db);
+    return json(res, { ok: true });
+  }
+
+  // POST /api/accounts/:id/delete-request — client requests deletion (admin must approve)
+  if (method === 'POST' && pathname.match(/^\/api\/accounts\/[^/]+\/delete-request$/)) {
+    if (!session) return json(res, { error: 'No autorizado' }, 401);
+    const accountId = pathname.split('/')[3];
+    const db = loadDB();
+    if (!db.accounts) db.accounts = [];
+    if (!db.accountDeleteRequests) db.accountDeleteRequests = [];
+    const account = db.accounts.find(a => a.id === accountId);
+    if (!account) return json(res, { error: 'Cuenta no encontrada' }, 404);
+    const user = db.users.find(u => u.id === session.userId);
+    db.accountDeleteRequests.push({
+      id: uuid(),
+      accountId: accountId,
+      accountName: account.name,
+      userId: session.userId,
+      clientName: user ? user.name : '',
+      status: 'pending',
+      createdAt: new Date().toISOString()
+    });
+    saveDB(db);
+    return json(res, { ok: true });
+  }
+
+  // GET /api/admin/account-delete-requests
+  if (method === 'GET' && pathname === '/api/admin/account-delete-requests') {
+    if (!session || session.role !== 'admin') return json(res, { error: 'No autorizado' }, 403);
+    const db = loadDB();
+    return json(res, db.accountDeleteRequests || []);
+  }
+
+  // POST /api/admin/account-delete-requests/:id/approve
+  if (method === 'POST' && pathname.match(/^\/api\/admin\/account-delete-requests\/[^/]+\/approve$/)) {
+    if (!session || session.role !== 'admin') return json(res, { error: 'No autorizado' }, 403);
+    const reqId = pathname.split('/')[4];
+    const db = loadDB();
+    if (!db.accountDeleteRequests) db.accountDeleteRequests = [];
+    const req2 = db.accountDeleteRequests.find(r => r.id === reqId);
+    if (!req2) return json(res, { error: 'Solicitud no encontrada' }, 404);
+    req2.status = 'approved';
+    // Delete the actual account
+    if (!db.accounts) db.accounts = [];
+    db.accounts = db.accounts.filter(a => a.id !== req2.accountId);
+    saveDB(db);
+    return json(res, { ok: true });
+  }
+
+  // POST /api/admin/account-delete-requests/:id/reject
+  if (method === 'POST' && pathname.match(/^\/api\/admin\/account-delete-requests\/[^/]+\/reject$/)) {
+    if (!session || session.role !== 'admin') return json(res, { error: 'No autorizado' }, 403);
+    const reqId = pathname.split('/')[4];
+    const db = loadDB();
+    if (!db.accountDeleteRequests) db.accountDeleteRequests = [];
+    const req2 = db.accountDeleteRequests.find(r => r.id === reqId);
+    if (!req2) return json(res, { error: 'Solicitud no encontrada' }, 404);
+    req2.status = 'rejected';
+    saveDB(db);
+    return json(res, { ok: true });
+  }
+
   // GET /api/sims
   if (method === 'GET' && pathname === '/api/sims') {
     if (!session) return json(res, { error: 'No autorizado' }, 401);
@@ -661,7 +1081,10 @@ const server = http.createServer(async (req, res) => {
     pushSimOperation(sim, { id: request.id, type: 'activation', status: 'pending', createdAt: request.createdAt });
     logActivity(db, session.userId, 'Solicitud de Activación', `SIM ${sim.serial} - ${body.serviceType} - ${body.planType}`);
     saveDB(db);
-    sendNotification(`Nueva Activación - ${sim.serial}`, `Cliente: ${session.name} (${session.company}) | Servicio: ${body.serviceType} | Plan: ${body.planType} | Tipo: ${body.activationType}`);
+    const emailVars = { clientName: session.name, company: session.company, simSerial: sim.serial, simNumber: sim.msisdn, serviceType: body.serviceType || '', planType: body.planType || '', requestType: 'activation' };
+    const adminEmail = (db.notificationSettings || {}).adminEmail || ADMIN_EMAIL;
+    sendTemplateEmail('activation_request_admin', emailVars, adminEmail);
+    sendTemplateEmail('activation_inprocess_client', emailVars, session.email);
     return json(res, { ok: true, message: 'Solicitud de activación enviada' });
   }
 
@@ -685,7 +1108,10 @@ const server = http.createServer(async (req, res) => {
     pushSimOperation(sim, { id: request.id, type: 'deactivation', status: 'pending', createdAt: request.createdAt });
     logActivity(db, session.userId, 'Solicitud de Desactivación', `SIM ${sim.serial}`);
     saveDB(db);
-    sendNotification(`Desactivación - ${sim.serial}`, `Cliente: ${session.name} | SIM: ${sim.serial} (${sim.msisdn})`);
+    const deactVars = { clientName: session.name, company: session.company, simSerial: sim.serial, simNumber: sim.msisdn, requestType: 'deactivation' };
+    const deactAdminEmail = (db.notificationSettings || {}).adminEmail || ADMIN_EMAIL;
+    sendTemplateEmail('deactivation_request_admin', deactVars, deactAdminEmail);
+    sendTemplateEmail('deactivation_inprocess_client', deactVars, session.email);
     return json(res, { ok: true, message: 'Solicitud de desactivación enviada' });
   }
 
@@ -706,7 +1132,7 @@ const server = http.createServer(async (req, res) => {
     pushSimOperation(sim, { id: request.id, type: 'balance_update', status: 'pending', createdAt: request.createdAt });
     logActivity(db, session.userId, 'Actualización de Saldo', `SIM ${sim.serial}`);
     saveDB(db);
-    sendNotification(`Actualizar Saldo - ${sim.serial}`, `Cliente: ${session.name} | SIM: ${sim.serial} | Saldo actual: ${sim.balance} min`);
+    // No email notification for balance refresh requests
     return json(res, { ok: true, message: 'Se ha solicitado la actualización de saldo' });
   }
 
@@ -729,7 +1155,10 @@ const server = http.createServer(async (req, res) => {
     pushSimOperation(sim, { id: request.id, type: 'recharge', plan: body.plan, status: 'pending', createdAt: request.createdAt });
     logActivity(db, session.userId, 'Solicitud de Recarga', `SIM ${sim.serial} - ${body.plan}`);
     saveDB(db);
-    sendNotification(`Recarga - ${sim.serial}`, `Cliente: ${session.name} | Plan: ${body.plan}`);
+    const rechVars = { clientName: session.name, company: session.company, simSerial: sim.serial, simNumber: sim.msisdn, planType: body.plan || '', requestType: 'recharge' };
+    const rechAdminEmail = (db.notificationSettings || {}).adminEmail || ADMIN_EMAIL;
+    sendTemplateEmail('recharge_request_admin', rechVars, rechAdminEmail);
+    sendTemplateEmail('recharge_inprocess_client', rechVars, session.email);
     return json(res, { ok: true, message: 'Solicitud de recarga enviada' });
   }
 
@@ -784,7 +1213,8 @@ const server = http.createServer(async (req, res) => {
     db.subusers.push(subuser);
     logActivity(db, session.userId, 'Nuevo Sub-usuario Solicitado', `${body.name || ''} (${body.email})`);
     saveDB(db);
-    sendNotification(`Nuevo Sub-usuario - ${body.name || body.email}`, `Cliente: ${session.name} | Sub-usuario: ${body.name || ''} (${body.email})`);
+    const subAdminEmail = (db.notificationSettings || {}).adminEmail || ADMIN_EMAIL;
+    sendTemplateEmail('subuser_pending_admin', { clientName: session.name, company: session.company, subuserName: body.name || '', subuserEmail: body.email }, subAdminEmail);
     return json(res, { ok: true, subuser: { ...subuser, password: undefined } });
   }
 
@@ -806,7 +1236,7 @@ const server = http.createServer(async (req, res) => {
     db.requests.unshift(request);
     logActivity(db, session.userId, 'Solicitud de Eliminación de Sub-usuario', `${su.name} (${su.email})`);
     saveDB(db);
-    sendNotification(`Eliminar Sub-usuario - ${su.name}`, `Cliente: ${session.name} | Sub-usuario: ${su.name} (${su.email})`);
+    // No specific template for subuser deletion — admin sees it in the requests panel
     return json(res, { ok: true, message: 'Solicitud de eliminación enviada' });
   }
 
@@ -900,13 +1330,24 @@ const server = http.createServer(async (req, res) => {
       logActivity(db, request.clientId, 'SIM Activada', `SIM ${sim.serial} - ${sim.msisdn}`);
       const client = db.users.find(u => u.id === request.clientId);
       if (client) {
-        sendNotification(`SIM Activada - ${sim.serial}`, `Su SIM ${sim.serial} ha sido activada. Número: ${sim.msisdn}`, client.email);
+        sendTemplateEmail('activation_completed_client', {
+          clientName: client.name, company: client.company, simSerial: sim.serial,
+          simNumber: sim.msisdn, planType: sim.planType || request.planType || '',
+          serviceType: sim.serviceType || request.serviceType || '', requestType: 'activation'
+        }, client.email);
       }
     } else if (request.type === 'deactivation' && sim) {
       sim.status = 'inactive';
       sim.lastUpdated = new Date().toISOString();
       updateSimOperationStatus(sim, request.id, 'completed');
       logActivity(db, request.clientId, 'SIM Desactivada', `SIM ${sim.serial}`);
+      const client2 = db.users.find(u => u.id === request.clientId);
+      if (client2) {
+        sendTemplateEmail('deactivation_completed_client', {
+          clientName: client2.name, company: client2.company, simSerial: sim.serial,
+          simNumber: sim.msisdn, requestType: 'deactivation'
+        }, client2.email);
+      }
     } else if (request.type === 'balance_update' && sim) {
       sim.lastUpdated = new Date().toISOString();
       updateSimOperationStatus(sim, request.id, 'completed');
@@ -915,6 +1356,13 @@ const server = http.createServer(async (req, res) => {
       sim.lastUpdated = new Date().toISOString();
       updateSimOperationStatus(sim, request.id, 'completed');
       logActivity(db, request.clientId, 'Recarga Completada', `SIM ${sim.serial} - ${request.plan}`);
+      const client3 = db.users.find(u => u.id === request.clientId);
+      if (client3) {
+        sendTemplateEmail('recharge_completed_client', {
+          clientName: client3.name, company: client3.company, simSerial: sim.serial,
+          simNumber: sim.msisdn, planType: request.plan || '', requestType: 'recharge'
+        }, client3.email);
+      }
     }
     saveDB(db);
     return json(res, { ok: true, request });
@@ -945,6 +1393,15 @@ const server = http.createServer(async (req, res) => {
       updateSimOperationStatus(sim, request.id, 'failed');
     }
     logActivity(db, request.clientId, 'Solicitud Rechazada', `${request.type} - SIM ${request.simSerial}`);
+    // Send rejection email to client
+    const rejClient = db.users.find(u => u.id === request.clientId);
+    if (rejClient) {
+      sendTemplateEmail('request_rejected_client', {
+        clientName: rejClient.name, company: rejClient.company,
+        simSerial: request.simSerial || '', simNumber: (sim && sim.msisdn) || '',
+        requestType: request.type || ''
+      }, rejClient.email);
+    }
     saveDB(db);
     return json(res, { ok: true });
   }
@@ -1135,6 +1592,12 @@ const server = http.createServer(async (req, res) => {
 
     logActivity(db, su.parentClientId, 'Sub-usuario Aprobado', su.name);
     saveDB(db);
+    // Notify the sub-user that their account has been approved
+    const parentClient = db.users.find(u => u.id === su.parentClientId);
+    sendTemplateEmail('subuser_approved', {
+      subuserName: su.name, subuserEmail: su.email,
+      company: su.company || (parentClient && parentClient.company) || ''
+    }, su.email);
     return json(res, { ok: true, subuser: { ...su, password: undefined } });
   }
 
@@ -1148,6 +1611,11 @@ const server = http.createServer(async (req, res) => {
     su.status = 'rejected';
     logActivity(db, su.parentClientId, 'Sub-usuario Rechazado', su.name);
     saveDB(db);
+    // Notify the sub-user that their account has been rejected
+    sendTemplateEmail('subuser_rejected', {
+      subuserName: su.name, subuserEmail: su.email,
+      company: su.company || ''
+    }, su.email);
     return json(res, { ok: true });
   }
 
@@ -1239,6 +1707,66 @@ const server = http.createServer(async (req, res) => {
     logActivity(db, su.parentClientId, 'Sub-usuario Eliminado por Admin', su.name);
     saveDB(db);
     return json(res, { ok: true });
+  }
+
+  // =====================================================
+  // EMAIL TEMPLATE MANAGEMENT (admin)
+  // =====================================================
+
+  // GET /api/admin/email-templates — list all templates
+  if (method === 'GET' && pathname === '/api/admin/email-templates') {
+    if (!session || session.role !== 'admin') return json(res, { error: 'Acceso denegado' }, 403);
+    const db = loadDB();
+    // If no templates exist yet, initialize them from defaults
+    if (!db.emailTemplates) {
+      const defaults = createDefaultDB();
+      db.emailTemplates = defaults.emailTemplates;
+      saveDB(db);
+    }
+    return json(res, db.emailTemplates);
+  }
+
+  // PUT /api/admin/email-templates/:id — update a template
+  const tplMatch = pathname.match(/^\/api\/admin\/email-templates\/([^/]+)$/);
+  if (method === 'PUT' && tplMatch) {
+    if (!session || session.role !== 'admin') return json(res, { error: 'Acceso denegado' }, 403);
+    const tplId = tplMatch[1];
+    const db = loadDB();
+    if (!db.emailTemplates) {
+      const defaults = createDefaultDB();
+      db.emailTemplates = defaults.emailTemplates;
+    }
+    if (!db.emailTemplates[tplId]) return json(res, { error: 'Plantilla no encontrada' }, 404);
+    const body = await parseBody(req);
+    if (body.subject !== undefined) db.emailTemplates[tplId].subject = body.subject;
+    if (body.fromEmail !== undefined) db.emailTemplates[tplId].fromEmail = body.fromEmail;
+    if (body.htmlBody !== undefined) db.emailTemplates[tplId].htmlBody = body.htmlBody;
+    saveDB(db);
+    return json(res, { ok: true, template: db.emailTemplates[tplId] });
+  }
+
+  // POST /api/admin/email-templates/:id/test — send a test email
+  const tplTestMatch = pathname.match(/^\/api\/admin\/email-templates\/([^/]+)\/test$/);
+  if (method === 'POST' && tplTestMatch) {
+    if (!session || session.role !== 'admin') return json(res, { error: 'Acceso denegado' }, 403);
+    const tplId = tplTestMatch[1];
+    const db = loadDB();
+    if (!db.emailTemplates || !db.emailTemplates[tplId]) return json(res, { error: 'Plantilla no encontrada' }, 404);
+    const testAdminEmail = (db.notificationSettings || {}).adminEmail || ADMIN_EMAIL;
+    const sampleVars = {
+      clientName: 'Juan Pérez (TEST)',
+      company: 'Empresa Demo S.A.',
+      simSerial: '8988169300000TEST',
+      simNumber: '+8816 0000 0000',
+      requestType: 'activación',
+      planType: 'Voucher 100 minutes - Validity 30 days',
+      serviceType: 'Pre-Pago',
+      subuserName: 'María García (TEST)',
+      subuserEmail: 'test@ejemplo.com',
+      balance: '85'
+    };
+    sendTemplateEmail(tplId, sampleVars, testAdminEmail);
+    return json(res, { ok: true, message: `Email de prueba enviado a ${testAdminEmail}` });
   }
 
   // =====================================================
