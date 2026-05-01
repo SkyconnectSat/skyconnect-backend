@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SkyConnect Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@400;500;600;700;800&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 :root {
@@ -12,7 +15,8 @@
   --gray-500: #6b7a8d; --gray-700: #374151;
   --green: #10b981; --amber: #f59e0b; --red: #ef4444; --blue: #3b82f6;
 }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--gray-50); color: var(--gray-700); }
+body { font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--gray-50); color: var(--gray-700); }
+h1, h2, h3, .page-header h1, .card-header h2, .stat-card .value, .sidebar-logo h2 { font-family: 'League Spartan', sans-serif; }
 
 .app-layout { display: flex; min-height: 100vh; }
 .sidebar {
@@ -169,10 +173,82 @@ tr:hover td { background: var(--gray-50); }
 .perm-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--gray-50); border-radius: 8px; }
 .perm-item input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--coral); }
 .perm-item label { font-size: 13px; color: var(--gray-700); font-weight: 500; text-transform: none; letter-spacing: 0; cursor: pointer; }
+
+/* Email template editor */
+.template-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.template-card {
+  border: 1px solid var(--gray-200); border-radius: 10px; padding: 16px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.template-card-info h4 { font-size: 14px; color: var(--navy); margin-bottom: 4px; }
+.template-card-info p { font-size: 12px; color: var(--gray-500); margin: 0; }
+.template-editor { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+.template-textarea {
+  width: 100%; min-height: 400px; font-family: 'Courier New', monospace; font-size: 13px;
+  border: 1.5px solid var(--gray-200); border-radius: 8px; padding: 12px; outline: none;
+  resize: vertical; line-height: 1.5;
+}
+.template-textarea:focus { border-color: var(--coral); }
+.template-preview {
+  border: 1.5px solid var(--gray-200); border-radius: 8px; background: #fff;
+  min-height: 400px; overflow: auto; padding: 0;
+}
+.template-preview iframe { width: 100%; min-height: 400px; border: none; }
+.template-vars {
+  margin-top: 12px; padding: 12px; background: var(--gray-50); border-radius: 8px;
+  font-size: 12px; color: var(--gray-500);
+}
+.template-vars code {
+  display: inline-block; background: var(--gray-100); padding: 2px 6px;
+  border-radius: 4px; font-size: 11px; margin: 2px; color: var(--navy);
+}
+.modal-wide { max-width: 900px; }
+/* === MOBILE RESPONSIVE === */
+.mobile-menu-toggle {
+  display: none; position: fixed; top: 12px; left: 12px; z-index: 200;
+  background: var(--navy); color: #fff; border: none; border-radius: 8px;
+  padding: 8px 12px; font-size: 20px; cursor: pointer; line-height: 1;
+}
+.sidebar-overlay {
+  display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,.5); z-index: 90;
+}
+@media (max-width: 900px) {
+  .mobile-menu-toggle { display: block; }
+  .sidebar-overlay.active { display: block; }
+  .sidebar {
+    transform: translateX(-100%); transition: transform .3s ease; z-index: 150;
+  }
+  .sidebar.open { transform: translateX(0); }
+  .main-content { margin-left: 0 !important; padding: 16px !important; padding-top: 56px !important; }
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+  .form-row { grid-template-columns: 1fr; }
+  .form-row-3 { grid-template-columns: 1fr; }
+  .template-grid { grid-template-columns: 1fr; }
+  .template-editor { grid-template-columns: 1fr; }
+  .modal { max-width: 95vw; margin: 10px; padding: 20px; }
+  .modal-wide { max-width: 95vw; }
+  .perm-grid { grid-template-columns: 1fr; }
+  .filter-bar { flex-direction: column; }
+  .filter-bar input, .filter-bar select { min-width: unset; width: 100%; }
+  table { display: block; overflow-x: auto; }
+  th, td { padding: 8px 10px; white-space: nowrap; }
+  .page-header h1 { font-size: 20px; }
+  .request-card { padding: 12px; }
+  .request-meta { flex-direction: column; gap: 4px; }
+  .request-actions { flex-wrap: wrap; }
+  .phone-row { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) {
+  .stats-grid { grid-template-columns: 1fr; }
+  .stat-card .value { font-size: 22px; }
+}
 </style>
 </head>
 <body>
 <div class="app-layout">
+  <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">&#9776;</button>
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMobileMenu()"></div>
   <div class="sidebar">
     <div class="sidebar-logo">
       <h2>SKYCONNECT</h2>
@@ -227,6 +303,11 @@ tr:hover td { background: var(--gray-50); }
 
 <script>
 let page = 'requests';
+
+function toggleMobileMenu() {
+  document.querySelector('.sidebar').classList.toggle('open');
+  document.getElementById('sidebarOverlay').classList.toggle('active');
+}
 
 // All countries of the world (195+ countries, sorted alphabetically)
 const ALL_COUNTRIES = [
@@ -467,6 +548,9 @@ async function api(url, opts) {
 function navTo(p) {
   page = p;
   document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === p));
+  // Close mobile menu
+  document.querySelector('.sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('active');
   render();
 }
 
@@ -1066,33 +1150,179 @@ async function deleteSim(id) {
 
 // === ACCOUNTS (Cuentas) ===
 async function renderAccounts(el) {
-  const [accounts, users] = await Promise.all([
+  const [accounts, users, deleteReqs] = await Promise.all([
     api('/api/accounts'),
-    api('/api/admin/users')
+    api('/api/admin/users'),
+    api('/api/admin/account-delete-requests')
   ]);
   if (!accounts) return;
+  const clients = (users || []).filter(u => u.role === 'client');
+  const pendingDeletes = (deleteReqs || []).filter(r => r.status === 'pending');
 
   el.innerHTML = `
     <div class="page-header"><h1>Cuentas</h1><p>${accounts.length} cuentas de clientes</p></div>
+    ${pendingDeletes.length > 0 ? `
     <div class="card">
-      <div class="card-header"><h2>Todas las Cuentas</h2></div>
+      <div class="card-header"><h2>Solicitudes de Eliminación</h2></div>
+      ${pendingDeletes.map(r => `
+        <div class="request-card urgent">
+          <strong>Eliminar: ${r.accountName}</strong> — <span class="badge badge-pending">Pendiente</span>
+          <div class="request-meta">
+            <span>Solicitado por: ${r.clientName || '—'}</span>
+            <span>${formatMadridDate(r.createdAt)}</span>
+          </div>
+          <div class="request-actions">
+            <button class="btn btn-red btn-sm" onclick="approveDeleteAccount('${r.id}','${r.accountId}')">Aprobar eliminación</button>
+            <button class="btn btn-outline btn-sm" onclick="rejectDeleteAccount('${r.id}')">Rechazar</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>` : ''}
+    <div class="card">
+      <div class="card-header"><h2>Todas las Cuentas</h2><button class="btn btn-coral btn-sm" onclick="showCreateAccount()">+ Nueva Cuenta</button></div>
+      ${accounts.length === 0 ? '<p style="color:var(--gray-500);padding:16px 0">No hay cuentas registradas</p>' : `
       <table>
-        <thead><tr><th>Cuenta / Cliente</th><th>Contacto</th><th>Cliente</th><th>Fecha</th></tr></thead>
+        <thead><tr><th>Cuenta / Cliente</th><th>Contacto</th><th>Asignada a</th><th>Fecha</th><th>Acciones</th></tr></thead>
         <tbody>
           ${accounts.map(a => {
-            const usr = users?.find(u => u.id === (a.userId || a.clientId));
+            const usr = (users || []).find(u => u.id === (a.userId || a.clientId));
             return `
             <tr>
-              <td><strong>${a.name || a.company || '—'}</strong><br><span style="font-size:12px;color:var(--gray-500)">${a.email || ''}</span></td>
+              <td><strong>${a.name || a.company || '—'}</strong></td>
               <td>${a.contact || a.phone || '—'}</td>
-              <td>${usr ? usr.name + ' (' + (usr.company || '') + ')' : (a.userId || a.clientId || '—')}</td>
+              <td>${usr ? usr.name + ' (' + (usr.company || '') + ')' : '<em style="color:var(--gray-300)">Sin asignar</em>'}</td>
               <td>${formatMadridDate(a.createdAt)}</td>
+              <td>
+                <button class="btn btn-outline btn-sm" onclick="showAssignAccount('${a.id}')">Asignar</button>
+                <button class="btn btn-red btn-sm" onclick="deleteAccountAdmin('${a.id}','${(a.name||'').replace(/'/g,"\\'")}')">Eliminar</button>
+              </td>
             </tr>`;
           }).join('')}
         </tbody>
-      </table>
+      </table>`}
     </div>
   `;
+}
+
+function showCreateAccount() {
+  const mc = document.getElementById('modalContainer');
+  mc.innerHTML = `
+    <div class="modal-overlay" onclick="closeModal(event)">
+      <div class="modal" onclick="event.stopPropagation()">
+        <h2>Nueva Cuenta</h2>
+        <div class="form-group"><label>Nombre de Cuenta *</label><input id="newAccName" placeholder="Nombre de empresa o cliente"></div>
+        <div class="form-group"><label>Contacto</label><input id="newAccContact" placeholder="Persona de contacto"></div>
+        <div class="form-group"><label>Email</label><input id="newAccEmail" placeholder="email@empresa.com"></div>
+        <div class="form-group"><label>Teléfono</label><input id="newAccPhone" placeholder="+1 234 567 890"></div>
+        <div class="form-group"><label>Asignar a Cliente</label>
+          <select id="newAccClient">
+            <option value="">— Sin asignar —</option>
+          </select>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+          <button class="btn btn-coral" onclick="doCreateAccountAdmin()">Crear</button>
+        </div>
+      </div>
+    </div>
+  `;
+  // Load clients
+  api('/api/admin/users').then(users => {
+    const sel = document.getElementById('newAccClient');
+    (users || []).filter(u => u.role === 'client').forEach(u => {
+      sel.innerHTML += '<option value="' + u.id + '">' + u.name + ' (' + (u.company || '') + ')</option>';
+    });
+  });
+}
+
+async function doCreateAccountAdmin() {
+  const name = document.getElementById('newAccName').value.trim();
+  if (!name) return toast('Nombre es requerido', 'error');
+  const data = {
+    name,
+    contact: document.getElementById('newAccContact').value.trim(),
+    email: document.getElementById('newAccEmail').value.trim(),
+    phone: document.getElementById('newAccPhone').value.trim(),
+    userId: document.getElementById('newAccClient').value || undefined
+  };
+  const r = await api('/api/admin/accounts', { method: 'POST', body: JSON.stringify(data) });
+  if (r && r.ok) {
+    toast('Cuenta creada exitosamente', 'success');
+    closeModal();
+    render();
+  } else {
+    toast(r?.error || 'Error al crear cuenta', 'error');
+  }
+}
+
+async function showAssignAccount(accountId) {
+  const mc = document.getElementById('modalContainer');
+  mc.innerHTML = `
+    <div class="modal-overlay" onclick="closeModal(event)">
+      <div class="modal" onclick="event.stopPropagation()">
+        <h2>Asignar Cuenta a Cliente</h2>
+        <div class="form-group"><label>Cliente</label>
+          <select id="assignClient">
+            <option value="">— Sin asignar —</option>
+          </select>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+          <button class="btn btn-coral" onclick="doAssignAccount('${accountId}')">Asignar</button>
+        </div>
+      </div>
+    </div>
+  `;
+  const users = await api('/api/admin/users');
+  const sel = document.getElementById('assignClient');
+  (users || []).filter(u => u.role === 'client').forEach(u => {
+    sel.innerHTML += '<option value="' + u.id + '">' + u.name + ' (' + (u.company || '') + ')</option>';
+  });
+}
+
+async function doAssignAccount(accountId) {
+  const userId = document.getElementById('assignClient').value;
+  const r = await api('/api/admin/accounts/' + accountId + '/assign', {
+    method: 'POST', body: JSON.stringify({ userId })
+  });
+  if (r && r.ok) {
+    toast('Cuenta asignada exitosamente', 'success');
+    closeModal();
+    render();
+  } else {
+    toast(r?.error || 'Error al asignar', 'error');
+  }
+}
+
+async function deleteAccountAdmin(accountId, name) {
+  if (!confirm('¿Eliminar la cuenta "' + name + '"? Se eliminará también del cliente asignado.')) return;
+  const r = await api('/api/admin/accounts/' + accountId, { method: 'DELETE' });
+  if (r && r.ok) {
+    toast('Cuenta eliminada', 'success');
+    render();
+  } else {
+    toast(r?.error || 'Error al eliminar', 'error');
+  }
+}
+
+async function approveDeleteAccount(reqId, accountId) {
+  const r = await api('/api/admin/account-delete-requests/' + reqId + '/approve', { method: 'POST' });
+  if (r && r.ok) {
+    toast('Cuenta eliminada', 'success');
+    render();
+  } else {
+    toast(r?.error || 'Error', 'error');
+  }
+}
+
+async function rejectDeleteAccount(reqId) {
+  const r = await api('/api/admin/account-delete-requests/' + reqId + '/reject', { method: 'POST' });
+  if (r && r.ok) {
+    toast('Solicitud rechazada', 'info');
+    render();
+  } else {
+    toast(r?.error || 'Error', 'error');
+  }
 }
 
 // === USERS ===
@@ -1627,6 +1857,29 @@ async function renderActivity(el) {
 }
 
 // === NOTIFICATIONS ===
+let emailTemplates = {};
+
+async function loadEmailTemplates() {
+  emailTemplates = await api('/api/admin/email-templates') || {};
+  return emailTemplates;
+}
+
+const TEMPLATE_NAMES = {
+  'sim-request-received': 'Solicitud SIM Recibida',
+  'sim-request-approved': 'Solicitud SIM Aprobada',
+  'sim-request-rejected': 'Solicitud SIM Rechazada',
+  'sim-activated': 'SIM Activada',
+  'sim-suspended': 'SIM Suspendida',
+  'sim-cancelled': 'SIM Cancelada',
+  'plan-changed': 'Cambio de Plan',
+  'balance-low': 'Saldo Bajo',
+  'balance-recharged': 'Recarga de Saldo',
+  'subuser-created': 'Sub-usuario Creado',
+  'subuser-removed': 'Sub-usuario Eliminado',
+  'welcome': 'Bienvenida',
+  'password-reset': 'Restablecer Contrasena'
+};
+
 async function renderNotifications(el) {
   let settings = {};
   try {
@@ -1635,53 +1888,56 @@ async function renderNotifications(el) {
     settings = {};
   }
 
+  await loadEmailTemplates();
+
+  const templateIds = Object.keys(TEMPLATE_NAMES);
+  const templateCardsHtml = templateIds.map(id => {
+    const tpl = emailTemplates[id] || {};
+    const name = TEMPLATE_NAMES[id];
+    const subject = tpl.subject || '(sin asunto)';
+    const fromEmail = tpl.fromEmail || settings.smtpFrom || '(default SMTP)';
+    return `
+      <div class="template-card">
+        <div class="template-card-info">
+          <h4>${name}</h4>
+          <p>${subject}</p>
+          <p style="margin-top:2px;font-size:11px;color:var(--gray-300)">${fromEmail}</p>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="showEditTemplate('${id}')">Editar</button>
+      </div>
+    `;
+  }).join('');
+
   el.innerHTML = `
-    <div class="page-header"><h1>Notificaciones</h1><p>Configuracion de notificaciones por email</p></div>
-    <div class="card">
-      <div class="card-header"><h2>Configuracion General</h2></div>
-      <div class="form-group">
-        <label>Email de notificaciones admin</label>
-        <input id="notifAdminEmail" value="${settings.adminEmail || ''}" placeholder="admin@empresa.com">
-      </div>
-      <div class="toggle-row">
-        <label>Notificaciones al admin</label>
-        <label class="toggle-switch">
-          <input type="checkbox" id="notifAdmin" ${settings.notifyAdmin ? 'checked' : ''}>
-          <span class="toggle-slider"></span>
-        </label>
-      </div>
-      <div class="toggle-row">
-        <label>Notificaciones al cliente</label>
-        <label class="toggle-switch">
-          <input type="checkbox" id="notifClient" ${settings.notifyClient ? 'checked' : ''}>
-          <span class="toggle-slider"></span>
-        </label>
-      </div>
-    </div>
+    <div class="page-header"><h1>Notificaciones</h1><p>Configuracion SMTP y plantillas de email</p></div>
     <div class="card">
       <div class="card-header"><h2>Configuracion SMTP</h2></div>
-      <p style="color:var(--gray-500);font-size:13px;margin-bottom:16px">Configure SMTP para enviar emails reales. Sin configuracion, las notificaciones se registran en el log del servidor.</p>
+      <p style="color:var(--gray-500);font-size:13px;margin-bottom:16px">Configure SMTP para enviar emails. Por defecto configurado para IONOS.</p>
       <div class="form-row">
-        <div class="form-group"><label>SMTP Host</label><input id="smtpHost" value="${settings.smtpHost || ''}" placeholder="smtp.gmail.com"></div>
+        <div class="form-group"><label>SMTP Host</label><input id="smtpHost" value="${settings.smtpHost || ''}" placeholder="smtp.ionos.es"></div>
         <div class="form-group"><label>SMTP Port</label><input id="smtpPort" type="number" value="${settings.smtpPort || ''}" placeholder="587"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>SMTP User</label><input id="smtpUser" value="${settings.smtpUser || ''}" placeholder="user@gmail.com"></div>
+        <div class="form-group"><label>SMTP User</label><input id="smtpUser" value="${settings.smtpUser || ''}" placeholder="user@sudominio.com"></div>
         <div class="form-group"><label>SMTP Password</label><input id="smtpPass" type="password" value="${settings.smtpPassword || ''}" placeholder="********"></div>
       </div>
-      <div class="form-group"><label>SMTP From</label><input id="smtpFrom" value="${settings.smtpFrom || ''}" placeholder="SkyConnect <noreply@skyconnect.com>"></div>
+      <div class="form-group"><label>SMTP From (remitente por defecto)</label><input id="smtpFrom" value="${settings.smtpFrom || ''}" placeholder="SkyConnect <noreply@sudominio.com>"></div>
+      <div style="margin-top:16px">
+        <button class="btn btn-coral" onclick="saveSmtpSettings()">Guardar SMTP</button>
+      </div>
     </div>
-    <div style="margin-top:16px">
-      <button class="btn btn-coral" onclick="saveNotifications()">Guardar</button>
+    <div class="card">
+      <div class="card-header"><h2>Plantillas de Email</h2></div>
+      <p style="color:var(--gray-500);font-size:13px;margin-bottom:16px">Edite el asunto, remitente y contenido HTML de cada plantilla de email.</p>
+      <div class="template-grid">
+        ${templateCardsHtml}
+      </div>
     </div>
   `;
 }
 
-async function saveNotifications() {
+async function saveSmtpSettings() {
   const data = {
-    adminEmail: document.getElementById('notifAdminEmail').value,
-    notifyAdmin: document.getElementById('notifAdmin').checked,
-    notifyClient: document.getElementById('notifClient').checked,
     smtpHost: document.getElementById('smtpHost').value,
     smtpPort: parseInt(document.getElementById('smtpPort').value) || null,
     smtpUser: document.getElementById('smtpUser').value,
@@ -1693,7 +1949,111 @@ async function saveNotifications() {
     body: JSON.stringify(data)
   });
   if (res?.error) return toast(res.error, 'error');
-  toast('Configuracion guardada', 'success');
+  toast('Configuracion SMTP guardada', 'success');
+}
+
+let _previewDebounce = null;
+
+function showEditTemplate(templateId) {
+  const tpl = emailTemplates[templateId] || {};
+  const name = TEMPLATE_NAMES[templateId] || templateId;
+  const subject = tpl.subject || '';
+  const fromEmail = tpl.fromEmail || '';
+  const htmlBody = tpl.htmlBody || '';
+
+  const escapedHtml = htmlBody.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+  document.getElementById('modalContainer').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal modal-wide">
+        <h2>Editar plantilla: ${name}</h2>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Asunto</label>
+            <input id="tplSubject" value="${subject.replace(/"/g,'&quot;')}" placeholder="Asunto del email">
+          </div>
+          <div class="form-group">
+            <label>From Email (dejar vacio para usar default SMTP)</label>
+            <input id="tplFromEmail" value="${fromEmail.replace(/"/g,'&quot;')}" placeholder="noreply@sudominio.com">
+          </div>
+        </div>
+        <div class="template-editor">
+          <div>
+            <label style="display:block;font-size:12px;font-weight:600;color:var(--gray-500);margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px">HTML Body</label>
+            <textarea class="template-textarea" id="tplHtmlBody" oninput="debouncedPreviewUpdate()">${escapedHtml}</textarea>
+          </div>
+          <div>
+            <label style="display:block;font-size:12px;font-weight:600;color:var(--gray-500);margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px">Vista Previa</label>
+            <div class="template-preview">
+              <iframe id="tplPreviewFrame" sandbox="allow-same-origin"></iframe>
+            </div>
+          </div>
+        </div>
+        <div class="template-vars">
+          <strong style="color:var(--navy)">Variables disponibles:</strong><br>
+          <code>{{clientName}}</code> Nombre del cliente
+          <code>{{company}}</code> Empresa
+          <code>{{simSerial}}</code> Serial de la SIM
+          <code>{{simNumber}}</code> Numero de la SIM
+          <code>{{requestType}}</code> Tipo de solicitud
+          <code>{{planType}}</code> Tipo de plan
+          <code>{{serviceType}}</code> Tipo de servicio
+          <code>{{date}}</code> Fecha
+          <code>{{subuserName}}</code> Nombre sub-usuario
+          <code>{{subuserEmail}}</code> Email sub-usuario
+          <code>{{balance}}</code> Saldo
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-outline" onclick="sendTestEmail('${templateId}')">Enviar prueba</button>
+          <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+          <button class="btn btn-coral" onclick="saveTemplate('${templateId}')">Guardar</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Initial preview
+  updateTemplatePreview();
+}
+
+function debouncedPreviewUpdate() {
+  clearTimeout(_previewDebounce);
+  _previewDebounce = setTimeout(updateTemplatePreview, 300);
+}
+
+function updateTemplatePreview() {
+  const iframe = document.getElementById('tplPreviewFrame');
+  const html = document.getElementById('tplHtmlBody')?.value || '';
+  if (!iframe) return;
+  const doc = iframe.contentDocument || iframe.contentWindow.document;
+  doc.open();
+  doc.write(html);
+  doc.close();
+}
+
+async function saveTemplate(templateId) {
+  const data = {
+    subject: document.getElementById('tplSubject').value,
+    fromEmail: document.getElementById('tplFromEmail').value,
+    htmlBody: document.getElementById('tplHtmlBody').value
+  };
+  const res = await api('/api/admin/email-templates/' + templateId, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  });
+  if (res?.error) return toast(res.error, 'error');
+  toast('Plantilla guardada', 'success');
+  emailTemplates[templateId] = { ...emailTemplates[templateId], ...data };
+  closeModal();
+  renderNotifications(document.getElementById('main'));
+}
+
+async function sendTestEmail(templateId) {
+  const res = await api('/api/admin/email-templates/' + templateId + '/test', {
+    method: 'POST'
+  });
+  if (res?.error) return toast(res.error, 'error');
+  toast('Email de prueba enviado', 'success');
 }
 
 // === BRANDING ===
