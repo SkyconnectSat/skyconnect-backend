@@ -26,10 +26,22 @@ const crypto = require('crypto');
 const { URL } = require('url');
 
 const PORT = process.env.PORT || 3000;
-const DATA_FILE = path.join(__dirname, 'data', 'db.json');
-const LOGO_FILE = path.join(__dirname, 'data', 'logo.png');
-const LOGO_LIGHT_FILE = path.join(__dirname, 'data', 'logo-light.png');
+
+// =====================================================
+// PERSISTENT STORAGE
+// =====================================================
+// Railway Volume: set RAILWAY_VOLUME_MOUNT_PATH=/data in Railway
+// This ensures db.json and logos survive deploys
+const PERSIST_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(__dirname, 'data');
+const DATA_FILE = path.join(PERSIST_DIR, 'db.json');
+const LOGO_FILE = path.join(PERSIST_DIR, 'logo.png');
+const LOGO_LIGHT_FILE = path.join(PERSIST_DIR, 'logo-light.png');
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'vanessacarreno91@gmail.com';
+
+// Ensure persistent directory exists
+if (!fs.existsSync(PERSIST_DIR)) {
+  fs.mkdirSync(PERSIST_DIR, { recursive: true });
+}
 
 // =====================================================
 // SIMPLE SESSION STORE (in-memory)
