@@ -545,6 +545,7 @@ const server = http.createServer(async (req, res) => {
     for (const f of allowed) {
       if (body[f] !== undefined) user[f] = body[f];
     }
+    if (body.notificationEmail !== undefined) user.notifEmail = body.notificationEmail;
     // Update session email if changed
     if (body.email) {
       s.email = body.email;
@@ -1148,6 +1149,42 @@ const server = http.createServer(async (req, res) => {
     logActivity(db, su.parentClientId, 'Sub-usuario Rechazado', su.name);
     saveDB(db);
     return json(res, { ok: true });
+  }
+
+  // POST /api/admin/subusers — admin creates sub-user directly
+  if (method === 'POST' && pathname === '/api/admin/subusers') {
+    if (!session || session.role !== 'admin') return json(res, { error: 'Acceso denegado' }, 403);
+    const body = await parseBody(req);
+    if (!body.email) return json(res, { error: 'Campo requerido: email' }, 400);
+    const db = loadDB();
+    if (db.users.find(u => u.email === body.email) || db.subusers.find(s => s.email === body.email)) {
+      return json(res, { error: 'Email ya existe' }, 400);
+    }
+    const subuser = {
+      id: uuid(),
+      parentClientId: body.parentClientId || '',
+      name: body.name || '',
+      email: body.email,
+      phone: body.phone || '',
+      countryCode: body.countryCode || '',
+      empresa: body.empresa || '',
+      company: body.company || '',
+      password: body.password ? hashPassword(body.password) : '',
+      canViewSims: body.canViewSims !== undefined ? body.canViewSims : true,
+      canActivate: body.canActivate || false,
+      canDeactivate: body.canDeactivate || false,
+      canRecharge: body.canRecharge || false,
+      canViewBilling: body.canViewBilling || false,
+      canViewReports: body.canViewReports || false,
+      canManageAccounts: body.canManageAccounts || false,
+      status: body.status || 'approved',
+      createdAt: new Date().toISOString(),
+      approvedAt: new Date().toISOString()
+    };
+    db.subusers.push(subuser);
+    logActivity(db, 'admin', 'Sub-usuario Creado por Admin', `${body.name || ''} (${body.email})`);
+    saveDB(db);
+    return json(res, { ok: true, subuser: { ...subuser, password: undefined } });
   }
 
   // PATCH /api/admin/subusers/:id — edit sub-user (name, email, company, password, permissions)
