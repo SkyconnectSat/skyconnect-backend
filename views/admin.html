@@ -156,6 +156,19 @@ tr:hover td { background: var(--gray-50); }
 .add-plan-row { display: flex; gap: 8px; margin-top: 8px; }
 .add-plan-row input { flex: 1; padding: 7px 10px; border: 1.5px solid var(--gray-200); border-radius: 6px; font-size: 13px; outline: none; }
 .add-plan-row input:focus { border-color: var(--coral); }
+
+/* Search / filter bar */
+.filter-bar { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+.filter-bar input, .filter-bar select { padding: 8px 12px; border: 1.5px solid var(--gray-200); border-radius: 8px; font-size: 13px; outline: none; background: #fff; }
+.filter-bar input:focus, .filter-bar select:focus { border-color: var(--coral); }
+.filter-bar input { min-width: 260px; }
+.filter-bar select { min-width: 180px; }
+
+/* Permissions checkboxes */
+.perm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+.perm-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--gray-50); border-radius: 8px; }
+.perm-item input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--coral); }
+.perm-item label { font-size: 13px; color: var(--gray-700); font-weight: 500; text-transform: none; letter-spacing: 0; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -214,6 +227,30 @@ tr:hover td { background: var(--gray-50); }
 
 <script>
 let page = 'requests';
+
+// All countries of the world (195+ countries, sorted alphabetically)
+const ALL_COUNTRIES = [
+  "Afghanistan","Albania","Algeria","Andorra","Angola","Antigua and Barbuda","Argentina","Armenia","Australia","Austria",
+  "Azerbaijan","Bahamas","Bahrain","Bangladesh","Barbados","Belarus","Belgium","Belize","Benin","Bhutan",
+  "Bolivia","Bosnia and Herzegovina","Botswana","Brazil","Brunei","Bulgaria","Burkina Faso","Burundi","Cabo Verde","Cambodia",
+  "Cameroon","Canada","Central African Republic","Chad","Chile","China","Colombia","Comoros","Congo","Congo (Democratic Republic)",
+  "Costa Rica","Croatia","Cuba","Cyprus","Czech Republic","Denmark","Djibouti","Dominica","Dominican Republic","East Timor",
+  "Ecuador","Egypt","El Salvador","Equatorial Guinea","Eritrea","Estonia","Eswatini","Ethiopia","Fiji","Finland",
+  "France","Gabon","Gambia","Georgia","Germany","Ghana","Greece","Grenada","Guatemala","Guinea",
+  "Guinea-Bissau","Guyana","Haiti","Honduras","Hungary","Iceland","India","Indonesia","Iran","Iraq",
+  "Ireland","Israel","Italy","Ivory Coast","Jamaica","Japan","Jordan","Kazakhstan","Kenya","Kiribati",
+  "Kosovo","Kuwait","Kyrgyzstan","Laos","Latvia","Lebanon","Lesotho","Liberia","Libya","Liechtenstein",
+  "Lithuania","Luxembourg","Madagascar","Malawi","Malaysia","Maldives","Mali","Malta","Marshall Islands","Mauritania",
+  "Mauritius","Mexico","Micronesia","Moldova","Monaco","Mongolia","Montenegro","Morocco","Mozambique","Myanmar",
+  "Namibia","Nauru","Nepal","Netherlands","New Zealand","Nicaragua","Niger","Nigeria","North Korea","North Macedonia",
+  "Norway","Oman","Pakistan","Palau","Palestine","Panama","Papua New Guinea","Paraguay","Peru","Philippines",
+  "Poland","Portugal","Qatar","Romania","Russia","Rwanda","Saint Kitts and Nevis","Saint Lucia","Saint Vincent and the Grenadines","Samoa",
+  "San Marino","Sao Tome and Principe","Saudi Arabia","Senegal","Serbia","Seychelles","Sierra Leone","Singapore","Slovakia","Slovenia",
+  "Solomon Islands","Somalia","South Africa","South Korea","South Sudan","Spain","Sri Lanka","Sudan","Suriname","Sweden",
+  "Switzerland","Syria","Taiwan","Tajikistan","Tanzania","Thailand","Togo","Tonga","Trinidad and Tobago","Tunisia",
+  "Turkey","Turkmenistan","Tuvalu","Uganda","Ukraine","United Arab Emirates","United Kingdom","United States","Uruguay","Uzbekistan",
+  "Vanuatu","Vatican City","Venezuela","Vietnam","Yemen","Zambia","Zimbabwe"
+];
 
 // Comprehensive country codes list
 const COUNTRY_CODES = [
@@ -334,6 +371,14 @@ const COUNTRY_CODES = [
   { code: '+1809', country: 'Rep. Dominicana', flag: '\u{1F1E9}\u{1F1F4}' },
   { code: '+1787', country: 'Puerto Rico', flag: '\u{1F1F5}\u{1F1F7}' },
 ];
+
+// Cached plans data for use across modules
+let cachedPlansData = null;
+
+async function fetchPlansData() {
+  cachedPlansData = await api('/api/admin/plans');
+  return cachedPlansData;
+}
 
 function renderCountryCodeDropdown(inputId, selectedCode) {
   const sel = selectedCode || '+1';
@@ -495,7 +540,8 @@ async function renderRequests(el) {
           </div>
           <div class="request-actions">
             ${r.type === 'activation' ? `<button class="btn btn-coral btn-sm" onclick="editSimThenComplete('${r.id}','${r.simId}')">Cargar datos y completar</button>` : ''}
-            ${r.type !== 'activation' ? `<button class="btn btn-green btn-sm" onclick="completeReq('${r.id}')">Completar</button>` : ''}
+            ${r.type === 'balance_update' ? `<button class="btn btn-green btn-sm" onclick="editSimThenCompleteBalanceUpdate('${r.id}','${r.simId}')">Completar</button>` : ''}
+            ${r.type !== 'activation' && r.type !== 'balance_update' ? `<button class="btn btn-green btn-sm" onclick="completeReq('${r.id}')">Completar</button>` : ''}
             <button class="btn btn-red btn-sm" onclick="rejectReq('${r.id}')">Rechazar</button>
           </div>
         </div>
@@ -529,10 +575,16 @@ async function rejectReq(reqId) {
   render();
 }
 
+// Balance update: open SIM edit modal, then complete the request after saving
+async function editSimThenCompleteBalanceUpdate(reqId, simId) {
+  await editSim(simId, reqId);
+}
+
 // Edit SIM then complete activation request
 async function editSimThenComplete(reqId, simId) {
   const sim = await api(`/api/sims/${simId}`);
   if (!sim) return;
+  const plansData = await fetchPlansData();
   const mc = document.getElementById('modalContainer');
   mc.innerHTML = `
     <div class="modal-overlay">
@@ -563,7 +615,12 @@ async function editSimThenComplete(reqId, simId) {
           <div class="form-group"><label>Fecha Activacion</label><input type="date" id="eActDate" value="${sim.activationDate}"></div>
           <div class="form-group"><label>Fecha Vencimiento</label><input type="date" id="eExpDate" value="${sim.expiryDate}"></div>
         </div>
-        <div class="form-group"><label>Ultima Ubicacion</label><input id="eLoc" value="${sim.lastLocation}" placeholder="Lat: ..., Lon: ..."></div>
+        <div class="form-group"><label>Ultima Ubicacion</label>
+          <select id="eLoc">
+            <option value="">— Seleccionar —</option>
+            ${ALL_COUNTRIES.map(c => `<option value="${c}" ${sim.lastLocation === c ? 'selected' : ''}>${c}</option>`).join('')}
+          </select>
+        </div>
         <div class="modal-actions">
           <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
           <button class="btn btn-coral" onclick="saveSimAndComplete('${simId}','${reqId}')">Guardar y Activar</button>
@@ -596,10 +653,19 @@ async function saveSimAndComplete(simId, reqId) {
 }
 
 // === SIMS ===
+let allSimsCache = [];
+let allUsersCache = [];
+
 async function renderSims(el) {
-  const sims = await api('/api/sims');
-  const users = await api('/api/admin/users');
+  const [sims, users] = await Promise.all([
+    api('/api/sims'),
+    api('/api/admin/users')
+  ]);
   if (!sims) return;
+  allSimsCache = sims;
+  allUsersCache = users || [];
+
+  const clientUsers = allUsersCache.filter(u => u.role === 'client');
 
   el.innerHTML = `
     <div class="page-header"><h1>SIM Cards</h1><p>${sims.length} SIMs en el sistema</p></div>
@@ -611,28 +677,62 @@ async function renderSims(el) {
           <button class="btn btn-coral btn-sm" onclick="showAddSim()">+ Nueva SIM</button>
         </div>
       </div>
+      <div class="filter-bar">
+        <input id="simSearchInput" type="text" placeholder="Buscar por serial, numero o nombre..." oninput="filterSimsTable()">
+        <select id="simClientFilter" onchange="filterSimsTable()">
+          <option value="">Todos los clientes</option>
+          ${clientUsers.map(u => `<option value="${u.id}">${u.name} (${u.company || ''})</option>`).join('')}
+        </select>
+      </div>
       <table>
         <thead><tr><th>Serial</th><th>Numero</th><th>Cliente</th><th>Plan</th><th>Saldo</th><th>Estado</th><th>Ultima Actualizacion</th><th>Acciones</th></tr></thead>
-        <tbody>
-          ${sims.map(s => {
-            const usr = users?.find(u => u.id === s.clientId);
-            return `
-            <tr>
-              <td style="font-family:monospace;font-size:12px">${s.serial}</td>
-              <td>${s.msisdn || '—'}</td>
-              <td>${usr ? usr.name : (s.clientId ? s.clientId : '<span style="color:var(--gray-300)">Sin asignar</span>')}</td>
-              <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.planType || '—'}</td>
-              <td>${s.balance} min</td>
-              <td><span class="badge badge-${s.status}">${s.status}</span></td>
-              <td style="font-size:12px">${formatMadrid(s.lastUpdated)}</td>
-              <td><button class="btn btn-outline btn-sm" onclick="editSim('${s.id}')">Editar</button>
-              <button class="btn btn-red btn-sm" onclick="deleteSim('${s.id}')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></td>
-            </tr>`;
-          }).join('')}
+        <tbody id="simsTableBody">
         </tbody>
       </table>
     </div>
   `;
+  filterSimsTable();
+}
+
+function filterSimsTable() {
+  const searchVal = (document.getElementById('simSearchInput')?.value || '').toLowerCase();
+  const clientVal = document.getElementById('simClientFilter')?.value || '';
+
+  let filtered = allSimsCache;
+
+  if (clientVal) {
+    filtered = filtered.filter(s => s.clientId === clientVal);
+  }
+
+  if (searchVal) {
+    filtered = filtered.filter(s => {
+      const usr = allUsersCache.find(u => u.id === s.clientId);
+      const clientName = usr ? usr.name.toLowerCase() : '';
+      return (s.serial || '').toLowerCase().includes(searchVal) ||
+             (s.msisdn || '').toLowerCase().includes(searchVal) ||
+             (s.name || '').toLowerCase().includes(searchVal) ||
+             clientName.includes(searchVal);
+    });
+  }
+
+  const tbody = document.getElementById('simsTableBody');
+  if (!tbody) return;
+
+  tbody.innerHTML = filtered.map(s => {
+    const usr = allUsersCache.find(u => u.id === s.clientId);
+    return `
+    <tr>
+      <td style="font-family:monospace;font-size:12px">${s.serial}</td>
+      <td>${s.msisdn || '—'}</td>
+      <td>${usr ? usr.name : (s.clientId ? s.clientId : '<span style="color:var(--gray-300)">Sin asignar</span>')}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.planType || '—'}</td>
+      <td>${s.balance} min</td>
+      <td><span class="badge badge-${s.status}">${s.status}</span></td>
+      <td style="font-size:12px">${formatMadrid(s.lastUpdated)}</td>
+      <td><button class="btn btn-outline btn-sm" onclick="editSim('${s.id}')">Editar</button>
+      <button class="btn btn-red btn-sm" onclick="deleteSim('${s.id}')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></td>
+    </tr>`;
+  }).join('');
 }
 
 function showBulkUpload() {
@@ -663,7 +763,7 @@ function previewBulk(e) {
   const reader = new FileReader();
   reader.onload = function(ev) {
     const text = ev.target.result;
-    const lines = text.trim().split('\\n').filter(l => l.trim());
+    const lines = text.trim().split('\n').filter(l => l.trim());
     document.getElementById('bulkPreview').innerHTML = `
       <p style="font-size:13px;color:var(--gray-500)">${lines.length} SIMs detectadas en el archivo</p>
     `;
@@ -677,7 +777,7 @@ async function processBulkUpload() {
   const reader = new FileReader();
   reader.onload = async function(ev) {
     const text = ev.target.result;
-    const lines = text.trim().split('\\n').filter(l => l.trim());
+    const lines = text.trim().split('\n').filter(l => l.trim());
     const sims = lines.map(line => {
       const parts = line.split(',').map(p => p.trim());
       return { serial: parts[0], cardType: parts[1] || '' };
@@ -697,10 +797,35 @@ async function processBulkUpload() {
   reader.readAsText(file);
 }
 
-async function editSim(simId) {
-  const sim = await api(`/api/sims/${simId}`);
-  const users = await api('/api/admin/users');
+// editSim: optionally accepts pendingReqId for balance_update flow
+async function editSim(simId, pendingReqId) {
+  const [sim, users, plansData] = await Promise.all([
+    api(`/api/sims/${simId}`),
+    api('/api/admin/users'),
+    fetchPlansData()
+  ]);
   if (!sim) return;
+
+  // Build plan options grouped by service
+  const plans = plansData?.plans || plansData || {};
+  const services = plansData?.services || Object.keys(plans);
+  let planOptions = '<option value="">— Seleccionar —</option>';
+  services.forEach(svc => {
+    const svcPlans = plans[svc] || [];
+    if (svcPlans.length > 0) {
+      planOptions += `<optgroup label="${svc}">`;
+      svcPlans.forEach(p => {
+        planOptions += `<option value="${p}" ${sim.planType === p ? 'selected' : ''}>${p}</option>`;
+      });
+      planOptions += '</optgroup>';
+    }
+  });
+
+  const saveAction = pendingReqId
+    ? `saveSimAndCompleteBalanceUpdate('${simId}','${pendingReqId}')`
+    : `saveSim('${simId}')`;
+  const saveLabel = pendingReqId ? 'Guardar y Completar Solicitud' : 'Guardar Cambios';
+
   const mc = document.getElementById('modalContainer');
   mc.innerHTML = `
     <div class="modal-overlay">
@@ -745,12 +870,21 @@ async function editSim(simId) {
           </div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label>Network</label><input id="eNetwork" value="${sim.network || ''}"></div>
-          <div class="form-group"><label>Plan</label><input id="ePlan" value="${sim.planType || ''}"></div>
+          <div class="form-group"><label>Network</label>
+            <select id="eNetwork">
+              <option value="">— Seleccionar —</option>
+              <option value="IRIDIUM" ${sim.network==='IRIDIUM'?'selected':''}>IRIDIUM</option>
+              <option value="VIASAT" ${sim.network==='VIASAT'?'selected':''}>VIASAT</option>
+              <option value="STARLINK" ${sim.network==='STARLINK'?'selected':''}>STARLINK</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Plan</label>
+            <select id="ePlan">${planOptions}</select>
+          </div>
         </div>
         <div class="form-row">
           <div class="form-group"><label>Telephony</label><input id="eTelephony" value="${sim.telephony || ''}"></div>
-          <div class="form-group"><label>Data</label><input id="eData" value="${sim.data || ''}"></div>
+          <div class="form-group"><label>Data</label><input id="eData" value="${sim.simData || sim.data || ''}"></div>
         </div>
         <div class="form-row-3">
           <div class="form-group"><label>Saldo (min)</label><input type="number" id="eBal" value="${sim.balance}"></div>
@@ -762,53 +896,74 @@ async function editSim(simId) {
           <div class="form-group"><label>Fecha Vencimiento</label><input type="date" id="eExpDate" value="${sim.expiryDate}"></div>
           <div class="form-group"><label>Ultima Conexion</label><input type="datetime-local" id="eLastConn" value="${sim.lastConnection ? sim.lastConnection.slice(0,16) : ''}"></div>
         </div>
-        <div class="form-group"><label>Ultima Ubicacion</label><input id="eLoc" value="${sim.lastLocation}"></div>
+        <div class="form-group"><label>Ultima Ubicacion</label>
+          <select id="eLoc">
+            <option value="">— Seleccionar —</option>
+            ${ALL_COUNTRIES.map(c => `<option value="${c}" ${sim.lastLocation === c ? 'selected' : ''}>${c}</option>`).join('')}
+          </select>
+        </div>
         <div class="form-row">
           <div class="form-group"><label>Nombre</label><input id="eName" value="${sim.name}"></div>
           <div class="form-group"><label>Referencia</label><input id="eRef" value="${sim.reference}"></div>
         </div>
         <div class="modal-actions">
           <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
-          <button class="btn btn-coral" onclick="saveSim('${simId}')">Guardar Cambios</button>
+          <button class="btn btn-coral" onclick="${saveAction}">${saveLabel}</button>
         </div>
       </div>
     </div>
   `;
 }
 
+function collectSimFormData() {
+  return {
+    clientId: document.getElementById('eClient').value,
+    status: document.getElementById('eStatus').value,
+    serial: document.getElementById('eSerial').value,
+    iccid: document.getElementById('eIccid').value,
+    imei: document.getElementById('eImei').value,
+    msisdn: document.getElementById('eMsisdn').value,
+    puk: document.getElementById('ePuk').value,
+    pin: document.getElementById('ePin').value,
+    pin2: document.getElementById('ePin2').value,
+    puk2: document.getElementById('ePuk2').value,
+    network: document.getElementById('eNetwork').value,
+    telephony: document.getElementById('eTelephony').value,
+    simData: document.getElementById('eData').value,
+    data: document.getElementById('eData').value,
+    serviceType: document.getElementById('eService').value,
+    cardType: document.getElementById('eCard').value,
+    planType: document.getElementById('ePlan').value,
+    balance: parseFloat(document.getElementById('eBal').value) || 0,
+    minutesActive: parseFloat(document.getElementById('eMinAct').value) || 0,
+    monthlyCharge: parseFloat(document.getElementById('eMonthly').value) || 0,
+    activationDate: document.getElementById('eActDate').value,
+    expiryDate: document.getElementById('eExpDate').value,
+    lastConnection: document.getElementById('eLastConn').value,
+    lastLocation: document.getElementById('eLoc').value,
+    name: document.getElementById('eName').value,
+    reference: document.getElementById('eRef').value
+  };
+}
+
 async function saveSim(simId) {
   await api(`/api/admin/sims/${simId}`, {
     method: 'PATCH',
-    body: JSON.stringify({
-      clientId: document.getElementById('eClient').value,
-      status: document.getElementById('eStatus').value,
-      serial: document.getElementById('eSerial').value,
-      iccid: document.getElementById('eIccid').value,
-      imei: document.getElementById('eImei').value,
-      msisdn: document.getElementById('eMsisdn').value,
-      puk: document.getElementById('ePuk').value,
-      pin: document.getElementById('ePin').value,
-      pin2: document.getElementById('ePin2').value,
-      puk2: document.getElementById('ePuk2').value,
-      network: document.getElementById('eNetwork').value,
-      telephony: document.getElementById('eTelephony').value,
-      data: document.getElementById('eData').value,
-      serviceType: document.getElementById('eService').value,
-      cardType: document.getElementById('eCard').value,
-      planType: document.getElementById('ePlan').value,
-      balance: parseFloat(document.getElementById('eBal').value) || 0,
-      minutesActive: parseFloat(document.getElementById('eMinAct').value) || 0,
-      monthlyCharge: parseFloat(document.getElementById('eMonthly').value) || 0,
-      activationDate: document.getElementById('eActDate').value,
-      expiryDate: document.getElementById('eExpDate').value,
-      lastConnection: document.getElementById('eLastConn').value,
-      lastLocation: document.getElementById('eLoc').value,
-      name: document.getElementById('eName').value,
-      reference: document.getElementById('eRef').value
-    })
+    body: JSON.stringify(collectSimFormData())
   });
   closeModal();
   toast('SIM actualizada', 'success');
+  render();
+}
+
+async function saveSimAndCompleteBalanceUpdate(simId, reqId) {
+  await api(`/api/admin/sims/${simId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(collectSimFormData())
+  });
+  await api(`/api/admin/requests/${reqId}/complete`, { method: 'POST' });
+  closeModal();
+  toast('Saldo actualizado y solicitud completada', 'success');
   render();
 }
 
@@ -1053,15 +1208,16 @@ async function renderSubUsers(el) {
     <div class="page-header"><h1>Sub-Usuarios</h1><p>${pending.length} pendientes de aprobacion</p></div>
     <div class="card">
       <table>
-        <thead><tr><th>Nombre</th><th>Email</th><th>Telefono</th><th>Estado</th><th>Fecha</th><th>Acciones</th></tr></thead>
+        <thead><tr><th>Nombre</th><th>Email</th><th>Empresa</th><th>Telefono</th><th>Estado</th><th>Fecha</th><th>Acciones</th></tr></thead>
         <tbody>
           ${subs.map(s => `
             <tr>
-              <td>${s.name}</td><td>${s.email}</td><td>${s.phone||'—'}</td>
+              <td>${s.name}</td><td>${s.email}</td><td>${s.company || '—'}</td><td>${s.phone||'—'}</td>
               <td><span class="badge badge-${s.status}">${s.status}</span></td>
               <td>${formatMadridDate(s.createdAt)}</td>
               <td>
                 ${s.status === 'pending' ? `<button class="btn btn-green btn-sm" onclick="approveSub('${s.id}')">Aprobar</button> <button class="btn btn-red btn-sm" onclick="rejectSub('${s.id}')">Rechazar</button>` : ''}
+                <button class="btn btn-outline btn-sm" onclick="showEditSubUser('${s.id}')">Editar</button>
                 <button class="btn btn-red btn-sm" onclick="deleteSub('${s.id}')" title="Eliminar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
               </td>
             </tr>
@@ -1070,6 +1226,88 @@ async function renderSubUsers(el) {
       </table>
     </div>
   `;
+}
+
+async function showEditSubUser(subId) {
+  const subs = await api('/api/subusers');
+  const s = (subs || []).find(x => x.id === subId);
+  if (!s) return toast('Sub-usuario no encontrado', 'error');
+
+  const mc = document.getElementById('modalContainer');
+  mc.innerHTML = `
+    <div class="modal-overlay">
+      <div class="modal">
+        <h2>Editar Sub-Usuario — ${s.name}</h2>
+        <div class="form-row">
+          <div class="form-group"><label>Nombre</label><input id="esuName" value="${s.name || ''}"></div>
+          <div class="form-group"><label>Empresa</label><input id="esuCompany" value="${s.company || ''}"></div>
+        </div>
+        <div class="form-group"><label>Email</label><input id="esuEmail" type="email" value="${s.email || ''}"></div>
+        <div class="form-group">
+          <label>Contrasena (dejar vacio para mantener actual)</label>
+          <input id="esuPass" type="text" placeholder="Nueva contrasena...">
+        </div>
+
+        <div style="margin-top:16px;margin-bottom:8px"><strong style="font-size:14px;color:var(--navy)">Permisos</strong></div>
+        <div class="perm-grid">
+          <div class="perm-item">
+            <input type="checkbox" id="perm_canViewSims" ${s.canViewSims ? 'checked' : ''}>
+            <label for="perm_canViewSims">Ver Dispositivos</label>
+          </div>
+          <div class="perm-item">
+            <input type="checkbox" id="perm_canActivate" ${s.canActivate ? 'checked' : ''}>
+            <label for="perm_canActivate">Activar/Desactivar</label>
+          </div>
+          <div class="perm-item">
+            <input type="checkbox" id="perm_canRecharge" ${s.canRecharge ? 'checked' : ''}>
+            <label for="perm_canRecharge">Recargar</label>
+          </div>
+          <div class="perm-item">
+            <input type="checkbox" id="perm_canViewBilling" ${s.canViewBilling ? 'checked' : ''}>
+            <label for="perm_canViewBilling">Ver Facturacion</label>
+          </div>
+          <div class="perm-item">
+            <input type="checkbox" id="perm_canViewReports" ${s.canViewReports ? 'checked' : ''}>
+            <label for="perm_canViewReports">Ver Reportes</label>
+          </div>
+          <div class="perm-item">
+            <input type="checkbox" id="perm_canManageAccounts" ${s.canManageAccounts ? 'checked' : ''}>
+            <label for="perm_canManageAccounts">Gestionar Cuentas</label>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+          <button class="btn btn-coral" onclick="saveSubUser('${subId}')">Guardar Cambios</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function saveSubUser(subId) {
+  const data = {
+    name: document.getElementById('esuName').value,
+    email: document.getElementById('esuEmail').value,
+    company: document.getElementById('esuCompany').value,
+    canViewSims: document.getElementById('perm_canViewSims').checked,
+    canActivate: document.getElementById('perm_canActivate').checked,
+    canRecharge: document.getElementById('perm_canRecharge').checked,
+    canViewBilling: document.getElementById('perm_canViewBilling').checked,
+    canViewReports: document.getElementById('perm_canViewReports').checked,
+    canManageAccounts: document.getElementById('perm_canManageAccounts').checked
+  };
+  const pass = document.getElementById('esuPass').value;
+  if (pass) data.password = pass;
+
+  const res = await api(`/api/admin/subusers/${subId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data)
+  });
+  if (res?.error) return toast(res.error, 'error');
+  closeModal();
+  toast('Sub-usuario actualizado', 'success');
+  render();
 }
 
 async function approveSub(id) {
@@ -1093,13 +1331,25 @@ async function deleteSub(id) {
 
 // === AIRTIME ===
 let airtimeData = null;
+let airtimeServices = [];
 
 async function renderAirtime(el) {
-  airtimeData = await api('/api/admin/plans');
-  if (!airtimeData) airtimeData = {};
+  const response = await api('/api/admin/plans');
+  if (!response) { airtimeData = {}; airtimeServices = []; }
+  else {
+    // Handle response format: { services: [...], plans: { ... } }
+    if (response.services && response.plans) {
+      airtimeServices = response.services;
+      airtimeData = response.plans;
+    } else {
+      // Fallback: response is the plans object itself
+      airtimeData = response;
+      airtimeServices = Object.keys(airtimeData);
+    }
+  }
 
   el.innerHTML = `
-    <div class="page-header"><h1>Airtime — Planes</h1><p>Gestion de planes disponibles por tipo de servicio</p></div>
+    <div class="page-header"><h1>Airtime — Planes</h1><p>Gestion de planes disponibles por tipo de servicio. Estos planes aparecen en los dropdowns de activacion y recarga del cliente.</p></div>
     <div id="airtimeContent"></div>
     <div style="margin-top:16px;display:flex;gap:10px">
       <button class="btn btn-outline" onclick="addServiceType()">+ Nuevo Tipo de Servicio</button>
@@ -1112,7 +1362,8 @@ async function renderAirtime(el) {
 function renderAirtimeContent() {
   const container = document.getElementById('airtimeContent');
   if (!container) return;
-  const types = Object.keys(airtimeData);
+  // Use airtimeServices for ordering, fall back to keys
+  const types = airtimeServices.length > 0 ? airtimeServices : Object.keys(airtimeData);
   container.innerHTML = types.map(type => `
     <div class="plan-category">
       <div class="plan-category-header">
@@ -1145,6 +1396,7 @@ function addServiceType() {
   if (!name || !name.trim()) return;
   if (airtimeData[name.trim()]) return toast('Ya existe ese tipo de servicio', 'error');
   airtimeData[name.trim()] = [];
+  if (!airtimeServices.includes(name.trim())) airtimeServices.push(name.trim());
   renderAirtimeContent();
 }
 
@@ -1154,6 +1406,9 @@ function renameServiceType(oldName) {
   if (airtimeData[newName.trim()]) return toast('Ya existe ese tipo de servicio', 'error');
   airtimeData[newName.trim()] = airtimeData[oldName];
   delete airtimeData[oldName];
+  const idx = airtimeServices.indexOf(oldName);
+  if (idx !== -1) airtimeServices[idx] = newName.trim();
+  else airtimeServices.push(newName.trim());
   renderAirtimeContent();
 }
 
@@ -1163,6 +1418,7 @@ function addPlanInline(type) {
   if (!input) return;
   const plan = input.value.trim();
   if (!plan) return;
+  if (!airtimeData[type]) airtimeData[type] = [];
   airtimeData[type].push(plan);
   renderAirtimeContent();
 }
@@ -1180,12 +1436,16 @@ function removePlan(type, idx) {
 }
 
 async function saveAirtime() {
+  // Send the full plans object via PUT
+  const payload = airtimeData;
   const res = await api('/api/admin/plans', {
     method: 'PUT',
-    body: JSON.stringify(airtimeData)
+    body: JSON.stringify(payload)
   });
   if (res?.error) return toast(res.error, 'error');
-  toast('Planes guardados', 'success');
+  // Refresh cached plans data
+  cachedPlansData = null;
+  toast('Planes guardados. Los cambios se reflejan en los dropdowns del cliente.', 'success');
 }
 
 // === ACTIVITY ===
@@ -1194,34 +1454,44 @@ async function renderActivity(el) {
     api('/api/activity'),
     api('/api/admin/requests')
   ]);
-  if (!logs) return;
 
   const typeLabel = { activation: 'Activacion', deactivation: 'Desactivacion', recharge: 'Recarga', balance_update: 'Actualizar Saldo', account_creation: 'Creacion de Cuenta', subuser_approval: 'Aprobacion Sub-Usuario' };
 
-  // Merge requests into activity if not already present
+  // Build comprehensive activity from requests
   const reqActivities = (reqs || []).map(r => ({
     action: 'Solicitud: ' + (typeLabel[r.type] || r.type),
     details: `Cliente: ${r.clientName || ''} | SIM: ${r.simSerial || ''} | Estado: ${r.status}`,
+    user: r.clientName || '',
     timestamp: r.createdAt,
+    status: r.status,
     _isReq: true
   }));
 
-  // Combine and sort by date descending
-  const allActivity = [...logs];
-  // Add request entries that may not be in the activity log
+  // Combine and deduplicate
+  const allActivity = [...(logs || [])];
   reqActivities.forEach(ra => {
-    const exists = allActivity.some(a => a.details && a.details.includes(ra.details));
+    const exists = allActivity.some(a => a.details && a.details === ra.details && a.timestamp === ra.timestamp);
     if (!exists) allActivity.push(ra);
   });
   allActivity.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
   el.innerHTML = `
-    <div class="page-header"><h1>Actividad</h1><p>${allActivity.length} registros</p></div>
+    <div class="page-header"><h1>Actividad</h1><p>Registro completo de actividad del sistema — ${allActivity.length} registros</p></div>
     <div class="card">
+      <div class="card-header"><h2>Log de Actividad</h2></div>
       <table>
-        <thead><tr><th>Accion</th><th>Detalles</th><th>Fecha</th></tr></thead>
+        <thead><tr><th>Accion</th><th>Detalles</th><th>Usuario</th><th>Estado</th><th>Fecha</th></tr></thead>
         <tbody>
-          ${allActivity.slice(0, 100).map(l => `<tr><td><strong>${l.action}</strong></td><td>${l.details}</td><td>${formatMadrid(l.timestamp)}</td></tr>`).join('')}
+          ${allActivity.length === 0 ? '<tr><td colspan="5" style="color:var(--gray-500);text-align:center;padding:24px">No hay registros de actividad</td></tr>' : ''}
+          ${allActivity.slice(0, 200).map(l => `
+            <tr>
+              <td><strong>${l.action || '—'}</strong></td>
+              <td>${l.details || '—'}</td>
+              <td>${l.user || l.userName || '—'}</td>
+              <td>${l.status ? `<span class="badge badge-${l.status}">${l.status}</span>` : '—'}</td>
+              <td style="white-space:nowrap">${formatMadrid(l.timestamp)}</td>
+            </tr>
+          `).join('')}
         </tbody>
       </table>
     </div>
