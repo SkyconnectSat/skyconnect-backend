@@ -618,7 +618,17 @@ let planData = null;
   } catch (e) {}
 })();
 
-fetch('/api/plans').then(r => r.json()).then(d => planData = d);
+fetch('/api/plans').then(r => r.json()).then(d => {
+  // Normalize plans data to always have { services, plans } structure
+  if (d && d.services && d.plans) {
+    planData = d;
+  } else if (d && typeof d === 'object') {
+    // Legacy format: d is the plans object directly (e.g. {"Pre-Pago": [...], "Post-Pago": [...]})
+    planData = { services: Object.keys(d), plans: d };
+  } else {
+    planData = null;
+  }
+}).catch(() => { planData = null; });
 
 // === Password Toggle ===
 function togglePasswordVisibility() {
@@ -903,8 +913,16 @@ async function saveSimName(simId) {
 // === SIM Detail / Profile ===
 async function renderSimDetail(el, simId) {
   const sim = await fetch(`/api/sims/${simId}`).then(r => r.json());
-  const accounts = await fetch('/api/subusers').then(r => r.json()).catch(() => []);
-  const approvedAccounts = accounts.filter(s => s.status === 'approved');
+  const accounts = await fetch('/api/accounts').then(r => r.json()).catch(() => []);
+  // Re-fetch plans to ensure they're up to date
+  try {
+    const freshPlans = await fetch('/api/plans').then(r => r.json());
+    if (freshPlans && freshPlans.services && freshPlans.plans) {
+      planData = freshPlans;
+    } else if (freshPlans && typeof freshPlans === 'object') {
+      planData = { services: Object.keys(freshPlans), plans: freshPlans };
+    }
+  } catch(e) {}
 
   if (sim.status === 'processing') {
     el.innerHTML = `
@@ -981,7 +999,7 @@ async function renderSimDetail(el, simId) {
       </div>
     `;
     // populate service options
-    if (planData) {
+    if (planData && planData.services) {
       const sel = document.getElementById('inlineActService');
       planData.services.forEach(s => { sel.innerHTML += `<option value="${s}">${s}</option>`; });
     }
@@ -989,6 +1007,13 @@ async function renderSimDetail(el, simId) {
   }
 
   // === ACTIVE SIM — full profile ===
+  // Build recharge plan options
+  let rechargePlanOptions = '<option value="">— Seleccionar plan —</option>';
+  if (planData) {
+    const plans = planData.plans[sim.serviceType] || planData.plans['Pre-Pago'] || [];
+    plans.forEach(p => { rechargePlanOptions += `<option value="${p}">${p}</option>`; });
+  }
+
   el.innerHTML = `
     <div class="back-link" onclick="navigate('sims')">&#8592; Volver a Dispositivos</div>
     <div class="card">
@@ -1014,21 +1039,22 @@ async function renderSimDetail(el, simId) {
             <div class="info-row"><span class="info-label">Fecha de Activaci&oacute;n</span><span class="info-value">${formatDate(sim.activationDate)}</span></div>
             <div class="info-row"><span class="info-label">Fecha de Vencimiento</span><span class="info-value">${formatDate(sim.expiryDate)}</span></div>
           </div>
+        </div>
 
-          <div class="sim-info-section">
-            <h3>Informaci&oacute;n Adicional</h3>
-            <div class="sim-assign-grid">
-              <div class="form-group">
-                <label>Cuenta/Cliente</label>
-                <select class="inline-edit" id="assignSub">
-                  <option value="">— Sin asignar —</option>
-                  ${approvedAccounts.map(s => `<option value="${s.name}" ${sim.subClient === s.name ? 'selected' : ''}>${s.name}</option>`).join('')}
-                </select>
-              </div>
+        <!-- Información Adicional — below the 2-column grid -->
+        <div style="padding-top:16px;border-top:1px solid var(--gray-100);margin-top:16px">
+          <h3 style="font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--coral);margin-bottom:14px;font-weight:700">Informaci&oacute;n Adicional</h3>
+          <div style="max-width:400px">
+            <div class="form-group">
+              <label>Cuenta/Cliente</label>
+              <select class="inline-edit" id="assignSub">
+                <option value="">— Sin asignar —</option>
+                ${accounts.map(a => `<option value="${a.name}" ${sim.subClient === a.name ? 'selected' : ''}>${a.name}</option>`).join('')}
+              </select>
             </div>
-            <div style="margin-top:12px;display:none" id="saveAdditionalDiv">
-              <button class="btn btn-navy btn-sm" onclick="saveAssignment('${sim.id}')">Guardar</button>
-            </div>
+          </div>
+          <div style="margin-top:12px;display:none" id="saveAdditionalDiv">
+            <button class="btn btn-navy btn-sm" onclick="saveAssignment('${sim.id}')">Guardar</button>
           </div>
         </div>
       </div>
@@ -1043,7 +1069,7 @@ async function renderSimDetail(el, simId) {
           <div class="form-group">
             <label>Plan de Recarga</label>
             <select id="inlineRechargePlan">
-              <option value="">— Seleccionar plan —</option>
+              ${rechargePlanOptions}
             </select>
           </div>
           <button class="btn btn-coral btn-disabled" id="rechargeBtn" disabled onclick="doInlineRecharge('${sim.id}')">Recargar</button>
@@ -1060,13 +1086,6 @@ async function renderSimDetail(el, simId) {
       ${renderOperationsTable(sim.operations)}
     </div>
   `;
-
-  // Populate recharge plans
-  if (planData) {
-    const plans = planData.plans[sim.serviceType] || planData.plans['Pre-Pago'] || [];
-    const sel = document.getElementById('inlineRechargePlan');
-    plans.forEach(p => { sel.innerHTML += `<option value="${p}">${p}</option>`; });
-  }
 
   // Show save button only when Información Adicional is changed
   const assignSel = document.getElementById('assignSub');
@@ -1137,9 +1156,14 @@ async function doInlineRecharge(simId) {
 // === Cuenta/Cliente ===
 async function renderAccounts(el) {
   let accounts = [];
+  let deleteRequests = [];
   try {
     accounts = await fetch('/api/accounts').then(r => r.json());
   } catch (e) { accounts = []; }
+  try {
+    deleteRequests = await fetch('/api/account-delete-requests').then(r => r.json());
+  } catch (e) { deleteRequests = []; }
+  const pendingDeleteIds = (deleteRequests || []).filter(r => r.status === 'pending').map(r => r.accountId);
 
   el.innerHTML = `
     <div class="page-header">
@@ -1153,16 +1177,19 @@ async function renderAccounts(el) {
       </div>
       ${accounts.length === 0 ? '<p style="color:var(--gray-500);padding:20px 0">No hay cuentas registradas. Cree una nueva cuenta para organizar sus dispositivos.</p>' : `
       <table>
-        <thead><tr><th>Cuenta/Cliente</th><th>Contacto</th><th>Fecha</th><th></th></tr></thead>
+        <thead><tr><th>Cuenta/Cliente</th><th>Contacto</th><th>Fecha</th><th>Estado</th><th></th></tr></thead>
         <tbody>
-          ${accounts.map(a => `
+          ${accounts.map(a => {
+            const isPendingDelete = pendingDeleteIds.includes(a.id);
+            return `
             <tr style="cursor:default">
               <td>${a.name || '—'}</td>
               <td>${a.contact || '—'}</td>
               <td>${formatDate(a.createdAt || a.date)}</td>
-              <td><button class="btn btn-outline btn-sm" onclick="requestDeleteAccount('${a.id}','${(a.name||'').replace(/'/g,"\\'")}')">Eliminar</button></td>
-            </tr>
-          `).join('')}
+              <td>${isPendingDelete ? '<span class="badge badge-processing">Eliminaci&oacute;n pendiente</span>' : '<span class="badge badge-active">Activa</span>'}</td>
+              <td>${isPendingDelete ? '' : `<button class="btn btn-outline btn-sm" onclick="requestDeleteAccount('${a.id}','${(a.name||'').replace(/'/g,"\\'")}')">Eliminar</button>`}</td>
+            </tr>`;
+          }).join('')}
         </tbody>
       </table>`}
     </div>
