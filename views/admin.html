@@ -585,6 +585,22 @@ async function editSimThenComplete(reqId, simId) {
   const sim = await api(`/api/sims/${simId}`);
   if (!sim) return;
   const plansData = await fetchPlansData();
+
+  // Build plan options grouped by service
+  const plans = plansData?.plans || plansData || {};
+  const services = plansData?.services || Object.keys(plans);
+  let planOptions = '<option value="">— Seleccionar —</option>';
+  services.forEach(svc => {
+    const svcPlans = plans[svc] || [];
+    if (svcPlans.length > 0) {
+      planOptions += `<optgroup label="${svc}">`;
+      svcPlans.forEach(p => {
+        planOptions += `<option value="${p}" ${sim.planType === p ? 'selected' : ''}>${p}</option>`;
+      });
+      planOptions += '</optgroup>';
+    }
+  });
+
   const mc = document.getElementById('modalContainer');
   mc.innerHTML = `
     <div class="modal-overlay">
@@ -597,7 +613,26 @@ async function editSimThenComplete(reqId, simId) {
         </div>
         <div class="form-row">
           <div class="form-group"><label>Numero (MSISDN)</label><input id="eMsisdn" value="${sim.msisdn}" placeholder="+8816 ..."></div>
-          <div class="form-group"><label>Tipo de Tarjeta</label>
+          <div class="form-group"><label>IMSI</label><input id="eImsi" value="${sim.imsi || ''}"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>PUK 1</label><input id="ePuk" value="${sim.puk}"></div>
+          <div class="form-group"><label>PIN 1</label><input id="ePin" value="${sim.pin}"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>PUK 2</label><input id="ePuk2" value="${sim.puk2 || ''}"></div>
+          <div class="form-group"><label>PIN 2</label><input id="ePin2" value="${sim.pin2 || ''}"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Network</label>
+            <select id="eNetwork">
+              <option value="">— Seleccionar —</option>
+              <option value="IRIDIUM" ${sim.network==='IRIDIUM'?'selected':''}>IRIDIUM</option>
+              <option value="VIASAT" ${sim.network==='VIASAT'?'selected':''}>VIASAT</option>
+              <option value="STARLINK" ${sim.network==='STARLINK'?'selected':''}>STARLINK</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Tipo Tarjeta</label>
             <select id="eCard">
               <option value="">-- Seleccionar --</option>
               <option value="IRIDIUM" ${sim.cardType==='IRIDIUM'?'selected':''}>IRIDIUM</option>
@@ -607,8 +642,16 @@ async function editSimThenComplete(reqId, simId) {
           </div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label>PUK</label><input id="ePuk" value="${sim.puk}"></div>
-          <div class="form-group"><label>PIN</label><input id="ePin" value="${sim.pin}"></div>
+          <div class="form-group"><label>Servicio</label>
+            <select id="eService"><option value="">—</option><option value="Pre-Pago" ${sim.serviceType==='Pre-Pago'?'selected':''}>Pre-Pago</option><option value="Post-Pago" ${sim.serviceType==='Post-Pago'?'selected':''}>Post-Pago</option></select>
+          </div>
+          <div class="form-group"><label>Plan</label>
+            <select id="ePlan">${planOptions}</select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Telephony</label><input id="eTelephony" value="${sim.telephony || ''}"></div>
+          <div class="form-group"><label>Data</label><input id="eData" value="${sim.simData || sim.data || ''}"></div>
         </div>
         <div class="form-row-3">
           <div class="form-group"><label>Saldo (min)</label><input type="number" id="eBal" value="${sim.balance}"></div>
@@ -637,9 +680,18 @@ async function saveSimAndComplete(simId, reqId) {
       iccid: document.getElementById('eIccid').value,
       imei: document.getElementById('eImei').value,
       msisdn: document.getElementById('eMsisdn').value,
+      imsi: document.getElementById('eImsi').value,
       cardType: document.getElementById('eCard').value,
+      network: document.getElementById('eNetwork').value,
       puk: document.getElementById('ePuk').value,
       pin: document.getElementById('ePin').value,
+      pin2: document.getElementById('ePin2').value,
+      puk2: document.getElementById('ePuk2').value,
+      serviceType: document.getElementById('eService').value,
+      planType: document.getElementById('ePlan').value,
+      telephony: document.getElementById('eTelephony').value,
+      simData: document.getElementById('eData').value,
+      data: document.getElementById('eData').value,
       balance: parseFloat(document.getElementById('eBal').value) || 0,
       activationDate: document.getElementById('eActDate').value,
       expiryDate: document.getElementById('eExpDate').value,
@@ -1207,6 +1259,7 @@ async function renderSubUsers(el) {
   el.innerHTML = `
     <div class="page-header"><h1>Sub-Usuarios</h1><p>${pending.length} pendientes de aprobacion</p></div>
     <div class="card">
+      <div class="card-header"><h2>Sub-Usuarios</h2><button class="btn btn-coral btn-sm" onclick="showAddSubUser()">+ Nuevo Sub-Usuario</button></div>
       <table>
         <thead><tr><th>Nombre</th><th>Email</th><th>Empresa</th><th>Telefono</th><th>Estado</th><th>Fecha</th><th>Acciones</th></tr></thead>
         <tbody>
@@ -1329,6 +1382,70 @@ async function deleteSub(id) {
   render();
 }
 
+function showAddSubUser() {
+  const mc = document.getElementById('modalContainer');
+  mc.innerHTML = `
+    <div class="modal-overlay">
+      <div class="modal">
+        <h2>Nuevo Sub-Usuario</h2>
+        <div class="form-row">
+          <div class="form-group"><label>Nombre</label><input id="nsuName"></div>
+          <div class="form-group"><label>Empresa</label><input id="nsuCompany"></div>
+        </div>
+        <div class="form-group"><label>Email</label><input id="nsuEmail" type="email"></div>
+        <div class="form-group"><label>Contrasena</label><input id="nsuPass" type="text"></div>
+        <div class="form-group">
+          <label>Telefono</label>
+          <div class="phone-row">
+            ${renderCountryCodeDropdown('nsuCountryCode', '+1')}
+            <input id="nsuPhone" placeholder="Numero de telefono">
+          </div>
+        </div>
+        <div style="margin-top:16px;margin-bottom:8px"><strong style="font-size:14px;color:var(--navy)">Permisos</strong></div>
+        <div class="perm-grid">
+          <div class="perm-item"><input type="checkbox" id="nsu_canViewSims" checked><label for="nsu_canViewSims">Ver Dispositivos</label></div>
+          <div class="perm-item"><input type="checkbox" id="nsu_canActivate"><label for="nsu_canActivate">Activar/Desactivar</label></div>
+          <div class="perm-item"><input type="checkbox" id="nsu_canRecharge"><label for="nsu_canRecharge">Recargar</label></div>
+          <div class="perm-item"><input type="checkbox" id="nsu_canViewBilling"><label for="nsu_canViewBilling">Ver Facturacion</label></div>
+          <div class="perm-item"><input type="checkbox" id="nsu_canViewReports"><label for="nsu_canViewReports">Ver Reportes</label></div>
+          <div class="perm-item"><input type="checkbox" id="nsu_canManageAccounts"><label for="nsu_canManageAccounts">Gestionar Cuentas</label></div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+          <button class="btn btn-coral" onclick="addSubUser()">Crear Sub-Usuario</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function addSubUser() {
+  const data = {
+    name: document.getElementById('nsuName').value,
+    email: document.getElementById('nsuEmail').value,
+    company: document.getElementById('nsuCompany').value,
+    password: document.getElementById('nsuPass').value,
+    phone: document.getElementById('nsuPhone').value,
+    countryCode: document.getElementById('nsuCountryCode').value,
+    canViewSims: document.getElementById('nsu_canViewSims').checked,
+    canActivate: document.getElementById('nsu_canActivate').checked,
+    canRecharge: document.getElementById('nsu_canRecharge').checked,
+    canViewBilling: document.getElementById('nsu_canViewBilling').checked,
+    canViewReports: document.getElementById('nsu_canViewReports').checked,
+    canManageAccounts: document.getElementById('nsu_canManageAccounts').checked,
+    status: 'approved'
+  };
+  if (!data.name || !data.email) return toast('Nombre y email son requeridos', 'error');
+  const res = await api('/api/admin/subusers', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  });
+  if (res?.error) return toast(res.error, 'error');
+  closeModal();
+  toast('Sub-usuario creado', 'success');
+  render();
+}
+
 // === AIRTIME ===
 let airtimeData = null;
 let airtimeServices = [];
@@ -1375,7 +1492,10 @@ function renderAirtimeContent() {
       ${(airtimeData[type] || []).map((plan, idx) => `
         <div class="plan-item">
           <span>${plan}</span>
-          <button onclick="removePlan('${type}', ${idx})" title="Eliminar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          <div style="display:flex;gap:6px">
+            <button onclick="editPlan('${type}', ${idx})" title="Editar" style="color:var(--blue)">&#9998;</button>
+            <button onclick="removePlan('${type}', ${idx})" title="Eliminar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          </div>
         </div>
       `).join('')}
       ${(airtimeData[type] || []).length === 0 ? '<p style="color:var(--gray-300);font-size:13px;padding:8px">Sin planes</p>' : ''}
@@ -1432,6 +1552,14 @@ function addPlanToType(type) {
 
 function removePlan(type, idx) {
   airtimeData[type].splice(idx, 1);
+  renderAirtimeContent();
+}
+
+function editPlan(type, idx) {
+  const currentName = airtimeData[type][idx];
+  const newName = prompt('Editar plan:', currentName);
+  if (!newName || !newName.trim() || newName.trim() === currentName) return;
+  airtimeData[type][idx] = newName.trim();
   renderAirtimeContent();
 }
 
