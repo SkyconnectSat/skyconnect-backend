@@ -959,6 +959,24 @@ const server = http.createServer(async (req, res) => {
     return json(res, { ok: true, account });
   }
 
+  // PATCH /api/admin/accounts/:id — admin edits account details
+  if (method === 'PATCH' && pathname.match(/^\/api\/admin\/accounts\/[^/]+$/)) {
+    if (!session || session.role !== 'admin') return json(res, { error: 'No autorizado' }, 403);
+    const accountId = pathname.split('/')[4];
+    const body = await parseBody(req);
+    const db = loadDB();
+    if (!db.accounts) db.accounts = [];
+    const account = db.accounts.find(a => a.id === accountId);
+    if (!account) return json(res, { error: 'Cuenta no encontrada' }, 404);
+    if (body.name !== undefined) account.name = body.name;
+    if (body.contact !== undefined) account.contact = body.contact;
+    if (body.email !== undefined) account.email = body.email;
+    if (body.phone !== undefined) account.phone = body.phone;
+    if (body.userId !== undefined) { account.userId = body.userId; account.clientId = body.userId; }
+    saveDB(db);
+    return json(res, { ok: true, account });
+  }
+
   // DELETE /api/admin/accounts/:id
   if (method === 'DELETE' && pathname.match(/^\/api\/admin\/accounts\/[^/]+$/) && !pathname.includes('delete-requests')) {
     if (!session || session.role !== 'admin') return json(res, { error: 'No autorizado' }, 403);
@@ -968,6 +986,14 @@ const server = http.createServer(async (req, res) => {
     db.accounts = db.accounts.filter(a => a.id !== accountId);
     saveDB(db);
     return json(res, { ok: true });
+  }
+
+  // GET /api/account-delete-requests — client sees their own delete requests
+  if (method === 'GET' && pathname === '/api/account-delete-requests') {
+    if (!session) return json(res, { error: 'No autorizado' }, 401);
+    const db = loadDB();
+    const reqs = (db.accountDeleteRequests || []).filter(r => r.userId === session.userId);
+    return json(res, reqs);
   }
 
   // POST /api/accounts/:id/delete-request — client requests deletion (admin must approve)
@@ -1551,7 +1577,13 @@ const server = http.createServer(async (req, res) => {
     if (!session || session.role !== 'admin') return json(res, { error: 'Acceso denegado' }, 403);
     const body = await parseBody(req);
     const db = loadDB();
-    db.plans = body;
+    // Normalize: always store as { services: [...], plans: { ... } }
+    if (body.services && body.plans) {
+      db.plans = body;
+    } else {
+      // Legacy: body is the plans object directly
+      db.plans = { services: Object.keys(body), plans: body };
+    }
     saveDB(db);
     return json(res, { ok: true, plans: db.plans });
   }
