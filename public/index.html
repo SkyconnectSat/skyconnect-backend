@@ -73,8 +73,12 @@ a { color: var(--coral); text-decoration: none; }
   color: var(--gray-500);
   padding: 4px;
   line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .password-toggle:hover { color: var(--gray-700); }
+.password-toggle svg { width: 20px; height: 20px; }
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   padding: 12px 24px; border-radius: 10px; font-size: 15px; font-weight: 600;
@@ -192,8 +196,10 @@ tr { cursor: pointer; }
 .sim-profile-name-row h2 { font-size: 22px; color: var(--navy); margin: 0; }
 .sim-profile-name-row .edit-name-btn {
   background: none; border: none; cursor: pointer; font-size: 16px; padding: 2px 6px; color: var(--gray-500);
+  display: inline-flex; align-items: center; justify-content: center;
 }
 .sim-profile-name-row .edit-name-btn:hover { color: var(--coral); }
+.sim-profile-name-row .edit-name-btn svg { width: 16px; height: 16px; }
 .sim-profile-name-input {
   font-size: 22px; color: var(--navy); font-weight: 700; border: 2px solid var(--coral);
   border-radius: 8px; padding: 4px 10px; outline: none; font-family: inherit;
@@ -225,8 +231,10 @@ tr { cursor: pointer; }
 .refresh-balance-btn {
   background: none; border: none; cursor: pointer; font-size: 14px; padding: 2px 4px;
   vertical-align: middle; color: var(--blue);
+  display: inline-flex; align-items: center; justify-content: center;
 }
 .refresh-balance-btn:hover { opacity: .7; }
+.refresh-balance-btn svg { width: 16px; height: 16px; }
 
 .sim-actions-bar {
   display: flex; gap: 10px; flex-wrap: wrap; padding: 16px 0;
@@ -235,7 +243,7 @@ tr { cursor: pointer; }
 }
 
 .sim-assign-grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: end;
+  display: grid; grid-template-columns: 1fr; gap: 16px; align-items: end;
   padding-top: 16px;
 }
 .sim-assign-grid .form-group { margin-bottom: 0; }
@@ -280,6 +288,31 @@ tr { cursor: pointer; }
   display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
 }
 
+/* === Readonly grayed inputs === */
+.inline-edit[readonly] {
+  background: #f3f4f6; color: var(--gray-500); cursor: default;
+}
+
+/* === Accept charges checkbox === */
+.accept-charges-row {
+  display: flex; align-items: center; gap: 8px; margin: 12px 0;
+}
+.accept-charges-row input[type="checkbox"] {
+  width: 16px; height: 16px; accent-color: var(--coral); cursor: pointer;
+}
+.accept-charges-row label {
+  font-size: 13px; color: var(--gray-700); cursor: pointer; user-select: none;
+}
+
+/* === Delete sub-user button === */
+.delete-subuser-btn {
+  background: none; border: none; cursor: pointer; color: var(--gray-500); padding: 4px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 4px; transition: all .2s;
+}
+.delete-subuser-btn:hover { color: var(--red); background: #fee2e2; }
+.delete-subuser-btn svg { width: 16px; height: 16px; }
+
 /* Responsive */
 @media (max-width: 768px) {
   .sidebar { display: none; }
@@ -318,7 +351,7 @@ tr { cursor: pointer; }
         <label>Contrase&ntilde;a</label>
         <div class="password-wrapper">
           <input type="password" id="loginPass" required placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;">
-          <button type="button" class="password-toggle" onclick="togglePasswordVisibility()" id="passToggle" title="Mostrar contrase&ntilde;a">&#128065;</button>
+          <button type="button" class="password-toggle" onclick="togglePasswordVisibility()" id="passToggle" title="Mostrar contrase&ntilde;a"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg></button>
         </div>
       </div>
       <button type="submit" class="btn btn-coral" id="loginBtn">Iniciar Sesi&oacute;n</button>
@@ -400,6 +433,13 @@ tr { cursor: pointer; }
 <div id="modalContainer"></div>
 
 <script>
+// === SVG Icon helpers ===
+const SVG_EYE_OPEN = '<svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>';
+const SVG_EYE_CLOSED = '<svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3.98 8.223A10.477 10.477 0 001.934 12c1.292 4.338 5.31 7.5 10.066 7.5.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88"/></svg>';
+const SVG_PENCIL = '<svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125"/></svg>';
+const SVG_REFRESH = '<svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.992 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182M21.015 4.356v4.992"/></svg>';
+const SVG_TRASH = '<svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>';
+
 // === App State ===
 let currentUser = null;
 let currentPage = 'dashboard';
@@ -428,12 +468,12 @@ function togglePasswordVisibility() {
   const btn = document.getElementById('passToggle');
   if (inp.type === 'password') {
     inp.type = 'text';
-    btn.innerHTML = '&#128064;';
-    btn.title = 'Ocultar contraseña';
+    btn.innerHTML = SVG_EYE_CLOSED;
+    btn.title = 'Ocultar contrasena';
   } else {
     inp.type = 'password';
-    btn.innerHTML = '&#128065;';
-    btn.title = 'Mostrar contraseña';
+    btn.innerHTML = SVG_EYE_OPEN;
+    btn.title = 'Mostrar contrasena';
   }
 }
 
@@ -452,7 +492,7 @@ async function doLogin(e) {
     });
     const data = await res.json();
     if (!res.ok) {
-      errEl.textContent = data.error || 'Error al iniciar sesión';
+      errEl.textContent = data.error || 'Error al iniciar sesion';
       errEl.style.display = 'block';
       return;
     }
@@ -460,7 +500,7 @@ async function doLogin(e) {
     if (data.role === 'admin') { window.location.href = '/admin'; return; }
     showApp();
   } catch (err) {
-    errEl.textContent = 'Error de conexión';
+    errEl.textContent = 'Error de conexion';
     errEl.style.display = 'block';
   }
 }
@@ -496,7 +536,7 @@ async function render(param) {
       case 'dashboard': await renderDashboard(main); break;
       case 'sims': await renderSims(main); break;
       case 'simDetail': await renderSimDetail(main, param); break;
-      case 'accounts': renderAccounts(main); break;
+      case 'accounts': await renderAccounts(main); break;
       case 'reports': renderReports(main); break;
       case 'billing': renderBilling(main); break;
       case 'subusers': await renderSubUsers(main); break;
@@ -540,7 +580,7 @@ async function renderDashboard(el) {
     <div class="card">
       <div class="card-header"><h2>SIM CARDS</h2></div>
       <table>
-        <thead><tr><th>Tipo</th><th>SIM / Dispositivo</th><th>IMSI</th><th>Nombre</th><th>Cuenta</th><th>Estado</th></tr></thead>
+        <thead><tr><th>Tipo</th><th>SIM / Dispositivo</th><th>Tel&eacute;fono</th><th>Nombre</th><th>Cuenta</th><th>Estado</th></tr></thead>
         <tbody>
           ${sims.map(s => `
             <tr onclick="navigate('simDetail','${s.id}')">
@@ -567,11 +607,11 @@ async function renderSims(el) {
       <p>${sims.length} dispositivos asignados</p>
     </div>
     <div class="search-bar">
-      <input type="text" id="simSearch" placeholder="Buscar por nombre, serial o número (IMSI)..." oninput="filterSims()">
+      <input type="text" id="simSearch" placeholder="Buscar por nombre, serial o teléfono..." oninput="filterSims()">
     </div>
     <div class="card">
       <table>
-        <thead><tr><th>Tipo</th><th>SIM / Dispositivo</th><th>IMSI</th><th>Nombre</th><th>Cuenta</th><th>Estado</th></tr></thead>
+        <thead><tr><th>Tipo</th><th>SIM / Dispositivo</th><th>Tel&eacute;fono</th><th>Nombre</th><th>Cuenta</th><th>Estado</th></tr></thead>
         <tbody id="simsTableBody">
           ${sims.map(s => `
             <tr onclick="navigate('simDetail','${s.id}')" data-search="${(s.name||'').toLowerCase()} ${s.serial.toLowerCase()} ${(s.msisdn||'').toLowerCase()}">
@@ -611,13 +651,14 @@ function renderOperationsTable(operations) {
   const recent = operations.slice(-3).reverse();
   return `
     <table>
-      <thead><tr><th>Operación</th><th>Fecha</th><th>Estado</th></tr></thead>
+      <thead><tr><th>Operaci&oacute;n</th><th>Fecha</th><th>Estado</th></tr></thead>
       <tbody>
         ${recent.map(op => {
           let badgeClass = 'badge-op-proceso';
-          let label = op.status || 'En proceso';
-          if (op.status === 'failed' || op.status === 'Fallida') { badgeClass = 'badge-op-fallida'; label = 'Fallida'; }
-          else if (op.status === 'success' || op.status === 'Exitosa') { badgeClass = 'badge-op-exitosa'; label = 'Exitosa'; }
+          let label = 'En proceso';
+          if (op.status === 'completed' || op.status === 'success' || op.status === 'Exitosa') { badgeClass = 'badge-op-exitosa'; label = 'Exitosa'; }
+          else if (op.status === 'failed' || op.status === 'Fallida') { badgeClass = 'badge-op-fallida'; label = 'Fallida'; }
+          else if (op.status === 'pending' || op.status === 'En proceso') { badgeClass = 'badge-op-proceso'; label = 'En proceso'; }
           else { badgeClass = 'badge-op-proceso'; label = 'En proceso'; }
           return `
             <tr style="cursor:default">
@@ -635,7 +676,6 @@ function renderOperationsTable(operations) {
 // === Helper: render SIM header (shared across all states) ===
 function renderSimHeader(sim) {
   const isdn = formatISDN(sim.msisdn);
-  const serialLine = sim.serial + (isdn ? ' - ' + isdn : '');
   const isActive = sim.status === 'active';
   const isInactive = sim.status === 'inactive';
   const isProcessing = sim.status === 'processing';
@@ -644,7 +684,7 @@ function renderSimHeader(sim) {
     <div class="sim-profile-header">
       <div class="sim-profile-name-row">
         <h2 id="simNameDisplay">${sim.name || sim.serial}</h2>
-        <button class="edit-name-btn" onclick="enableSimNameEdit('${sim.id}')" title="Editar nombre">&#9999;&#65039;</button>
+        <button class="edit-name-btn" onclick="enableSimNameEdit('${sim.id}')" title="Editar nombre">${SVG_PENCIL}</button>
       </div>
       <div class="sim-serial-line">${sim.serial}${isdn ? ' - <span class="isdn-part">' + isdn + '</span>' : ''}</div>
       ${isProcessing ? '<span class="badge badge-processing" style="font-size:14px;padding:6px 16px">Procesando</span>' : ''}
@@ -691,8 +731,8 @@ async function renderSimDetail(el, simId) {
         <div class="sim-profile">
           ${renderSimHeader(sim)}
           <div style="text-align:center;padding:40px 0">
-            <p style="font-size:16px;color:var(--amber);font-weight:600">Su solicitud está siendo procesada</p>
-            <p style="color:var(--gray-500);margin-top:8px">Recibirá un correo de confirmación cuando esté lista.</p>
+            <p style="font-size:16px;color:var(--amber);font-weight:600">Su solicitud est&aacute; siendo procesada</p>
+            <p style="color:var(--gray-500);margin-top:8px">Recibir&aacute; un correo de confirmaci&oacute;n cuando est&eacute; lista.</p>
           </div>
         </div>
       </div>
@@ -714,21 +754,24 @@ async function renderSimDetail(el, simId) {
           <div class="sim-info-grid">
             <div class="sim-info-section">
               <h3>Dispositivo</h3>
-              <div class="info-row"><span class="info-label">Serial</span><span class="info-value" style="font-family:monospace">${sim.serial}</span></div>
+              <div class="info-row"><span class="info-label">NETWORK</span><span class="info-value">${sim.network || '—'}</span></div>
+              <div class="info-row"><span class="info-label">TIPO</span><span class="info-value">${sim.cardType || '—'}</span></div>
               <div class="info-row"><span class="info-label">ICCID</span><span class="info-value" style="font-family:monospace">${sim.iccid || '—'}</span></div>
-              <div class="info-row"><span class="info-label">IMEI</span><span class="info-value" style="font-family:monospace">${sim.imei || '—'}</span></div>
-              <div class="info-row"><span class="info-label">MSISDN</span><span class="info-value">${sim.msisdn || '—'}</span></div>
-              <div class="info-row"><span class="info-label">PUK</span><span class="info-value">${sim.puk || '—'}</span></div>
-              <div class="info-row"><span class="info-label">PIN</span><span class="info-value">${sim.pin || '—'}</span></div>
-              <div class="info-row"><span class="info-label">Tipo de Tarjeta</span><span class="info-value">${sim.cardType || '—'}</span></div>
+              <div class="info-row"><span class="info-label">IMSI</span><span class="info-value" style="font-family:monospace">${sim.imei || '—'}</span></div>
+              <div class="info-row"><span class="info-label">PIN 1</span><span class="info-value">${sim.pin || '—'}</span></div>
+              <div class="info-row"><span class="info-label">PIN 2</span><span class="info-value">${sim.pin2 || '—'}</span></div>
+              <div class="info-row"><span class="info-label">PUK 1</span><span class="info-value">${sim.puk || '—'}</span></div>
+              <div class="info-row"><span class="info-label">PUK 2</span><span class="info-value">${sim.puk2 || '—'}</span></div>
+              <div class="info-row"><span class="info-label">TELEPHONY</span><span class="info-value">${sim.telephony || '—'}</span></div>
+              <div class="info-row"><span class="info-label">DATA</span><span class="info-value">${sim.simData || '—'}</span></div>
             </div>
             <div class="sim-info-section">
               <h3>Servicios de la tarjeta</h3>
               <div class="info-row"><span class="info-label">Servicio</span><span class="info-value">—</span></div>
               <div class="info-row"><span class="info-label">Plan de Minutos</span><span class="info-value">—</span></div>
               <div class="info-row"><span class="info-label">Saldo Disponible</span><span class="info-value">—</span></div>
-              <div class="info-row"><span class="info-label">Última Ubicación</span><span class="info-value">—</span></div>
-              <div class="info-row"><span class="info-label">Fecha de Activación</span><span class="info-value">—</span></div>
+              <div class="info-row"><span class="info-label">&Uacute;ltima Ubicaci&oacute;n</span><span class="info-value">—</span></div>
+              <div class="info-row"><span class="info-label">Fecha de Activaci&oacute;n</span><span class="info-value">—</span></div>
               <div class="info-row"><span class="info-label">Fecha de Vencimiento</span><span class="info-value">—</span></div>
             </div>
           </div>
@@ -737,9 +780,9 @@ async function renderSimDetail(el, simId) {
 
       <!-- Activation form for inactive -->
       <div class="card">
-        <div class="card-coral-header">Activación y Recarga</div>
+        <div class="card-coral-header">Activaci&oacute;n y Recarga</div>
         <div id="activationFormInline">
-          <p style="color:var(--gray-500);font-size:14px;margin-bottom:16px">Esta SIM no está activa. Complete los datos para solicitar la activación.</p>
+          <p style="color:var(--gray-500);font-size:14px;margin-bottom:16px">Esta SIM no est&aacute; activa. Complete los datos para solicitar la activaci&oacute;n.</p>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:end">
             <div class="form-group">
               <label>Servicio</label>
@@ -754,7 +797,11 @@ async function renderSimDetail(el, simId) {
               </select>
             </div>
           </div>
-          <button class="btn btn-coral btn-sm" style="margin-top:12px" onclick="doInlineActivate('${sim.id}')">Solicitar Activación</button>
+          <div class="accept-charges-row">
+            <input type="checkbox" id="inlineActAccept" onchange="toggleActivateBtn()">
+            <label for="inlineActAccept">Acepto los cargos que ser&aacute;n reflejados en la siguiente factura</label>
+          </div>
+          <button class="btn btn-coral btn-sm btn-disabled" id="inlineActBtn" disabled style="margin-top:4px" onclick="doInlineActivate('${sim.id}')">Solicitar Activaci&oacute;n</button>
         </div>
       </div>
 
@@ -781,13 +828,16 @@ async function renderSimDetail(el, simId) {
         <div class="sim-info-grid">
           <div class="sim-info-section">
             <h3>Dispositivo</h3>
-            <div class="info-row"><span class="info-label">Serial</span><span class="info-value" style="font-family:monospace">${sim.serial}</span></div>
+            <div class="info-row"><span class="info-label">NETWORK</span><span class="info-value">${sim.network || '—'}</span></div>
+            <div class="info-row"><span class="info-label">TIPO</span><span class="info-value">${sim.cardType || '—'}</span></div>
             <div class="info-row"><span class="info-label">ICCID</span><span class="info-value" style="font-family:monospace">${sim.iccid || '—'}</span></div>
-            <div class="info-row"><span class="info-label">IMEI</span><span class="info-value" style="font-family:monospace">${sim.imei || '—'}</span></div>
-            <div class="info-row"><span class="info-label">MSISDN</span><span class="info-value">${sim.msisdn || '—'}</span></div>
-            <div class="info-row"><span class="info-label">PUK</span><span class="info-value">${sim.puk || '—'}</span></div>
-            <div class="info-row"><span class="info-label">PIN</span><span class="info-value">${sim.pin || '—'}</span></div>
-            <div class="info-row"><span class="info-label">Tipo de Tarjeta</span><span class="info-value">${sim.cardType || '—'}</span></div>
+            <div class="info-row"><span class="info-label">IMSI</span><span class="info-value" style="font-family:monospace">${sim.imei || '—'}</span></div>
+            <div class="info-row"><span class="info-label">PIN 1</span><span class="info-value">${sim.pin || '—'}</span></div>
+            <div class="info-row"><span class="info-label">PIN 2</span><span class="info-value">${sim.pin2 || '—'}</span></div>
+            <div class="info-row"><span class="info-label">PUK 1</span><span class="info-value">${sim.puk || '—'}</span></div>
+            <div class="info-row"><span class="info-label">PUK 2</span><span class="info-value">${sim.puk2 || '—'}</span></div>
+            <div class="info-row"><span class="info-label">TELEPHONY</span><span class="info-value">${sim.telephony || '—'}</span></div>
+            <div class="info-row"><span class="info-label">DATA</span><span class="info-value">${sim.simData || '—'}</span></div>
           </div>
 
           <div class="sim-info-section">
@@ -798,18 +848,18 @@ async function renderSimDetail(el, simId) {
               <span class="info-label">Saldo Disponible</span>
               <span class="info-value">
                 <span style="color:var(--green);font-size:18px;font-weight:700">${sim.balance} min</span>
-                <button class="refresh-balance-btn" onclick="requestBalanceUpdate('${sim.id}')" title="Actualizar saldo">&#128260;</button>
-                <div class="info-subtext">El saldo se actualiza automáticamente cada 24h, siempre puedes solicitar una actualización al sistema antes de eso</div>
+                <button class="refresh-balance-btn" onclick="requestBalanceUpdate('${sim.id}')" title="Actualizar saldo">${SVG_REFRESH}</button>
+                <div class="info-subtext">El saldo se actualiza autom&aacute;ticamente cada 24h, siempre puedes solicitar una actualizaci&oacute;n al sistema antes de eso</div>
               </span>
             </div>
-            <div class="info-row"><span class="info-label">Última Ubicación</span><span class="info-value">${sim.lastLocation || '—'}</span></div>
-            <div class="info-row"><span class="info-label">Fecha de Activación</span><span class="info-value">${formatDate(sim.activationDate)}</span></div>
+            <div class="info-row"><span class="info-label">&Uacute;ltima Ubicaci&oacute;n</span><span class="info-value">${sim.lastLocation || '—'}</span></div>
+            <div class="info-row"><span class="info-label">Fecha de Activaci&oacute;n</span><span class="info-value">${formatDate(sim.activationDate)}</span></div>
             <div class="info-row"><span class="info-label">Fecha de Vencimiento</span><span class="info-value">${formatDate(sim.expiryDate)}</span></div>
           </div>
 
           <div class="sim-info-section">
-            <h3>Información Adicional</h3>
-            <div class="sim-assign-grid" style="grid-template-columns:1fr 1fr">
+            <h3>Informaci&oacute;n Adicional</h3>
+            <div class="sim-assign-grid">
               <div class="form-group">
                 <label>Cuenta/Cliente</label>
                 <select class="inline-edit" id="assignSub">
@@ -817,13 +867,6 @@ async function renderSimDetail(el, simId) {
                   ${approvedAccounts.map(s => `<option value="${s.name}" ${sim.subClient === s.name ? 'selected' : ''}>${s.name}</option>`).join('')}
                 </select>
               </div>
-              ${sim.vessel ? `<div class="form-group">
-                <label>Embarcación/Vehículo</label>
-                <input class="inline-edit" id="assignVessel" value="${sim.vessel || ''}" placeholder="Nombre del vehículo">
-              </div>` : `<div class="form-group">
-                <label>Embarcación/Vehículo</label>
-                <input class="inline-edit" id="assignVessel" value="" placeholder="Nombre del vehículo">
-              </div>`}
             </div>
             <div style="margin-top:12px">
               <button class="btn btn-navy btn-sm" onclick="saveAssignment('${sim.id}')">Guardar</button>
@@ -835,19 +878,23 @@ async function renderSimDetail(el, simId) {
 
     <!-- Recharge section for active -->
     <div class="card">
-      <div class="card-coral-header">Activación y Recarga</div>
+      <div class="card-coral-header">Activaci&oacute;n y Recarga</div>
       <div id="rechargeFormInline">
         <p style="color:var(--gray-500);font-size:14px;margin-bottom:16px">Seleccione un plan para recargar este dispositivo.</p>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:end">
-          <div class="form-group">
+        <div style="display:flex;gap:12px;align-items:end">
+          <div class="form-group" style="flex:1;margin-bottom:0">
             <label>Plan de Recarga</label>
             <select id="inlineRechargePlan">
               <option value="">— Seleccionar plan —</option>
             </select>
           </div>
           <div>
-            <button class="btn btn-coral btn-sm" onclick="doInlineRecharge('${sim.id}')">Recargar</button>
+            <button class="btn btn-coral btn-sm btn-disabled" id="rechargeBtn" disabled onclick="doInlineRecharge('${sim.id}')">Recargar</button>
           </div>
+        </div>
+        <div class="accept-charges-row">
+          <input type="checkbox" id="rechargeAccept" onchange="toggleRechargeBtn()">
+          <label for="rechargeAccept">Acepto los cargos que ser&aacute;n reflejados en la siguiente factura</label>
         </div>
       </div>
     </div>
@@ -866,6 +913,25 @@ async function renderSimDetail(el, simId) {
   }
 }
 
+// === Toggle activation/recharge buttons based on checkbox ===
+function toggleActivateBtn() {
+  const cb = document.getElementById('inlineActAccept');
+  const btn = document.getElementById('inlineActBtn');
+  if (cb && btn) {
+    if (cb.checked) { btn.classList.remove('btn-disabled'); btn.disabled = false; }
+    else { btn.classList.add('btn-disabled'); btn.disabled = true; }
+  }
+}
+
+function toggleRechargeBtn() {
+  const cb = document.getElementById('rechargeAccept');
+  const btn = document.getElementById('rechargeBtn');
+  if (cb && btn) {
+    if (cb.checked) { btn.classList.remove('btn-disabled'); btn.disabled = false; }
+    else { btn.classList.add('btn-disabled'); btn.disabled = true; }
+  }
+}
+
 // === Inline activate (for inactive SIM page) ===
 function updateInlinePlanOptions() {
   const service = document.getElementById('inlineActService').value;
@@ -877,6 +943,8 @@ function updateInlinePlanOptions() {
 }
 
 async function doInlineActivate(simId) {
+  const cb = document.getElementById('inlineActAccept');
+  if (!cb || !cb.checked) return toast('Debe aceptar los cargos para continuar', 'error');
   const serviceType = document.getElementById('inlineActService').value;
   const planType = document.getElementById('inlineActPlan').value;
   if (!serviceType || !planType) return toast('Seleccione servicio y plan', 'error');
@@ -884,11 +952,13 @@ async function doInlineActivate(simId) {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ serviceType, planType, activationType: 'immediate' })
   });
-  if (res.ok) { toast('Solicitud de activación enviada', 'success'); navigate('simDetail', simId); }
+  if (res.ok) { toast('Solicitud de activacion enviada', 'success'); navigate('simDetail', simId); }
   else { const d = await res.json(); toast(d.error || 'Error', 'error'); }
 }
 
 async function doInlineRecharge(simId) {
+  const cb = document.getElementById('rechargeAccept');
+  if (!cb || !cb.checked) return toast('Debe aceptar los cargos para continuar', 'error');
   const plan = document.getElementById('inlineRechargePlan').value;
   if (!plan) return toast('Seleccione un plan', 'error');
   const res = await fetch(`/api/sims/${simId}/recharge`, {
@@ -900,7 +970,12 @@ async function doInlineRecharge(simId) {
 }
 
 // === Cuenta/Cliente ===
-function renderAccounts(el) {
+async function renderAccounts(el) {
+  let accounts = [];
+  try {
+    accounts = await fetch('/api/accounts').then(r => r.json());
+  } catch (e) { accounts = []; }
+
   el.innerHTML = `
     <div class="page-header">
       <h1>Cuenta/Cliente</h1>
@@ -911,7 +986,19 @@ function renderAccounts(el) {
         <h2>Mis Cuentas</h2>
         <button class="btn btn-coral btn-sm" onclick="showNewAccountModal()">+ Nueva Cuenta</button>
       </div>
-      <p style="color:var(--gray-500);padding:20px 0">No hay cuentas registradas. Cree una nueva cuenta para organizar sus dispositivos.</p>
+      ${accounts.length === 0 ? '<p style="color:var(--gray-500);padding:20px 0">No hay cuentas registradas. Cree una nueva cuenta para organizar sus dispositivos.</p>' : `
+      <table>
+        <thead><tr><th>Cuenta/Cliente</th><th>Contacto</th><th>Fecha</th></tr></thead>
+        <tbody>
+          ${accounts.map(a => `
+            <tr style="cursor:default">
+              <td>${a.name || '—'}</td>
+              <td>${a.contact || '—'}</td>
+              <td>${formatDate(a.createdAt || a.date)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>`}
     </div>
   `;
 }
@@ -922,26 +1009,37 @@ function showNewAccountModal() {
     <div class="modal-overlay" onclick="closeModal(event)">
       <div class="modal" onclick="event.stopPropagation()">
         <h2>Nueva Cuenta / Cliente</h2>
-        <div class="form-group"><label>Nombre de la Cuenta *</label><input id="accName" required placeholder="Nombre de empresa o cliente"></div>
+        <div class="form-group"><label>CUENTA/CLIENTE *</label><input id="accName" required placeholder="Nombre de empresa o cliente"></div>
         <div class="form-group"><label>Contacto *</label><input id="accContact" required placeholder="Nombre del contacto"></div>
-        <div class="form-group"><label>Email *</label><input id="accEmail" type="email" required placeholder="email@empresa.com"></div>
-        <div class="form-group"><label>Teléfono</label><input id="accPhone" placeholder="+52 ..."></div>
         <div class="modal-actions">
           <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
-          <button class="btn btn-coral" onclick="doCreateAccount()">Crear Cuenta</button>
+          <button class="btn btn-coral" onclick="doCreateAccount()">Crear</button>
         </div>
       </div>
     </div>
   `;
 }
 
-function doCreateAccount() {
+async function doCreateAccount() {
   const name = document.getElementById('accName').value.trim();
   const contact = document.getElementById('accContact').value.trim();
-  const email = document.getElementById('accEmail').value.trim();
-  if (!name || !contact || !email) return toast('Nombre, Contacto y Email son requeridos', 'error');
-  toast('Cuenta creada exitosamente', 'success');
-  closeModal();
+  if (!name || !contact) return toast('Cuenta/Cliente y Contacto son requeridos', 'error');
+  try {
+    const res = await fetch('/api/accounts', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, contact })
+    });
+    if (res.ok) {
+      toast('Cuenta creada exitosamente', 'success');
+      closeModal();
+      navigate('accounts');
+    } else {
+      const d = await res.json();
+      toast(d.error || 'Error al crear cuenta', 'error');
+    }
+  } catch (e) {
+    toast('Error de conexion', 'error');
+  }
 }
 
 // === Reportes ===
@@ -953,7 +1051,7 @@ function renderReports(el) {
     </div>
     <div class="card">
       <div class="card-header"><h2>Solicitar Reporte</h2></div>
-      <p style="color:var(--gray-500);margin-bottom:20px">Seleccione un dispositivo y el período para recibir el historial de llamadas por correo electrónico.</p>
+      <p style="color:var(--gray-500);margin-bottom:20px">Seleccione un dispositivo y el per&iacute;odo para recibir el historial de llamadas por correo electr&oacute;nico.</p>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;align-items:end">
         <div class="form-group">
           <label>Dispositivo</label>
@@ -985,19 +1083,19 @@ function renderReports(el) {
 function requestReport() {
   const simId = document.getElementById('reportSim').value;
   if (!simId) return toast('Seleccione un dispositivo', 'error');
-  toast('Solicitud de reporte enviada. Recibirá el historial por correo electrónico.', 'success');
+  toast('Solicitud de reporte enviada. Recibira el historial por correo electronico.', 'success');
 }
 
-// === Facturación ===
+// === Facturacion ===
 function renderBilling(el) {
   el.innerHTML = `
     <div class="page-header">
-      <h1>Facturación</h1>
+      <h1>Facturaci&oacute;n</h1>
       <p>Consulte sus facturas mensuales</p>
     </div>
     <div class="card">
       <div class="card-header"><h2>Facturas</h2></div>
-      <p style="color:var(--gray-500);padding:20px 0">No hay facturas disponibles en este momento. Sus facturas mensuales aparecerán aquí en formato PDF.</p>
+      <p style="color:var(--gray-500);padding:20px 0">No hay facturas disponibles en este momento. Sus facturas mensuales aparecer&aacute;n aqu&iacute; en formato PDF.</p>
     </div>
   `;
 }
@@ -1010,7 +1108,7 @@ function renderMyAccount(el) {
       <p>Configure sus datos y preferencias</p>
     </div>
     <div class="card">
-      <div class="card-header"><h2>Información de Contacto</h2></div>
+      <div class="card-header"><h2>Informaci&oacute;n de Contacto</h2></div>
       <div class="my-account-grid">
         <div class="form-group">
           <label>Nombre</label>
@@ -1029,7 +1127,7 @@ function renderMyAccount(el) {
           <input class="inline-edit" style="width:100%" id="notifEmail" value="${currentUser.email}" placeholder="email@empresa.com">
         </div>
         <div class="form-group">
-          <label>Teléfono de Contacto</label>
+          <label>Tel&eacute;fono de Contacto</label>
           <input class="inline-edit" style="width:100%" id="contactPhone" placeholder="+52 ...">
         </div>
         <div class="form-group">
@@ -1037,20 +1135,20 @@ function renderMyAccount(el) {
           <input class="inline-edit" style="width:100%" id="contactPerson" placeholder="Nombre completo">
         </div>
         <div class="form-group">
-          <label>Dirección</label>
-          <input class="inline-edit" style="width:100%" id="contactAddress" placeholder="Dirección completa">
+          <label>Direcci&oacute;n</label>
+          <input class="inline-edit" style="width:100%" id="contactAddress" placeholder="Direccion completa">
         </div>
         <div class="form-group">
-          <label>País</label>
-          <input class="inline-edit" style="width:100%" id="contactCountry" placeholder="País">
+          <label>Pa&iacute;s</label>
+          <input class="inline-edit" style="width:100%" id="contactCountry" placeholder="Pais">
         </div>
         <div class="form-group">
           <label>Ciudad</label>
           <input class="inline-edit" style="width:100%" id="contactCity" placeholder="Ciudad">
         </div>
         <div class="form-group">
-          <label>Código Postal</label>
-          <input class="inline-edit" style="width:100%" id="contactPostalCode" placeholder="Código postal">
+          <label>C&oacute;digo Postal</label>
+          <input class="inline-edit" style="width:100%" id="contactPostalCode" placeholder="Codigo postal">
         </div>
       </div>
       <button class="btn btn-navy btn-sm" style="margin-top:16px" onclick="saveMyAccount()">Guardar Cambios</button>
@@ -1080,7 +1178,7 @@ async function saveMyAccount() {
       toast('Error al guardar cambios', 'error');
     }
   } catch (e) {
-    toast('Error de conexión', 'error');
+    toast('Error de conexion', 'error');
   }
 }
 
@@ -1090,7 +1188,7 @@ async function renderSubUsers(el) {
   el.innerHTML = `
     <div class="page-header">
       <h1>Sub-Usuarios</h1>
-      <p>Gestión de sub-usuarios</p>
+      <p>Gesti&oacute;n de sub-usuarios</p>
     </div>
     <div class="card">
       <div class="card-header">
@@ -1099,20 +1197,29 @@ async function renderSubUsers(el) {
       </div>
       ${subusers.length === 0 ? '<p style="color:var(--gray-500);padding:20px 0">No hay sub-usuarios registrados</p>' : `
       <table>
-        <thead><tr><th>Nombre</th><th>Email</th><th>Teléfono</th><th>Estado</th></tr></thead>
+        <thead><tr><th>Nombre</th><th>Email</th><th>Empresa</th><th>Estado</th><th></th></tr></thead>
         <tbody>
           ${subusers.map(s => `
             <tr style="cursor:default">
               <td>${s.name}</td>
               <td>${s.email}</td>
-              <td>${s.phone || '—'}</td>
+              <td>${s.empresa || '—'}</td>
               <td><span class="badge badge-${s.status}">${statusLabel(s.status)}</span></td>
+              <td><button class="delete-subuser-btn" onclick="requestDeleteSubUser('${s.id || s._id}')" title="Eliminar">${SVG_TRASH}</button></td>
             </tr>
           `).join('')}
         </tbody>
       </table>`}
     </div>
   `;
+}
+
+async function requestDeleteSubUser(id) {
+  try {
+    await fetch(`/api/subusers/${id}`, { method: 'DELETE' });
+  } catch (e) {}
+  toast('Solicitud de eliminacion enviada. Pendiente de aprobacion.', 'success');
+  navigate('subusers');
 }
 
 // === Actions ===
@@ -1125,7 +1232,7 @@ function showActivateModal(simId) {
       <div class="modal" onclick="event.stopPropagation()">
         <h2>Activar Dispositivo</h2>
         <div class="form-group">
-          <label>Tipo de Activación</label>
+          <label>Tipo de Activaci&oacute;n</label>
           <select id="actType" onchange="toggleSchedule()">
             <option value="immediate">Inmediata</option>
             <option value="scheduled">Programada</option>
@@ -1148,13 +1255,26 @@ function showActivateModal(simId) {
             <option value="">— Seleccione servicio primero —</option>
           </select>
         </div>
+        <div class="accept-charges-row">
+          <input type="checkbox" id="modalActAccept" onchange="toggleModalActivateBtn()">
+          <label for="modalActAccept">Acepto los cargos que ser&aacute;n reflejados en la siguiente factura</label>
+        </div>
         <div class="modal-actions">
           <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
-          <button class="btn btn-coral" onclick="doActivate('${simId}')">Solicitar Activación</button>
+          <button class="btn btn-coral btn-disabled" id="modalActBtn" disabled onclick="doActivate('${simId}')">Solicitar Activaci&oacute;n</button>
         </div>
       </div>
     </div>
   `;
+}
+
+function toggleModalActivateBtn() {
+  const cb = document.getElementById('modalActAccept');
+  const btn = document.getElementById('modalActBtn');
+  if (cb && btn) {
+    if (cb.checked) { btn.classList.remove('btn-disabled'); btn.disabled = false; }
+    else { btn.classList.add('btn-disabled'); btn.disabled = true; }
+  }
 }
 
 function toggleSchedule() {
@@ -1171,6 +1291,8 @@ function updatePlanOptions() {
 }
 
 async function doActivate(simId) {
+  const cb = document.getElementById('modalActAccept');
+  if (!cb || !cb.checked) return toast('Debe aceptar los cargos para continuar', 'error');
   const serviceType = document.getElementById('actService').value;
   const planType = document.getElementById('actPlan').value;
   const activationType = document.getElementById('actType').value;
@@ -1180,7 +1302,7 @@ async function doActivate(simId) {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ serviceType, planType, activationType, scheduledDate })
   });
-  if (res.ok) { closeModal(); toast('Solicitud de activación enviada', 'success'); navigate('simDetail', simId); }
+  if (res.ok) { closeModal(); toast('Solicitud de activacion enviada', 'success'); navigate('simDetail', simId); }
   else { const d = await res.json(); toast(d.error || 'Error', 'error'); }
 }
 
@@ -1190,10 +1312,10 @@ function confirmDeactivate(simId) {
     <div class="modal-overlay" onclick="closeModal(event)">
       <div class="modal" onclick="event.stopPropagation()">
         <h2>Desactivar Dispositivo</h2>
-        <p style="margin-bottom:16px;color:var(--gray-500)">¿Está seguro que desea desactivar este dispositivo? Esta acción será procesada por nuestro equipo.</p>
+        <p style="margin-bottom:16px;color:var(--gray-500)">&iquest;Est&aacute; seguro que desea desactivar este dispositivo? Esta acci&oacute;n ser&aacute; procesada por nuestro equipo.</p>
         <div class="modal-actions">
           <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
-          <button class="btn btn-red" onclick="doDeactivate('${simId}')">Sí, Desactivar</button>
+          <button class="btn btn-red" onclick="doDeactivate('${simId}')">S&iacute;, Desactivar</button>
         </div>
       </div>
     </div>
@@ -1202,12 +1324,12 @@ function confirmDeactivate(simId) {
 
 async function doDeactivate(simId) {
   const res = await fetch(`/api/sims/${simId}/deactivate`, { method: 'POST' });
-  if (res.ok) { closeModal(); toast('Solicitud de desactivación enviada', 'success'); navigate('simDetail', simId); }
+  if (res.ok) { closeModal(); toast('Solicitud de desactivacion enviada', 'success'); navigate('simDetail', simId); }
 }
 
 async function requestBalanceUpdate(simId) {
   const res = await fetch(`/api/sims/${simId}/refresh-balance`, { method: 'POST' });
-  if (res.ok) toast('Se ha solicitado la actualización del saldo', 'info');
+  if (res.ok) toast('Se ha solicitado la actualizacion del saldo', 'info');
 }
 
 function showRechargeModal(simId, serviceType) {
@@ -1246,12 +1368,11 @@ async function doRecharge(simId) {
 
 async function saveAssignment(simId) {
   const subClient = document.getElementById('assignSub').value;
-  const vessel = document.getElementById('assignVessel') ? document.getElementById('assignVessel').value : '';
   const res = await fetch(`/api/sims/${simId}/assign`, {
     method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ subClient, vessel })
+    body: JSON.stringify({ subClient })
   });
-  if (res.ok) toast('Información guardada', 'success');
+  if (res.ok) toast('Informacion guardada', 'success');
 }
 
 function showNewSubUserModal() {
@@ -1260,9 +1381,9 @@ function showNewSubUserModal() {
     <div class="modal-overlay" onclick="closeModal(event)">
       <div class="modal" onclick="event.stopPropagation()">
         <h2>Nuevo Sub-Usuario</h2>
+        <div class="form-group"><label>Empresa</label><input id="suEmpresa" placeholder="Nombre de la empresa"></div>
         <div class="form-group"><label>Nombre</label><input id="suName" placeholder="Nombre completo"></div>
-        <div class="form-group"><label>Email</label><input id="suEmail" type="email" placeholder="email@empresa.com"></div>
-        <div class="form-group"><label>Teléfono (opcional)</label><input id="suPhone" placeholder="+52 ..."></div>
+        <div class="form-group"><label>Email *</label><input id="suEmail" type="email" required placeholder="email@empresa.com"></div>
         <div class="modal-actions">
           <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
           <button class="btn btn-coral" onclick="doCreateSubUser()">Solicitar</button>
@@ -1273,14 +1394,15 @@ function showNewSubUserModal() {
 }
 
 async function doCreateSubUser() {
+  const empresa = document.getElementById('suEmpresa').value;
   const name = document.getElementById('suName').value;
   const email = document.getElementById('suEmail').value;
   if (!name || !email) return toast('Nombre y email son requeridos', 'error');
   const res = await fetch('/api/subusers', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, email, phone: document.getElementById('suPhone').value })
+    body: JSON.stringify({ name, email, empresa })
   });
-  if (res.ok) { closeModal(); toast('Solicitud de sub-usuario enviada. Pendiente de aprobación.', 'success'); navigate('subusers'); }
+  if (res.ok) { closeModal(); toast('Solicitud de sub-usuario enviada. Pendiente de aprobacion.', 'success'); navigate('subusers'); }
 }
 
 // === Helpers ===
