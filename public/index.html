@@ -255,6 +255,92 @@ tr { cursor: pointer; }
 .inline-edit { border: 1.5px solid var(--gray-200); border-radius: 8px; padding: 8px 12px; font-size: 14px; width: 100%; outline: none; }
 .inline-edit:focus { border-color: var(--coral); }
 
+/* === SIM DETAIL REDESIGN === */
+.sim-detail-header {
+  background: #fff; border-radius: 14px; padding: 24px 28px;
+  border: 1px solid var(--gray-200); margin-bottom: 16px;
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;
+}
+.sim-detail-header-left {
+  display: flex; flex-direction: column; gap: 4px; min-width: 0;
+}
+.sim-detail-header-left .sim-profile-name-row { margin-bottom: 2px; }
+.sim-detail-header-right {
+  display: flex; align-items: center; gap: 12px; flex-shrink: 0; flex-wrap: wrap;
+}
+.sim-detail-header-right .badge { font-size: 13px; padding: 5px 14px; }
+.sim-detail-header-right .btn {
+  padding: 6px 14px; font-size: 12px; border-radius: 8px; font-weight: 600;
+}
+.sim-detail-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;
+}
+.sim-detail-card {
+  background: #fff; border-radius: 14px; padding: 24px 28px;
+  border: 1px solid var(--gray-200);
+}
+.sim-detail-label {
+  font-family: 'League Spartan', sans-serif;
+  font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px;
+  color: #fff; font-weight: 700; margin-bottom: 18px;
+  padding: 10px 16px; border-radius: 8px;
+  background: var(--coral);
+}
+.sim-detail-table {
+  width: 100%;
+}
+.sim-detail-table .dt-row {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  padding: 9px 0; border-bottom: 1px solid var(--gray-50);
+}
+.sim-detail-table .dt-row:last-child { border-bottom: none; }
+.sim-detail-table .dt-label {
+  color: var(--gray-500); font-size: 13px; font-weight: 400; white-space: nowrap;
+}
+.sim-detail-table .dt-value {
+  font-weight: 600; color: var(--navy); font-size: 14px; text-align: right;
+  max-width: 60%; word-break: break-all;
+}
+.sim-detail-table .dt-value.mono { font-family: monospace; font-size: 13px; letter-spacing: .3px; }
+.sim-detail-balance {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end;
+}
+.sim-detail-balance .balance-amount {
+  font-family: 'League Spartan', sans-serif;
+  color: var(--green); font-size: 26px; font-weight: 700; line-height: 1.1;
+}
+.sim-detail-balance .refresh-balance-btn { margin-left: 2px; }
+.sim-detail-balance-note {
+  font-size: 11px; color: var(--gray-500); font-style: italic; font-weight: 400;
+  margin-top: 2px; line-height: 1.3; text-align: right;
+}
+.sim-detail-recharge {
+  background: #fff; border-radius: 14px; padding: 24px 28px;
+  border: 1px solid var(--gray-200); margin-bottom: 16px;
+}
+.sim-detail-recharge .recharge-row { align-items: flex-end; }
+.sim-detail-recharge .recharge-row .btn {
+  padding: 10px 24px; height: auto; align-self: flex-end; white-space: nowrap;
+  flex-shrink: 0;
+}
+.sim-detail-recharge .recharge-row .form-group { flex: 1; }
+.sim-detail-processing {
+  background: #fff; border-radius: 14px; padding: 40px 28px;
+  border: 1px solid var(--gray-200); margin-bottom: 16px;
+  text-align: center;
+  border-left: 4px solid var(--amber);
+}
+.sim-detail-processing p:first-child {
+  font-size: 16px; color: var(--amber); font-weight: 600;
+}
+.sim-detail-processing p:last-child {
+  color: var(--gray-500); margin-top: 8px;
+}
+.sim-detail-ops {
+  background: #fff; border-radius: 14px; padding: 24px 28px;
+  border: 1px solid var(--gray-200);
+}
+
 /* === MODAL === */
 .modal-overlay {
   position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,.5);
@@ -367,6 +453,11 @@ tr { cursor: pointer; }
   .sim-info-grid { grid-template-columns: 1fr; }
   .sim-info-section:nth-child(odd) { padding-right: 0; border-right: none; border-bottom: 1px solid var(--gray-100); }
   .sim-info-section:nth-child(even) { padding-left: 0; }
+  .sim-detail-grid { grid-template-columns: 1fr; }
+  .sim-detail-header { flex-direction: column; align-items: flex-start; }
+  .sim-detail-header-right { width: 100%; justify-content: flex-start; }
+  .sim-detail-card { padding: 20px; }
+  .sim-detail-recharge { padding: 20px; }
   .stats-grid { grid-template-columns: 1fr 1fr; }
   .sim-assign-grid { grid-template-columns: 1fr; }
   .my-account-grid { grid-template-columns: 1fr; }
@@ -603,6 +694,17 @@ let currentUser = null;
 let currentPage = 'dashboard';
 let planData = null;
 
+// === HTML escaping (prevents XSS when user-controlled values are interpolated) ===
+function escapeHtml(v) {
+  if (v === null || v === undefined) return '';
+  return String(v)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // === Init ===
 (async function init() {
   try {
@@ -835,7 +937,7 @@ function renderOperationsTable(operations) {
           else { badgeClass = 'badge-op-proceso'; label = 'En proceso'; }
           return `
             <tr style="cursor:default">
-              <td>${op.type || op.operation || '—'}</td>
+              <td>${escapeHtml(op.type || op.operation || '—')}</td>
               <td>${formatDate(op.date || op.createdAt)}</td>
               <td><span class="badge ${badgeClass}">${label}</span></td>
             </tr>
@@ -853,17 +955,25 @@ function renderSimHeader(sim) {
   const isInactive = sim.status === 'inactive';
   const isProcessing = sim.status === 'processing';
 
+  const statusBadge = isActive
+    ? '<span class="badge badge-active">Activa</span>'
+    : isInactive
+      ? '<span class="badge badge-inactive">Inactiva</span>'
+      : '<span class="badge badge-processing">Procesando</span>';
+
   return `
-    <div class="sim-profile-header">
-      <div class="sim-profile-name-row">
-        <h2 id="simNameDisplay">${sim.name || sim.serial}</h2>
-        <button class="edit-name-btn" onclick="enableSimNameEdit('${sim.id}')" title="Editar nombre">${SVG_PENCIL}</button>
+    <div class="sim-detail-header">
+      <div class="sim-detail-header-left">
+        <div class="sim-profile-name-row">
+          <h2 id="simNameDisplay">${escapeHtml(sim.name || sim.serial)}</h2>
+          <button class="edit-name-btn" onclick="enableSimNameEdit('${sim.id}')" title="Editar nombre">${SVG_PENCIL}</button>
+        </div>
+        <div class="sim-serial-line">${escapeHtml(sim.serial)}${isdn ? ' &middot; <span class="isdn-part">' + escapeHtml(isdn) + '</span>' : ''}</div>
       </div>
-      <div class="sim-serial-line">${sim.serial}${isdn ? ' - <span class="isdn-part">' + isdn + '</span>' : ''}</div>
-      ${isProcessing ? '<span class="badge badge-processing" style="font-size:14px;padding:6px 16px">Procesando</span>' : ''}
-      <div class="sim-activate-deactivate-bar">
-        <button class="btn btn-green btn-sm ${isActive ? 'btn-disabled' : ''}" ${isActive ? 'disabled' : ''} onclick="showActivateModal('${sim.id}')">Activar</button>
-        <button class="btn btn-red btn-sm ${isInactive ? 'btn-disabled' : ''}" ${isInactive ? 'disabled' : ''} onclick="confirmDeactivate('${sim.id}')">Desactivar</button>
+      <div class="sim-detail-header-right">
+        ${statusBadge}
+        <button class="btn btn-outline btn-sm ${isActive ? 'btn-disabled' : ''}" ${isActive ? 'disabled' : ''} onclick="showActivateModal('${sim.id}')">Activar</button>
+        <button class="btn btn-outline btn-sm ${isInactive ? 'btn-disabled' : ''}" ${isInactive ? 'disabled' : ''} onclick="confirmDeactivate('${sim.id}')" style="border-color:var(--red);color:var(--red)">Desactivar</button>
       </div>
     </div>
   `;
@@ -872,18 +982,20 @@ function renderSimHeader(sim) {
 // === Helper: render SIM Device section ===
 function renderSimDeviceSection(sim) {
   return `
-    <div class="sim-info-section">
-      <h3>Dispositivo</h3>
-      <div class="info-row"><span class="info-label">NETWORK</span><span class="info-value">${sim.network || '—'}</span></div>
-      <div class="info-row"><span class="info-label">TIPO</span><span class="info-value">${sim.cardType || '—'}</span></div>
-      <div class="info-row"><span class="info-label">ICCID</span><span class="info-value" style="font-family:monospace">${sim.iccid || '—'}</span></div>
-      <div class="info-row"><span class="info-label">IMSI</span><span class="info-value" style="font-family:monospace">${sim.imei || '—'}</span></div>
-      <div class="info-row"><span class="info-label">PIN 1</span><span class="info-value">${sim.pin || '—'}</span></div>
-      <div class="info-row"><span class="info-label">PIN 2</span><span class="info-value">${sim.pin2 || '—'}</span></div>
-      <div class="info-row"><span class="info-label">PUK 1</span><span class="info-value">${sim.puk || '—'}</span></div>
-      <div class="info-row"><span class="info-label">PUK 2</span><span class="info-value">${sim.puk2 || '—'}</span></div>
-      <div class="info-row"><span class="info-label">TELEPHONY</span><span class="info-value">${sim.telephony || '—'}</span></div>
-      <div class="info-row"><span class="info-label">DATA</span><span class="info-value">${sim.simData || '—'}</span></div>
+    <div class="sim-detail-card">
+      <div class="sim-detail-label">DISPOSITIVO</div>
+      <div class="sim-detail-table">
+        <div class="dt-row"><span class="dt-label">Network</span><span class="dt-value">${sim.network || '—'}</span></div>
+        <div class="dt-row"><span class="dt-label">Tipo</span><span class="dt-value">${sim.cardType || '—'}</span></div>
+        <div class="dt-row"><span class="dt-label">ICCID</span><span class="dt-value mono">${sim.iccid || '—'}</span></div>
+        <div class="dt-row"><span class="dt-label">IMSI</span><span class="dt-value mono">${sim.imei || '—'}</span></div>
+        <div class="dt-row"><span class="dt-label">PIN 1</span><span class="dt-value">${sim.pin || '—'}</span></div>
+        <div class="dt-row"><span class="dt-label">PIN 2</span><span class="dt-value">${sim.pin2 || '—'}</span></div>
+        <div class="dt-row"><span class="dt-label">PUK 1</span><span class="dt-value">${sim.puk || '—'}</span></div>
+        <div class="dt-row"><span class="dt-label">PUK 2</span><span class="dt-value">${sim.puk2 || '—'}</span></div>
+        <div class="dt-row"><span class="dt-label">Telephony</span><span class="dt-value">${sim.telephony || '—'}</span></div>
+        <div class="dt-row"><span class="dt-label">Data</span><span class="dt-value">${sim.simData || '—'}</span></div>
+      </div>
     </div>
   `;
 }
@@ -892,7 +1004,7 @@ function renderSimDeviceSection(sim) {
 function enableSimNameEdit(simId) {
   const display = document.getElementById('simNameDisplay');
   const currentName = display.textContent;
-  display.outerHTML = `<input class="sim-profile-name-input" id="simNameInput" value="${currentName}" onblur="saveSimName('${simId}')" onkeydown="if(event.key==='Enter')this.blur()">`;
+  display.outerHTML = `<input class="sim-profile-name-input" id="simNameInput" value="${escapeHtml(currentName)}" onblur="saveSimName('${simId}')" onkeydown="if(event.key==='Enter')this.blur()">`;
   document.getElementById('simNameInput').focus();
 }
 
@@ -907,7 +1019,7 @@ async function saveSimName(simId) {
     });
     if (res.ok) toast('Nombre actualizado', 'success');
   }
-  input.outerHTML = `<h2 id="simNameDisplay">${newName || simId}</h2>`;
+  input.outerHTML = `<h2 id="simNameDisplay">${escapeHtml(newName || simId)}</h2>`;
 }
 
 // === SIM Detail / Profile ===
@@ -927,17 +1039,13 @@ async function renderSimDetail(el, simId) {
   if (sim.status === 'processing') {
     el.innerHTML = `
       <div class="back-link" onclick="navigate('sims')">&#8592; Volver a Dispositivos</div>
-      <div class="card">
-        <div class="sim-profile">
-          ${renderSimHeader(sim)}
-          <div style="text-align:center;padding:40px 0">
-            <p style="font-size:16px;color:var(--amber);font-weight:600">Su solicitud est&aacute; siendo procesada</p>
-            <p style="color:var(--gray-500);margin-top:8px">Recibir&aacute; un correo de confirmaci&oacute;n cuando est&eacute; lista.</p>
-          </div>
-        </div>
+      ${renderSimHeader(sim)}
+      <div class="sim-detail-processing">
+        <p>Su solicitud est&aacute; siendo procesada</p>
+        <p>Recibir&aacute; un correo de confirmaci&oacute;n cuando est&eacute; lista.</p>
       </div>
-      <div class="card">
-        <div class="card-header"><h2>Operaciones Recientes</h2></div>
+      <div class="sim-detail-ops">
+        <div class="sim-detail-label">OPERACIONES RECIENTES</div>
         ${renderOperationsTable(sim.operations)}
       </div>
     `;
@@ -947,28 +1055,26 @@ async function renderSimDetail(el, simId) {
   if (sim.status === 'inactive') {
     el.innerHTML = `
       <div class="back-link" onclick="navigate('sims')">&#8592; Volver a Dispositivos</div>
-      <div class="card">
-        <div class="sim-profile">
-          ${renderSimHeader(sim)}
+      ${renderSimHeader(sim)}
 
-          <div class="sim-info-grid">
-            ${renderSimDeviceSection(sim)}
-            <div class="sim-info-section">
-              <h3>Servicios de la tarjeta</h3>
-              <div class="info-row"><span class="info-label">Servicio</span><span class="info-value">—</span></div>
-              <div class="info-row"><span class="info-label">Plan de Minutos</span><span class="info-value">—</span></div>
-              <div class="info-row"><span class="info-label">Saldo Disponible</span><span class="info-value">—</span></div>
-              <div class="info-row"><span class="info-label">&Uacute;ltima Ubicaci&oacute;n</span><span class="info-value">—</span></div>
-              <div class="info-row"><span class="info-label">Fecha de Activaci&oacute;n</span><span class="info-value">—</span></div>
-              <div class="info-row"><span class="info-label">Fecha de Vencimiento</span><span class="info-value">—</span></div>
-            </div>
+      <div class="sim-detail-grid">
+        ${renderSimDeviceSection(sim)}
+        <div class="sim-detail-card">
+          <div class="sim-detail-label">SERVICIO</div>
+          <div class="sim-detail-table">
+            <div class="dt-row"><span class="dt-label">Tipo de servicio</span><span class="dt-value">—</span></div>
+            <div class="dt-row"><span class="dt-label">Plan</span><span class="dt-value">—</span></div>
+            <div class="dt-row"><span class="dt-label">Saldo Disponible</span><span class="dt-value">—</span></div>
+            <div class="dt-row"><span class="dt-label">Ubicaci&oacute;n</span><span class="dt-value">—</span></div>
+            <div class="dt-row"><span class="dt-label">Fecha Activaci&oacute;n</span><span class="dt-value">—</span></div>
+            <div class="dt-row"><span class="dt-label">Fecha Vencimiento</span><span class="dt-value">—</span></div>
           </div>
         </div>
       </div>
 
       <!-- Activation form for inactive -->
-      <div class="card">
-        <div class="card-coral-header">Activaci&oacute;n y Recarga</div>
+      <div class="sim-detail-recharge">
+        <div class="sim-detail-label">ACTIVACI&Oacute;N</div>
         <div id="activationFormInline">
           <p style="color:var(--gray-500);font-size:14px;margin-bottom:16px">Esta SIM no est&aacute; activa. Complete los datos para solicitar la activaci&oacute;n.</p>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:end">
@@ -993,8 +1099,8 @@ async function renderSimDetail(el, simId) {
         </div>
       </div>
 
-      <div class="card">
-        <div class="card-header"><h2>Operaciones Recientes</h2></div>
+      <div class="sim-detail-ops">
+        <div class="sim-detail-label">OPERACIONES RECIENTES</div>
         ${renderOperationsTable(sim.operations)}
       </div>
     `;
@@ -1016,55 +1122,55 @@ async function renderSimDetail(el, simId) {
 
   el.innerHTML = `
     <div class="back-link" onclick="navigate('sims')">&#8592; Volver a Dispositivos</div>
-    <div class="card">
-      <div class="sim-profile">
-        ${renderSimHeader(sim)}
+    ${renderSimHeader(sim)}
 
-        <div class="sim-info-grid">
-          ${renderSimDeviceSection(sim)}
+    <div class="sim-detail-grid">
+      ${renderSimDeviceSection(sim)}
 
-          <div class="sim-info-section">
-            <h3>Servicios de la tarjeta</h3>
-            <div class="info-row"><span class="info-label">Servicio</span><span class="info-value">${sim.serviceType || '—'}</span></div>
-            <div class="info-row"><span class="info-label">Plan de Minutos</span><span class="info-value">${sim.planType || '—'}</span></div>
-            <div class="info-row">
-              <span class="info-label">Saldo Disponible</span>
-              <span class="info-value">
-                <span style="color:var(--green);font-size:18px;font-weight:700">${sim.balance} min</span>
+      <div class="sim-detail-card">
+        <div class="sim-detail-label">SERVICIO</div>
+        <div class="sim-detail-table">
+          <div class="dt-row"><span class="dt-label">Tipo de servicio</span><span class="dt-value">${sim.serviceType || '—'}</span></div>
+          <div class="dt-row"><span class="dt-label">Plan</span><span class="dt-value">${sim.planType || '—'}</span></div>
+          <div class="dt-row">
+            <span class="dt-label">Saldo Disponible</span>
+            <span class="dt-value">
+              <div class="sim-detail-balance">
+                <span class="balance-amount">${sim.balance} min</span>
                 <button class="refresh-balance-btn" onclick="requestBalanceUpdate('${sim.id}')" title="Actualizar saldo">${SVG_REFRESH}</button>
-                <div class="info-subtext">El saldo se actualiza autom&aacute;ticamente cada 24h, siempre puedes solicitar una actualizaci&oacute;n al sistema antes de eso</div>
-              </span>
-            </div>
-            <div class="info-row"><span class="info-label">&Uacute;ltima Ubicaci&oacute;n</span><span class="info-value">${sim.lastLocation || '—'}</span></div>
-            <div class="info-row"><span class="info-label">Fecha de Activaci&oacute;n</span><span class="info-value">${formatDate(sim.activationDate)}</span></div>
-            <div class="info-row"><span class="info-label">Fecha de Vencimiento</span><span class="info-value">${formatDate(sim.expiryDate)}</span></div>
+              </div>
+              <div class="sim-detail-balance-note">El saldo se actualiza cada 24h. Puedes solicitar una actualizaci&oacute;n manual.</div>
+            </span>
           </div>
+          <div class="dt-row"><span class="dt-label">Ubicaci&oacute;n</span><span class="dt-value">${sim.lastLocation || '—'}</span></div>
+          <div class="dt-row"><span class="dt-label">Fecha Activaci&oacute;n</span><span class="dt-value">${formatDate(sim.activationDate)}</span></div>
+          <div class="dt-row"><span class="dt-label">Fecha Vencimiento</span><span class="dt-value">${formatDate(sim.expiryDate)}</span></div>
         </div>
 
-        <!-- Información Adicional — below the 2-column grid -->
-        <div style="padding-top:16px;border-top:1px solid var(--gray-100);margin-top:16px">
-          <h3 style="font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--coral);margin-bottom:14px;font-weight:700">Informaci&oacute;n Adicional</h3>
-          <div style="max-width:400px">
-            <div class="form-group">
-              <label>Cuenta/Cliente</label>
-              <select class="inline-edit" id="assignSub">
-                <option value="">— Sin asignar —</option>
-                ${accounts.map(a => `<option value="${a.name}" ${sim.subClient === a.name ? 'selected' : ''}>${a.name}</option>`).join('')}
-              </select>
-            </div>
-          </div>
-          <div style="margin-top:12px;display:none" id="saveAdditionalDiv">
-            <button class="btn btn-navy btn-sm" onclick="saveAssignment('${sim.id}')">Guardar</button>
-          </div>
+      </div>
+    </div>
+
+    <!-- Cuenta/Cliente as its own card -->
+    <div class="sim-detail-card" style="margin-bottom:16px">
+      <div class="sim-detail-label">CUENTA / CLIENTE</div>
+      <p style="color:var(--gray-500);font-size:13px;margin-bottom:14px">Asigne esta SIM a una cuenta o cliente para organizar sus dispositivos.</p>
+      <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+        <div class="form-group" style="margin-bottom:0;flex:1;min-width:200px">
+          <select class="inline-edit" id="assignSub">
+            <option value="">— Sin asignar —</option>
+            ${accounts.map(a => `<option value="${escapeHtml(a.name)}" ${sim.subClient === a.name ? 'selected' : ''}>${escapeHtml(a.name)}</option>`).join('')}
+          </select>
+        </div>
+        <div style="display:none" id="saveAdditionalDiv">
+          <button class="btn btn-navy btn-sm" onclick="saveAssignment('${sim.id}')">Guardar Asignaci&oacute;n</button>
         </div>
       </div>
     </div>
 
     <!-- Recharge section for active -->
-    <div class="card">
-      <div class="card-coral-header">Activaci&oacute;n y Recarga</div>
+    <div class="sim-detail-recharge">
+      <div class="sim-detail-label">ACTIVACI&Oacute;N Y RECARGA</div>
       <div id="rechargeFormInline">
-        <p style="color:var(--gray-500);font-size:14px;margin-bottom:16px">Seleccione un plan para recargar este dispositivo.</p>
         <div class="recharge-row">
           <div class="form-group">
             <label>Plan de Recarga</label>
@@ -1081,8 +1187,8 @@ async function renderSimDetail(el, simId) {
       </div>
     </div>
 
-    <div class="card">
-      <div class="card-header"><h2>Operaciones Recientes</h2></div>
+    <div class="sim-detail-ops">
+      <div class="sim-detail-label">OPERACIONES RECIENTES</div>
       ${renderOperationsTable(sim.operations)}
     </div>
   `;
@@ -1594,6 +1700,7 @@ async function doRecharge(simId) {
     body: JSON.stringify({ plan })
   });
   if (res.ok) { closeModal(); toast('Recarga en proceso', 'success'); }
+  else { const d = await res.json().catch(() => ({})); toast(d.error || 'Error al solicitar la recarga', 'error'); }
 }
 
 async function saveAssignment(simId) {
