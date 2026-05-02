@@ -431,25 +431,47 @@ tr { cursor: pointer; }
   padding: 12px 24px;
 }
 
-/* === MOBILE MENU TOGGLE === */
+/* === MOBILE HEADER BAR === */
+.mobile-top-bar {
+  display: none; position: fixed; top: 0; left: 0; right: 0; height: 56px;
+  background: var(--navy); z-index: 200; align-items: center; justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,.15);
+}
+.mobile-top-bar img { max-height: 36px; max-width: 140px; }
+.mobile-top-bar svg.fallback-logo { width: 130px; height: 36px; }
 .mobile-menu-toggle {
-  display: none; position: fixed; top: 12px; left: 12px; z-index: 200;
-  background: var(--navy); color: #fff; border: none; border-radius: 8px;
-  padding: 8px 12px; font-size: 20px; cursor: pointer; line-height: 1;
+  display: none; position: fixed; top: 10px; left: 14px; z-index: 210;
+  background: transparent; color: #fff; border: none; border-radius: 8px;
+  padding: 8px; font-size: 24px; cursor: pointer; line-height: 1;
 }
 .sidebar-overlay {
   display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
   background: rgba(0,0,0,.5); z-index: 90;
 }
 
+/* === MOBILE TABLE CARDS === */
+.mobile-sim-card {
+  background: #fff; border-radius: 12px; border: 1px solid var(--gray-200);
+  padding: 16px; margin-bottom: 12px; cursor: pointer; transition: box-shadow .2s;
+}
+.mobile-sim-card:active { box-shadow: 0 2px 12px rgba(0,0,0,.1); }
+.mobile-sim-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.mobile-sim-card-name { font-weight: 600; font-size: 15px; color: var(--navy); }
+.mobile-sim-card-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 13px; color: var(--gray-600); }
+.mobile-sim-card-label { font-weight: 500; color: var(--gray-500); }
+.mobile-sim-card-serial { font-family: monospace; font-size: 12px; color: var(--gray-500); margin-top: 4px; word-break: break-all; }
+.desktop-table { display: table; }
+.mobile-card-list { display: none; }
+
 @media (max-width: 900px) {
+  .mobile-top-bar { display: flex; }
   .mobile-menu-toggle { display: block; }
   .sidebar-overlay.active { display: block; }
   .sidebar {
     transform: translateX(-100%); transition: transform .3s ease; z-index: 150;
   }
   .sidebar.open { transform: translateX(0); }
-  .main-content { margin-left: 0 !important; padding: 20px 16px !important; padding-top: 56px !important; }
+  .main-content { margin-left: 0 !important; padding: 20px 16px !important; padding-top: 72px !important; }
   .sim-info-grid { grid-template-columns: 1fr; }
   .sim-info-section:nth-child(odd) { padding-right: 0; border-right: none; border-bottom: 1px solid var(--gray-100); }
   .sim-info-section:nth-child(even) { padding-left: 0; }
@@ -463,8 +485,6 @@ tr { cursor: pointer; }
   .my-account-grid { grid-template-columns: 1fr; }
   .modal { max-width: 95vw; margin: 10px; padding: 20px; }
   .page-header h1 { font-size: 22px; }
-  table { font-size: 13px; }
-  th, td { padding: 8px 10px; }
   .recharge-row { flex-direction: column; }
   .phone-with-code { flex-direction: column; }
   .phone-with-code select { width: 100%; }
@@ -474,6 +494,9 @@ tr { cursor: pointer; }
   .sim-actions-bar .btn { width: 100%; justify-content: center; }
   .sim-activate-deactivate-bar { flex-direction: column; }
   .login-box { margin: 16px; padding: 32px 24px; }
+  /* Hide tables on mobile, show card view */
+  .desktop-table { display: none !important; }
+  .mobile-card-list { display: block !important; }
 }
 
 @media (max-width: 480px) {
@@ -519,6 +542,15 @@ tr { cursor: pointer; }
 
 <!-- APP PAGE -->
 <div id="appPage">
+  <div class="mobile-top-bar" id="mobileTopBar">
+    <img src="/logo-light.png" alt="SkyConnect" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+    <svg class="fallback-logo" viewBox="0 0 500 80" xmlns="http://www.w3.org/2000/svg" style="display:none">
+      <text x="5" y="55" font-family="Arial Black, Arial" font-weight="900" font-size="44" fill="white">SKYC</text>
+      <circle cx="200" cy="38" r="20" fill="#e63956"/>
+      <text x="190" y="52" font-family="Arial Black, Arial" font-weight="900" font-size="44" fill="white">O</text>
+      <text x="220" y="55" font-family="Arial Black, Arial" font-weight="900" font-size="44" fill="white">NNECT</text>
+    </svg>
+  </div>
   <button class="mobile-menu-toggle" id="mobileMenuToggle" onclick="toggleMobileMenu()">&#9776;</button>
   <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMobileMenu()"></div>
   <div class="app-layout">
@@ -683,9 +715,11 @@ const COUNTRY_CODES = [
 function toggleMobileMenu() {
   const sidebar = document.querySelector('#appPage .sidebar');
   const overlay = document.getElementById('sidebarOverlay');
+  const btn = document.getElementById('mobileMenuToggle');
   if (sidebar) {
-    sidebar.classList.toggle('open');
+    const isOpen = sidebar.classList.toggle('open');
     overlay.classList.toggle('active');
+    if (btn) btn.innerHTML = isOpen ? '&#10005;' : '&#9776;';
   }
 }
 
@@ -854,7 +888,7 @@ async function renderDashboard(el) {
     </div>
     <div class="card">
       <div class="card-header"><h2>SIM CARDS</h2></div>
-      <table>
+      <table class="desktop-table">
         <thead><tr><th>Tipo</th><th>SIM / Dispositivo</th><th>Tel&eacute;fono</th><th>Nombre</th><th>Cuenta</th><th>Estado</th></tr></thead>
         <tbody>
           ${sims.map(s => `
@@ -869,6 +903,20 @@ async function renderDashboard(el) {
           `).join('')}
         </tbody>
       </table>
+      <div class="mobile-card-list" style="display:none">
+        ${sims.map(s => `
+          <div class="mobile-sim-card" onclick="navigate('simDetail','${s.id}')">
+            <div class="mobile-sim-card-top">
+              <span class="mobile-sim-card-name">${s.name || s.serial}</span>
+              <span class="badge badge-${s.status}">${statusLabel(s.status)}</span>
+            </div>
+            <div class="mobile-sim-card-serial">${s.serial}</div>
+            <div class="mobile-sim-card-row"><span class="mobile-sim-card-label">Tipo</span><span>${s.cardType || '—'}</span></div>
+            <div class="mobile-sim-card-row"><span class="mobile-sim-card-label">Tel&eacute;fono</span><span>${s.msisdn || '—'}</span></div>
+            <div class="mobile-sim-card-row"><span class="mobile-sim-card-label">Cuenta</span><span>${s.subClient || '—'}</span></div>
+          </div>
+        `).join('')}
+      </div>
     </div>
   `;
 }
@@ -885,7 +933,7 @@ async function renderSims(el) {
       <input type="text" id="simSearch" placeholder="Buscar por nombre, serial o telefono..." oninput="filterSims()">
     </div>
     <div class="card">
-      <table>
+      <table class="desktop-table">
         <thead><tr><th>Tipo</th><th>SIM / Dispositivo</th><th>Tel&eacute;fono</th><th>Nombre</th><th>Cuenta</th><th>Estado</th></tr></thead>
         <tbody id="simsTableBody">
           ${sims.map(s => `
@@ -900,6 +948,20 @@ async function renderSims(el) {
           `).join('')}
         </tbody>
       </table>
+      <div class="mobile-card-list" id="simsCardList" style="display:none">
+        ${sims.map(s => `
+          <div class="mobile-sim-card" onclick="navigate('simDetail','${s.id}')" data-search="${(s.name||'').toLowerCase()} ${s.serial.toLowerCase()} ${(s.msisdn||'').toLowerCase()}">
+            <div class="mobile-sim-card-top">
+              <span class="mobile-sim-card-name">${s.name || s.serial}</span>
+              <span class="badge badge-${s.status}">${statusLabel(s.status)}</span>
+            </div>
+            <div class="mobile-sim-card-serial">${s.serial}</div>
+            <div class="mobile-sim-card-row"><span class="mobile-sim-card-label">Tipo</span><span>${s.cardType || '—'}</span></div>
+            <div class="mobile-sim-card-row"><span class="mobile-sim-card-label">Tel&eacute;fono</span><span>${s.msisdn || '—'}</span></div>
+            <div class="mobile-sim-card-row"><span class="mobile-sim-card-label">Cuenta</span><span>${s.subClient || '—'}</span></div>
+          </div>
+        `).join('')}
+      </div>
     </div>
   `;
 }
@@ -909,6 +971,10 @@ function filterSims() {
   document.querySelectorAll('#simsTableBody tr').forEach(row => {
     const data = row.getAttribute('data-search') || '';
     row.style.display = data.includes(q) ? '' : 'none';
+  });
+  document.querySelectorAll('#simsCardList .mobile-sim-card').forEach(card => {
+    const data = card.getAttribute('data-search') || '';
+    card.style.display = data.includes(q) ? '' : 'none';
   });
 }
 
