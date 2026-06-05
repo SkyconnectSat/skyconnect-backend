@@ -36,7 +36,7 @@ const PERSIST_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(__dirname
 const DATA_FILE = path.join(PERSIST_DIR, 'db.json');
 const LOGO_FILE = path.join(PERSIST_DIR, 'logo.png');
 const LOGO_LIGHT_FILE = path.join(PERSIST_DIR, 'logo-light.png');
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'vanessacarreno91@gmail.com';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'vcarreno@esisgroup.com';
 
 // Ensure persistent directory exists
 if (!fs.existsSync(PERSIST_DIR)) {
@@ -189,6 +189,7 @@ function createDefaultSim(overrides = {}) {
 
 function defaultPermissions() {
   return {
+    canRead: false,
     canActivate: false,
     canRecharge: false,
     canRequestBalance: false,
@@ -513,7 +514,7 @@ function createDefaultDB() {
       networks: ['IRIDIUM', 'VIASAT', 'STARLINK']
     },
     notificationSettings: {
-      adminEmail: 'vanessacarreno91@gmail.com',
+      adminEmail: 'vcarreno@esisgroup.com',
       notifyAdmin: true,
       notifyClient: true,
       clientNotifications: true,
@@ -676,6 +677,25 @@ function sendTemplateEmail(templateId, variables, recipientEmail) {
 function sendNotification(subject, details, toClient) {
   console.log(`⚠️ sendNotification() is deprecated. Use sendTemplateEmail() instead.`);
   console.log(`   Subject: ${subject} | To: ${toClient || 'admin'}`);
+}
+
+// Simple email notification (for actions without a dedicated template)
+function sendNotificationSimple(toEmail, subject, bodyText) {
+  const db = loadDB();
+  const settings = db.notificationSettings || {};
+  const smtpHost = settings.smtpHost || process.env.SMTP_HOST;
+  if (!smtpHost) { console.log(`[Email] ${subject} → ${toEmail}: ${bodyText}`); return; }
+  try {
+    const nodemailer = require('nodemailer');
+    const smtpPort = settings.smtpPort || parseInt(process.env.SMTP_PORT || '587', 10);
+    const smtpUser = settings.smtpUser || process.env.SMTP_USER;
+    const smtpPass = settings.smtpPassword || settings.smtpPass || process.env.SMTP_PASS;
+    const smtpSecure = (smtpPort === 465) || process.env.SMTP_SECURE === 'true';
+    const fromEmail = settings.smtpFrom || smtpUser || '';
+    const transporter = nodemailer.createTransport({ host: smtpHost, port: smtpPort, secure: smtpSecure, auth: { user: smtpUser, pass: smtpPass } });
+    const htmlBody = buildEmailHtml('Notificación SkyConnect', `<p style="font-size:14px;color:#333">${bodyText}</p>`);
+    transporter.sendMail({ from: fromEmail, to: toEmail, subject, html: htmlBody }).catch(e => console.error('Email error:', e.message));
+  } catch (e) { console.log(`[Email not sent] ${subject} → ${toEmail}`); }
 }
 
 function logActivity(db, clientId, action, details) {
@@ -977,6 +997,7 @@ const server = http.createServer(async (req, res) => {
     const account = {
       id: uuid(),
       userId: session.userId,
+      parentAccountId: body.parentAccountId || '',
       name: body.name,
       contact: body.contact || '',
       email: body.email || '',
@@ -986,7 +1007,13 @@ const server = http.createServer(async (req, res) => {
       createdAt: new Date().toISOString()
     };
     db.accounts.push(account);
+    logActivity(db, session.userId, 'Nueva Cuenta Solicitada', `${body.name} por ${session.name}`);
     saveDB(db);
+    if (session.role !== 'admin') {
+      const accAdminEmail = (db.notificationSettings || {}).adminEmail || ADMIN_EMAIL;
+      sendNotificationSimple(accAdminEmail, 'Nueva Cuenta Pendiente — ' + body.name,
+        `El usuario ${session.name} (${session.email}) ha solicitado crear la cuenta "${body.name}". Requiere aprobación desde el panel de administración.`);
+    }
     return json(res, { ok: true, account });
   }
 
@@ -1014,6 +1041,7 @@ const server = http.createServer(async (req, res) => {
     const account = {
       id: uuid(),
       userId: body.userId || '',
+      parentAccountId: body.parentAccountId || '',
       name: body.name,
       contact: body.contact || '',
       email: body.email || '',
@@ -1022,6 +1050,7 @@ const server = http.createServer(async (req, res) => {
       createdAt: new Date().toISOString()
     };
     db.accounts.push(account);
+    logActivity(db, session.userId, 'Cuenta Creada (Admin)', body.name);
     saveDB(db);
     return json(res, { ok: true, account });
   }
@@ -1278,7 +1307,10 @@ const server = http.createServer(async (req, res) => {
     pushSimOperation(sim, { id: request.id, type: 'balance_update', status: 'pending', createdAt: request.createdAt });
     logActivity(db, session.userId, 'Actualización de Saldo', `SIM ${sim.serial}`);
     saveDB(db);
-    // No email notification for balance refresh requests
+    // Notify admin of balance refresh request
+    const balAdminEmail = (db.notificationSettings || {}).adminEmail || ADMIN_EMAIL;
+    sendNotificationSimple(balAdminEmail, 'Solicitud de Actualización de Saldo — SIM ' + sim.serial,
+      `El usuario ${session.name} (${session.email}) ha solicitado una actualización de saldo para la SIM ${sim.serial}.`);
     return json(res, { ok: true, message: 'Se ha solicitado la actualización de saldo' });
   }
 
@@ -1640,11 +1672,12 @@ const server = http.createServer(async (req, res) => {
     const db = loadDB();
     const created = [];
     for (const item of body.sims) {
-      const sim = createDefaultSim({
-        serial: item.serial || '',
-        cardType: item.cardType || '',
-        clientId: ''
-      });
+      const overrides = { clientId: '' };
+      const fields = ['serial','iccid','imei','msisdn','puk','pin','puk2','pin2','network','cardType','serviceType','planType','telephony','simData','name','reference','subClient','lastLocation','activationDate','expiryDate'];
+      fields.forEach(f => { if (item[f] !== undefined && item[f] !== '') overrides[f] = item[f]; });
+      if (item.balance !== undefined && item.balance !== '') overrides.balance = parseFloat(item.balance) || 0;
+      if (item.status && ['active','inactive','processing'].includes(item.status)) overrides.status = item.status;
+      const sim = createDefaultSim(overrides);
       db.sims.push(sim);
       created.push(sim);
     }
