@@ -68,7 +68,48 @@ function destroySession(req) {
 }
 
 function sessionCookie(sid) {
-  return `sid=${sid}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`;
+  return `sid=${sid}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=86400`;
+}
+
+// =====================================================
+// LOGIN RATE LIMIT (in-memory, per IP)
+// =====================================================
+const loginAttempts = new Map(); // ip -> { count, firstAttempt, blockedUntil }
+const LOGIN_RL_WINDOW_MS = 15 * 60 * 1000; // 15 min sliding window
+const LOGIN_RL_MAX = 5;                     // failures allowed in window
+const LOGIN_RL_BLOCK_MS = 15 * 60 * 1000;   // block duration after threshold
+
+function getClientIp(req) {
+  const fwd = req.headers['x-forwarded-for'];
+  if (fwd) return fwd.split(',')[0].trim();
+  return (req.socket && req.socket.remoteAddress) || 'unknown';
+}
+
+function checkLoginRateLimit(req) {
+  const ip = getClientIp(req);
+  const now = Date.now();
+  const rec = loginAttempts.get(ip);
+  if (rec && rec.blockedUntil && rec.blockedUntil > now) {
+    return { ip, blocked: true, retryAfter: Math.ceil((rec.blockedUntil - now) / 1000) };
+  }
+  return { ip, blocked: false };
+}
+
+function recordLoginFailure(ip) {
+  const now = Date.now();
+  let rec = loginAttempts.get(ip);
+  if (!rec || (now - rec.firstAttempt) > LOGIN_RL_WINDOW_MS) {
+    rec = { count: 0, firstAttempt: now, blockedUntil: 0 };
+  }
+  rec.count++;
+  if (rec.count >= LOGIN_RL_MAX) {
+    rec.blockedUntil = now + LOGIN_RL_BLOCK_MS;
+  }
+  loginAttempts.set(ip, rec);
+}
+
+function clearLoginAttempts(ip) {
+  loginAttempts.delete(ip);
 }
 
 // =====================================================
@@ -148,13 +189,15 @@ function createDefaultSim(overrides = {}) {
 
 function defaultPermissions() {
   return {
-    canViewSims: true,
     canActivate: false,
-    canDeactivate: false,
     canRecharge: false,
+    canRequestBalance: false,
+    canDeactivate: false,
     canViewBilling: false,
-    canViewReports: false,
-    canManageAccounts: false
+    canViewHistory: false,
+    canManageUsers: false,
+    canManageClients: false,
+    canViewOperations: false
   };
 }
 
@@ -394,7 +437,7 @@ function createDefaultDB() {
       {
         id: 'usr_admin',
         email: 'admin@skyconnectsat.com',
-        password: hashPassword('admin2026'),
+        password: hashPassword(process.env.ADMIN_PASSWORD || 'admin2026'),
         name: 'Vanessa Admin',
         company: 'SkyConnect',
         role: 'admin',
@@ -408,7 +451,7 @@ function createDefaultDB() {
       {
         id: 'usr_demo1',
         email: 'demo@cliente.com',
-        password: hashPassword('demo123'),
+        password: hashPassword(process.env.DEMO_PASSWORD || 'demo123'),
         name: 'Carlos Rodriguez',
         company: 'Minera del Norte',
         role: 'client',
@@ -465,6 +508,10 @@ function createDefaultDB() {
     requests: [],
     activityLog: [],
     accounts: [],
+    dropdownConfig: {
+      cardTypes: ['IRIDIUM', 'INMARSAT', 'PTT'],
+      networks: ['IRIDIUM', 'VIASAT', 'STARLINK']
+    },
     notificationSettings: {
       adminEmail: 'vanessacarreno91@gmail.com',
       notifyAdmin: true,
@@ -745,10 +792,24 @@ const server = http.createServer(async (req, res) => {
   const pathname = url.pathname;
   const method = req.method;
 
+  // Security headers
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+
   // --- API ROUTES ---
 
   // POST /api/login
   if (method === 'POST' && pathname === '/api/login') {
+    const rl = checkLoginRateLimit(req);
+    if (rl.blocked) {
+      return json(res, {
+        error: `Demasiados intentos. Intente de nuevo en ${Math.ceil(rl.retryAfter / 60)} minuto(s).`
+      }, 429, { 'Retry-After': String(rl.retryAfter) });
+    }
+
     const { email, password } = await parseBody(req);
     const db = loadDB();
 
@@ -761,6 +822,7 @@ const server = http.createServer(async (req, res) => {
       if (subuser) {
         // Approved sub-user with password can log in — create a virtual user object
         if (verifyPassword(password, subuser.password)) {
+          clearLoginAttempts(rl.ip);
           const sid = createSession({
             userId: subuser.id,
             role: 'subuser',
@@ -780,15 +842,18 @@ const server = http.createServer(async (req, res) => {
             permissions: subuser.permissions || defaultPermissions()
           }, 200, { 'Set-Cookie': sessionCookie(sid) });
         } else {
+          recordLoginFailure(rl.ip);
           return json(res, { error: 'Credenciales incorrectas' }, 401);
         }
       }
     }
 
     if (!user || !verifyPassword(password, user.password)) {
+      recordLoginFailure(rl.ip);
       return json(res, { error: 'Credenciales incorrectas' }, 401);
     }
 
+    clearLoginAttempts(rl.ip);
     const sessionData = {
       userId: user.id, role: user.role, email: user.email, name: user.name, company: user.company
     };
@@ -917,7 +982,7 @@ const server = http.createServer(async (req, res) => {
       email: body.email || '',
       phone: body.phone || '',
       empresa: body.empresa || '',
-      status: 'approved',
+      status: session.role === 'admin' ? 'approved' : 'pending',
       createdAt: new Date().toISOString()
     };
     db.accounts.push(account);
@@ -930,7 +995,12 @@ const server = http.createServer(async (req, res) => {
     if (!session) return json(res, { error: 'No autorizado' }, 401);
     const db = loadDB();
     if (!db.accounts) db.accounts = [];
-    const accounts = session.role === 'admin' ? db.accounts : db.accounts.filter(a => a.userId === session.userId);
+    let accounts;
+    if (session.role === 'admin') {
+      accounts = db.accounts;
+    } else {
+      accounts = db.accounts.filter(a => a.userId === session.userId && (!a.status || a.status === 'approved'));
+    }
     return json(res, accounts);
   }
 
@@ -998,6 +1068,44 @@ const server = http.createServer(async (req, res) => {
     db.accounts = db.accounts.filter(a => a.id !== accountId);
     saveDB(db);
     return json(res, { ok: true });
+  }
+
+  // GET /api/account-approvals — get pending accounts
+  if (method === 'GET' && pathname === '/api/account-approvals') {
+    if (!session || session.role !== 'admin') return json(res, { error: 'Acceso denegado' }, 403);
+    const db = loadDB();
+    const pending = (db.accounts || []).filter(a => a.status === 'pending');
+    return json(res, pending);
+  }
+
+  // POST /api/admin/accounts/:id/approve
+  if (method === 'POST' && pathname.match(/^\/api\/admin\/accounts\/[^/]+\/approve$/)) {
+    if (!session || session.role !== 'admin') return json(res, { error: 'Acceso denegado' }, 403);
+    const accountId = pathname.split('/')[4];
+    const db = loadDB();
+    if (!db.accounts) db.accounts = [];
+    const account = db.accounts.find(a => a.id === accountId);
+    if (!account) return json(res, { error: 'Cuenta no encontrada' }, 404);
+    account.status = 'approved';
+    account.approvedAt = new Date().toISOString();
+    logActivity(db, account.userId, 'Cuenta Aprobada', `${account.name}`);
+    saveDB(db);
+    return json(res, { ok: true, account });
+  }
+
+  // POST /api/admin/accounts/:id/reject
+  if (method === 'POST' && pathname.match(/^\/api\/admin\/accounts\/[^/]+\/reject$/)) {
+    if (!session || session.role !== 'admin') return json(res, { error: 'Acceso denegado' }, 403);
+    const accountId = pathname.split('/')[4];
+    const db = loadDB();
+    if (!db.accounts) db.accounts = [];
+    const account = db.accounts.find(a => a.id === accountId);
+    if (!account) return json(res, { error: 'Cuenta no encontrada' }, 404);
+    account.status = 'rejected';
+    account.rejectedAt = new Date().toISOString();
+    logActivity(db, account.userId, 'Cuenta Rechazada', `${account.name}`);
+    saveDB(db);
+    return json(res, { ok: true, account });
   }
 
   // GET /api/account-delete-requests — client sees their own delete requests
@@ -1183,17 +1291,38 @@ const server = http.createServer(async (req, res) => {
     if (!sim || (session.role !== 'admin' && sim.clientId !== session.userId && (!session.parentClientId || sim.clientId !== session.parentClientId))) return json(res, { error: 'SIM no encontrada' }, 404);
 
     const body = await parseBody(req);
+    const plan = typeof body.plan === 'string' ? body.plan.trim() : '';
+    if (!plan) return json(res, { error: 'Plan no especificado' }, 400);
+
+    // Validate plan exists in the catalog and corresponds to the SIM's service type
+    if (!sim.serviceType) {
+      return json(res, { error: 'La SIM no tiene un tipo de servicio configurado' }, 400);
+    }
+    const catalog = getPlans(db);
+    const allowedPlans = (catalog.plans && catalog.plans[sim.serviceType]) || [];
+    if (!allowedPlans.includes(plan)) {
+      return json(res, { error: 'Plan no válido para el servicio de esta SIM' }, 400);
+    }
+
+    // Block duplicate recharge while one is still pending for this SIM
+    const hasPending = db.requests.some(r =>
+      r.simId === sim.id && r.type === 'recharge' && r.status === 'pending'
+    );
+    if (hasPending) {
+      return json(res, { error: 'Ya existe una solicitud de recarga pendiente para esta SIM' }, 409);
+    }
+
     const request = {
       id: uuid(), type: 'recharge', simId: sim.id, simSerial: sim.serial,
       clientId: session.userId, clientName: session.name, clientEmail: session.email,
-      company: session.company, plan: body.plan, status: 'pending',
+      company: session.company, plan, status: 'pending',
       createdAt: new Date().toISOString(), completedAt: null
     };
     db.requests.unshift(request);
-    pushSimOperation(sim, { id: request.id, type: 'recharge', plan: body.plan, status: 'pending', createdAt: request.createdAt });
-    logActivity(db, session.userId, 'Solicitud de Recarga', `SIM ${sim.serial} - ${body.plan}`);
+    pushSimOperation(sim, { id: request.id, type: 'recharge', plan, status: 'pending', createdAt: request.createdAt });
+    logActivity(db, session.userId, 'Solicitud de Recarga', `SIM ${sim.serial} - ${plan}`);
     saveDB(db);
-    const rechVars = { clientName: session.name, company: session.company, simSerial: sim.serial, simNumber: sim.msisdn, planType: body.plan || '', requestType: 'recharge' };
+    const rechVars = { clientName: session.name, company: session.company, simSerial: sim.serial, simNumber: sim.msisdn, planType: plan, requestType: 'recharge' };
     const rechAdminEmail = (db.notificationSettings || {}).adminEmail || ADMIN_EMAIL;
     sendTemplateEmail('recharge_request_admin', rechVars, rechAdminEmail);
     sendTemplateEmail('recharge_inprocess_client', rechVars, session.email);
@@ -1234,6 +1363,20 @@ const server = http.createServer(async (req, res) => {
     if (!body.email) {
       return json(res, { error: 'Campo requerido: email' }, 400);
     }
+    // Validate userType if provided
+    const userType = body.userType || 'cliente';
+    if (userType !== 'interno' && userType !== 'cliente') {
+      return json(res, { error: 'userType debe ser "interno" o "cliente"' }, 400);
+    }
+    if (userType === 'interno' && !body.name) {
+      return json(res, { error: 'Campo requerido para tipo interno: name (nombre y apellido autorizador)' }, 400);
+    }
+    if (userType === 'cliente' && !body.empresa) {
+      return json(res, { error: 'Campo requerido para tipo cliente: empresa' }, 400);
+    }
+    if (userType === 'cliente' && !body.name) {
+      return json(res, { error: 'Campo requerido para tipo cliente: name (nombre y apellido contacto)' }, 400);
+    }
     const db = loadDB();
     // Check email uniqueness across users and subusers
     if (db.users.find(u => u.email === body.email) || db.subusers.find(s => s.email === body.email)) {
@@ -1241,6 +1384,7 @@ const server = http.createServer(async (req, res) => {
     }
     const subuser = {
       id: uuid(), parentClientId: session.userId,
+      userType: userType,
       name: body.name || '', email: body.email, phone: body.phone || '',
       empresa: body.empresa || '',
       company: body.company || session.company || '',
@@ -1249,7 +1393,7 @@ const server = http.createServer(async (req, res) => {
       status: 'pending', createdAt: new Date().toISOString(), approvedAt: null
     };
     db.subusers.push(subuser);
-    logActivity(db, session.userId, 'Nuevo Sub-usuario Solicitado', `${body.name || ''} (${body.email})`);
+    logActivity(db, session.userId, 'Nuevo Sub-usuario Solicitado', `[${userType}] ${body.name || ''} (${body.email})`);
     saveDB(db);
     const subAdminEmail = (db.notificationSettings || {}).adminEmail || ADMIN_EMAIL;
     sendTemplateEmail('subuser_pending_admin', { clientName: session.name, company: session.company, subuserName: body.name || '', subuserEmail: body.email }, subAdminEmail);
@@ -1456,8 +1600,17 @@ const server = http.createServer(async (req, res) => {
       'balance','dataUsed','dataTotal',
       'lastLocation','expiryDate','activationDate','lastConnection','planType','serviceType',
       'cardType','minutesActive','monthlyCharge','name','reference','subClient','status','clientId'];
+    const previousClientId = sim.clientId;
     for (const f of fields) { if (body[f] !== undefined) sim[f] = body[f]; }
     sim.lastUpdated = new Date().toISOString();
+    if (body.clientId !== undefined && body.clientId !== previousClientId) {
+      const findName = (id) => {
+        const u = db.users.find(x => x.id === id);
+        return u ? `${u.name} (${u.email})` : (id || '—');
+      };
+      const detail = `SIM ${sim.serial}: ${findName(previousClientId)} → ${findName(sim.clientId)} (admin: ${session.email})`;
+      logActivity(db, sim.clientId || session.userId, 'Cambio de Cliente en SIM', detail);
+    }
     saveDB(db);
     return json(res, { ok: true, sim });
   }
@@ -1600,6 +1753,27 @@ const server = http.createServer(async (req, res) => {
     return json(res, { ok: true, plans: db.plans });
   }
 
+  // GET /api/admin/dropdown-config
+  if (method === 'GET' && pathname === '/api/admin/dropdown-config') {
+    if (!session || session.role !== 'admin') return json(res, { error: 'Acceso denegado' }, 403);
+    const db = loadDB();
+    const config = db.dropdownConfig || { cardTypes: ['IRIDIUM', 'INMARSAT', 'PTT'], networks: ['IRIDIUM', 'VIASAT', 'STARLINK'] };
+    return json(res, config);
+  }
+
+  // PUT /api/admin/dropdown-config
+  if (method === 'PUT' && pathname === '/api/admin/dropdown-config') {
+    if (!session || session.role !== 'admin') return json(res, { error: 'Acceso denegado' }, 403);
+    const body = await parseBody(req);
+    const db = loadDB();
+    db.dropdownConfig = {
+      cardTypes: Array.isArray(body.cardTypes) ? body.cardTypes : [],
+      networks: Array.isArray(body.networks) ? body.networks : []
+    };
+    saveDB(db);
+    return json(res, { ok: true, config: db.dropdownConfig });
+  }
+
   // POST /api/admin/subusers/:id/approve
   const approveMatch = pathname.match(/^\/api\/admin\/subusers\/([^/]+)\/approve$/);
   if (method === 'POST' && approveMatch) {
@@ -1672,9 +1846,11 @@ const server = http.createServer(async (req, res) => {
     if (db.users.find(u => u.email === body.email) || db.subusers.find(s => s.email === body.email)) {
       return json(res, { error: 'Email ya existe' }, 400);
     }
+    const userType = body.userType || 'cliente';
     const subuser = {
       id: uuid(),
       parentClientId: body.parentClientId || '',
+      userType: userType,
       name: body.name || '',
       email: body.email,
       phone: body.phone || '',
@@ -1682,19 +1858,13 @@ const server = http.createServer(async (req, res) => {
       empresa: body.empresa || '',
       company: body.company || '',
       password: body.password ? hashPassword(body.password) : '',
-      canViewSims: body.canViewSims !== undefined ? body.canViewSims : true,
-      canActivate: body.canActivate || false,
-      canDeactivate: body.canDeactivate || false,
-      canRecharge: body.canRecharge || false,
-      canViewBilling: body.canViewBilling || false,
-      canViewReports: body.canViewReports || false,
-      canManageAccounts: body.canManageAccounts || false,
+      permissions: body.permissions || defaultPermissions(),
       status: body.status || 'approved',
       createdAt: new Date().toISOString(),
       approvedAt: new Date().toISOString()
     };
     db.subusers.push(subuser);
-    logActivity(db, 'admin', 'Sub-usuario Creado por Admin', `${body.name || ''} (${body.email})`);
+    logActivity(db, 'admin', 'Sub-usuario Creado por Admin', `[${userType}] ${body.name || ''} (${body.email})`);
     saveDB(db);
     return json(res, { ok: true, subuser: { ...subuser, password: undefined } });
   }
