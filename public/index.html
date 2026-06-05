@@ -467,13 +467,13 @@ tr { cursor: pointer; }
   .mobile-top-bar { display: flex; }
   .mobile-menu-toggle { display: block; }
   .sidebar-overlay.active { display: block; }
+  .sidebar-logo { display: none; }
+  .sidebar { padding-top: 56px; }
   .sidebar {
     transform: translateX(-100%); transition: transform .3s ease; z-index: 150;
   }
   .sidebar.open { transform: translateX(0); }
   .main-content { margin-left: 0 !important; padding: 20px 16px !important; padding-top: 72px !important; }
-  .sidebar-logo { display: none; }
-  .sidebar { padding-top: 56px; }
   .sim-info-grid { grid-template-columns: 1fr; }
   .sim-info-section:nth-child(odd) { padding-right: 0; border-right: none; border-bottom: 1px solid var(--gray-100); }
   .sim-info-section:nth-child(even) { padding-left: 0; }
@@ -496,7 +496,6 @@ tr { cursor: pointer; }
   .sim-actions-bar .btn { width: 100%; justify-content: center; }
   .sim-activate-deactivate-bar { flex-direction: column; }
   .login-box { margin: 16px; padding: 32px 24px; }
-  /* Hide tables on mobile, show card view */
   .desktop-table { display: none !important; }
   .mobile-card-list { display: block !important; }
 }
@@ -582,7 +581,7 @@ tr { cursor: pointer; }
         </div>
         <div class="nav-item" data-page="accounts" onclick="navigate('accounts')">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2z"/><path d="M16 3v4H8V3"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
-          Cuenta/Cliente
+          Clientes/Cuentas
           <span class="nav-dot"></span>
         </div>
         <div class="nav-item" data-page="subusers" onclick="navigate('subusers')">
@@ -823,7 +822,26 @@ function showApp() {
   document.getElementById('appPage').style.display = 'block';
   document.getElementById('userName').textContent = currentUser.name;
   document.getElementById('userCompany').textContent = currentUser.company;
+  applyPermissions();
   navigate('dashboard');
+}
+
+function applyPermissions() {
+  if (!currentUser || currentUser.role !== 'subuser') return;
+  const perms = currentUser.permissions || {};
+  const navMap = {
+    'accounts': perms.canManageClients,
+    'subusers': perms.canManageUsers,
+    'reports': perms.canViewHistory,
+    'billing': perms.canViewBilling
+  };
+  // dashboard, sims, myaccount are always visible
+  Object.keys(navMap).forEach(page => {
+    const navItem = document.querySelector(`.nav-item[data-page="${page}"]`);
+    if (navItem) {
+      navItem.style.display = navMap[page] ? '' : 'none';
+    }
+  });
 }
 
 // === Navigation ===
@@ -833,6 +851,8 @@ function navigate(page, param) {
   const overlay = document.getElementById('sidebarOverlay');
   if (sidebar) { sidebar.classList.remove('open'); }
   if (overlay) { overlay.classList.remove('active'); }
+  const btn = document.getElementById('mobileMenuToggle');
+  if (btn) { btn.innerHTML = '&#9776;'; }
   currentPage = page;
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   const navItem = document.querySelector(`.nav-item[data-page="${page}"]`);
@@ -905,11 +925,11 @@ async function renderDashboard(el) {
           `).join('')}
         </tbody>
       </table>
-      <div class="mobile-card-list" style="display:none">
+      <div class="mobile-card-list">
         ${sims.map(s => `
           <div class="mobile-sim-card" onclick="navigate('simDetail','${s.id}')">
             <div class="mobile-sim-card-top">
-              <span class="mobile-sim-card-name">${s.name || s.serial}</span>
+              <span class="mobile-sim-card-name">${s.name || '—'}</span>
               <span class="badge badge-${s.status}">${statusLabel(s.status)}</span>
             </div>
             <div class="mobile-sim-card-serial">${s.serial}</div>
@@ -933,13 +953,19 @@ async function renderSims(el) {
     </div>
     <div class="search-bar">
       <input type="text" id="simSearch" placeholder="Buscar por nombre, serial o telefono..." oninput="filterSims()">
+      <select id="simStatusFilter" onchange="filterSims()" style="padding:10px 14px;border:1px solid var(--gray-200);border-radius:10px;font-size:14px">
+        <option value="">Todos los estados</option>
+        <option value="active">Activa</option>
+        <option value="inactive">Inactiva</option>
+        <option value="processing">Procesando</option>
+      </select>
     </div>
     <div class="card">
       <table class="desktop-table">
         <thead><tr><th>Tipo</th><th>SIM / Dispositivo</th><th>Tel&eacute;fono</th><th>Nombre</th><th>Cuenta</th><th>Estado</th></tr></thead>
         <tbody id="simsTableBody">
           ${sims.map(s => `
-            <tr onclick="navigate('simDetail','${s.id}')" data-search="${(s.name||'').toLowerCase()} ${s.serial.toLowerCase()} ${(s.msisdn||'').toLowerCase()}">
+            <tr onclick="navigate('simDetail','${s.id}')" data-search="${(s.name||'').toLowerCase()} ${s.serial.toLowerCase()} ${(s.msisdn||'').toLowerCase()}" data-status="${s.status}">
               <td>${s.cardType || '—'}</td>
               <td style="font-family:monospace;font-size:13px">${s.serial}</td>
               <td>${s.msisdn || '—'}</td>
@@ -950,11 +976,11 @@ async function renderSims(el) {
           `).join('')}
         </tbody>
       </table>
-      <div class="mobile-card-list" id="simsCardList" style="display:none">
+      <div class="mobile-card-list" id="simsMobileCards">
         ${sims.map(s => `
-          <div class="mobile-sim-card" onclick="navigate('simDetail','${s.id}')" data-search="${(s.name||'').toLowerCase()} ${s.serial.toLowerCase()} ${(s.msisdn||'').toLowerCase()}">
+          <div class="mobile-sim-card" onclick="navigate('simDetail','${s.id}')" data-search="${(s.name||'').toLowerCase()} ${s.serial.toLowerCase()} ${(s.msisdn||'').toLowerCase()}" data-status="${s.status}">
             <div class="mobile-sim-card-top">
-              <span class="mobile-sim-card-name">${s.name || s.serial}</span>
+              <span class="mobile-sim-card-name">${s.name || '—'}</span>
               <span class="badge badge-${s.status}">${statusLabel(s.status)}</span>
             </div>
             <div class="mobile-sim-card-serial">${s.serial}</div>
@@ -970,13 +996,22 @@ async function renderSims(el) {
 
 function filterSims() {
   const q = document.getElementById('simSearch').value.toLowerCase();
+  const statusFilter = document.getElementById('simStatusFilter') ? document.getElementById('simStatusFilter').value : '';
+  // Filter table rows
   document.querySelectorAll('#simsTableBody tr').forEach(row => {
     const data = row.getAttribute('data-search') || '';
-    row.style.display = data.includes(q) ? '' : 'none';
+    const status = row.getAttribute('data-status') || '';
+    const matchesText = data.includes(q);
+    const matchesStatus = !statusFilter || status === statusFilter;
+    row.style.display = (matchesText && matchesStatus) ? '' : 'none';
   });
-  document.querySelectorAll('#simsCardList .mobile-sim-card').forEach(card => {
+  // Filter mobile cards
+  document.querySelectorAll('#simsMobileCards .mobile-sim-card').forEach(card => {
     const data = card.getAttribute('data-search') || '';
-    card.style.display = data.includes(q) ? '' : 'none';
+    const status = card.getAttribute('data-status') || '';
+    const matchesText = data.includes(q);
+    const matchesStatus = !statusFilter || status === statusFilter;
+    card.style.display = (matchesText && matchesStatus) ? '' : 'none';
   });
 }
 
@@ -1341,27 +1376,32 @@ async function renderAccounts(el) {
 
   el.innerHTML = `
     <div class="page-header">
-      <h1>Cuenta/Cliente</h1>
-      <p>Gestione sus cuentas y clientes</p>
+      <h1>Clientes/Cuentas</h1>
+      <p>Gestione sus clientes/cuentas</p>
     </div>
     <div class="card">
       <div class="card-header">
-        <h2>Mis Cuentas</h2>
+        <h2>Mis Clientes/Cuentas</h2>
         <button class="btn btn-coral btn-sm" onclick="showNewAccountModal()">+ Nueva Cuenta</button>
       </div>
-      ${accounts.length === 0 ? '<p style="color:var(--gray-500);padding:20px 0">No hay cuentas registradas. Cree una nueva cuenta para organizar sus dispositivos.</p>' : `
+      ${accounts.length === 0 ? '<p style="color:var(--gray-500);padding:20px 0">No hay clientes/cuentas registradas. Cree una nueva cuenta para organizar sus dispositivos.</p>' : `
       <table>
-        <thead><tr><th>Cuenta/Cliente</th><th>Contacto</th><th>Fecha</th><th>Estado</th><th></th></tr></thead>
+        <thead><tr><th>Cliente/Cuenta</th><th>Contacto</th><th>Fecha</th><th>Estado</th><th></th></tr></thead>
         <tbody>
           ${accounts.map(a => {
             const isPendingDelete = pendingDeleteIds.includes(a.id);
+            const isPending = a.status === 'pending';
+            let statusBadge = '<span class="badge badge-active">Activa</span>';
+            if (isPendingDelete) statusBadge = '<span class="badge badge-processing">Eliminaci&oacute;n pendiente</span>';
+            else if (isPending) statusBadge = '<span class="badge badge-processing">Pendiente de aprobaci&oacute;n</span>';
+            const showDelete = !isPendingDelete && !isPending;
             return `
             <tr style="cursor:default">
               <td>${a.name || '—'}</td>
               <td>${a.contact || '—'}</td>
               <td>${formatDate(a.createdAt || a.date)}</td>
-              <td>${isPendingDelete ? '<span class="badge badge-processing">Eliminaci&oacute;n pendiente</span>' : '<span class="badge badge-active">Activa</span>'}</td>
-              <td>${isPendingDelete ? '' : `<button class="btn btn-outline btn-sm" onclick="requestDeleteAccount('${a.id}','${(a.name||'').replace(/'/g,"\\'")}')">Eliminar</button>`}</td>
+              <td>${statusBadge}</td>
+              <td>${showDelete ? `<button class="btn btn-outline btn-sm" onclick="requestDeleteAccount('${a.id}','${(a.name||'').replace(/'/g,"\\'")}')">Eliminar</button>` : ''}</td>
             </tr>`;
           }).join('')}
         </tbody>
@@ -1397,7 +1437,7 @@ async function doCreateAccount() {
       body: JSON.stringify({ name, contact })
     });
     if (res.ok) {
-      toast('Cuenta creada exitosamente', 'success');
+      toast('Solicitud de cuenta enviada. Pendiente de aprobación.', 'success');
       closeModal();
       navigate('accounts');
     } else {
@@ -1437,7 +1477,7 @@ function renderReports(el) {
     <div class="card">
       <div class="card-header"><h2>Solicitar Reporte</h2></div>
       <p style="color:var(--gray-500);margin-bottom:20px">Seleccione un dispositivo y el per&iacute;odo para recibir el historial de llamadas por correo electr&oacute;nico.</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;align-items:end">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;align-items:end">
         <div class="form-group">
           <label>Dispositivo</label>
           <select id="reportSim" class="inline-edit" style="width:100%">
@@ -1581,8 +1621,11 @@ async function saveMyAccount() {
 }
 
 // === Sub-Users ===
+let _subUserCache = {};
 async function renderSubUsers(el) {
   const subusers = await fetch('/api/subusers').then(r => r.json());
+  _subUserCache = {};
+  subusers.forEach(s => { _subUserCache['_su_' + (s.id || s._id)] = s; });
   el.innerHTML = `
     <div class="page-header">
       <h1>Sub-Usuarios</h1>
@@ -1597,19 +1640,77 @@ async function renderSubUsers(el) {
       <table>
         <thead><tr><th>Nombre</th><th>Email</th><th>Empresa</th><th>Estado</th><th></th></tr></thead>
         <tbody>
-          ${subusers.map(s => `
+          ${subusers.map(s => {
+            const isApproved = s.status === 'approved' || s.status === 'active';
+            const suIdx = '_su_' + (s.id || s._id);
+            return `
             <tr style="cursor:default">
               <td>${s.name}</td>
               <td>${s.email}</td>
               <td>${s.empresa || '—'}</td>
               <td><span class="badge badge-${s.status}">${statusLabel(s.status)}</span></td>
-              <td><button class="delete-subuser-btn" onclick="requestDeleteSubUser('${s.id || s._id}')" title="Solicitar eliminacion">${SVG_TRASH}</button></td>
-            </tr>
-          `).join('')}
+              <td style="display:flex;gap:6px;align-items:center">
+                ${isApproved ? `<button class="btn btn-outline btn-sm" onclick="showEditSubUserModal('${s.id || s._id}','${suIdx}')">Editar</button>` : ''}
+                <button class="delete-subuser-btn" onclick="requestDeleteSubUser('${s.id || s._id}')" title="Solicitar eliminacion">${SVG_TRASH}</button>
+              </td>
+            </tr>`;
+          }).join('')}
         </tbody>
       </table>`}
     </div>
   `;
+}
+
+function showEditSubUserModal(id, cacheKey) {
+  const su = _subUserCache[cacheKey];
+  if (!su) return toast('Error al cargar datos del sub-usuario', 'error');
+  const perms = su.permissions || {};
+  const mc = document.getElementById('modalContainer');
+  mc.innerHTML = `
+    <div class="modal-overlay" onclick="closeModal(event)">
+      <div class="modal" onclick="event.stopPropagation()">
+        <h2>Editar Permisos - ${escapeHtml(su.name)}</h2>
+        <p style="color:var(--gray-500);font-size:13px;margin-bottom:16px">${escapeHtml(su.email)}</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="editPermActivate" ${perms.canActivate ? 'checked' : ''}> Activar</label>
+          <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="editPermRecharge" ${perms.canRecharge ? 'checked' : ''}> Recargar</label>
+          <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="editPermBalance" ${perms.canRequestBalance ? 'checked' : ''}> Solicitud de Saldo</label>
+          <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="editPermDeactivate" ${perms.canDeactivate ? 'checked' : ''}> Desactivar</label>
+          <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="editPermBilling" ${perms.canViewBilling ? 'checked' : ''}> Facturaci&oacute;n</label>
+          <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="editPermHistory" ${perms.canViewHistory ? 'checked' : ''}> Historial de Consumo</label>
+          <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="editPermManageUsers" ${perms.canManageUsers ? 'checked' : ''}> Gesti&oacute;n de Usuarios</label>
+          <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="editPermManageClients" ${perms.canManageClients ? 'checked' : ''}> Gesti&oacute;n de Clientes</label>
+          <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="editPermOperations" ${perms.canViewOperations ? 'checked' : ''}> Historial de Operaciones</label>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+          <button class="btn btn-coral" onclick="doEditSubUser('${id}')">Guardar</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function doEditSubUser(id) {
+  const permissions = {
+    canActivate: document.getElementById('editPermActivate')?.checked || false,
+    canRecharge: document.getElementById('editPermRecharge')?.checked || false,
+    canRequestBalance: document.getElementById('editPermBalance')?.checked || false,
+    canDeactivate: document.getElementById('editPermDeactivate')?.checked || false,
+    canViewBilling: document.getElementById('editPermBilling')?.checked || false,
+    canViewHistory: document.getElementById('editPermHistory')?.checked || false,
+    canManageUsers: document.getElementById('editPermManageUsers')?.checked || false,
+    canManageClients: document.getElementById('editPermManageClients')?.checked || false,
+    canViewOperations: document.getElementById('editPermOperations')?.checked || false
+  };
+  try {
+    const res = await fetch(`/api/subusers/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ permissions })
+    });
+    if (res.ok) { closeModal(); toast('Permisos actualizados', 'success'); navigate('subusers'); }
+    else { toast('Error al actualizar permisos', 'error'); }
+  } catch (e) { toast('Error de conexion', 'error'); }
 }
 
 async function requestDeleteSubUser(id) {
@@ -1782,13 +1883,47 @@ async function saveAssignment(simId) {
 
 function showNewSubUserModal() {
   const mc = document.getElementById('modalContainer');
+  const permCheckboxes = `
+    <div style="margin-top:12px">
+      <label style="font-size:13px;font-weight:600;color:var(--gray-500);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:8px">Permisos</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="permActivate"> Activar</label>
+        <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="permRecharge"> Recargar</label>
+        <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="permBalance"> Solicitud de Saldo</label>
+        <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="permDeactivate"> Desactivar</label>
+        <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="permBilling"> Facturaci&oacute;n</label>
+        <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="permHistory"> Historial de Consumo</label>
+        <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="permManageUsers"> Gesti&oacute;n de Usuarios</label>
+        <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="permManageClients"> Gesti&oacute;n de Clientes</label>
+        <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="permOperations"> Historial de Operaciones</label>
+      </div>
+    </div>
+  `;
   mc.innerHTML = `
     <div class="modal-overlay" onclick="closeModal(event)">
       <div class="modal" onclick="event.stopPropagation()">
         <h2>Nuevo Sub-Usuario</h2>
-        <div class="form-group"><label>Empresa</label><input id="suEmpresa" placeholder="Nombre de la empresa"></div>
-        <div class="form-group"><label>Nombre</label><input id="suName" placeholder="Nombre completo"></div>
-        <div class="form-group"><label>Email *</label><input id="suEmail" type="email" required placeholder="email@empresa.com"></div>
+        <div class="form-group">
+          <label>Tipo de Usuario *</label>
+          <div style="display:flex;gap:16px;margin-top:4px">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px">
+              <input type="radio" name="suUserType" value="interno" onchange="toggleSubUserTypeFields()" checked> Interno
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px">
+              <input type="radio" name="suUserType" value="cliente" onchange="toggleSubUserTypeFields()"> Cliente
+            </label>
+          </div>
+        </div>
+        <div id="suInternoFields">
+          <div class="form-group"><label>Nombre y Apellido Autorizador *</label><input id="suName" placeholder="Nombre completo del autorizador"></div>
+          <div class="form-group"><label>Email *</label><input id="suEmail" type="email" required placeholder="email@empresa.com"></div>
+        </div>
+        <div id="suClienteFields" style="display:none">
+          <div class="form-group"><label>Empresa *</label><input id="suEmpresa" placeholder="Nombre de la empresa"></div>
+          <div class="form-group"><label>Nombre y Apellido Contacto *</label><input id="suNameCliente" placeholder="Nombre completo del contacto"></div>
+          <div class="form-group"><label>Email *</label><input id="suEmailCliente" type="email" required placeholder="email@empresa.com"></div>
+        </div>
+        ${permCheckboxes}
         <div class="modal-actions">
           <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
           <button class="btn btn-coral" onclick="doCreateSubUser()">Solicitar</button>
@@ -1798,14 +1933,45 @@ function showNewSubUserModal() {
   `;
 }
 
+function toggleSubUserTypeFields() {
+  const userType = document.querySelector('input[name="suUserType"]:checked').value;
+  document.getElementById('suInternoFields').style.display = userType === 'interno' ? 'block' : 'none';
+  document.getElementById('suClienteFields').style.display = userType === 'cliente' ? 'block' : 'none';
+}
+
+function getSubUserPermissions() {
+  return {
+    canActivate: document.getElementById('permActivate')?.checked || false,
+    canRecharge: document.getElementById('permRecharge')?.checked || false,
+    canRequestBalance: document.getElementById('permBalance')?.checked || false,
+    canDeactivate: document.getElementById('permDeactivate')?.checked || false,
+    canViewBilling: document.getElementById('permBilling')?.checked || false,
+    canViewHistory: document.getElementById('permHistory')?.checked || false,
+    canManageUsers: document.getElementById('permManageUsers')?.checked || false,
+    canManageClients: document.getElementById('permManageClients')?.checked || false,
+    canViewOperations: document.getElementById('permOperations')?.checked || false
+  };
+}
+
 async function doCreateSubUser() {
-  const empresa = document.getElementById('suEmpresa').value;
-  const name = document.getElementById('suName').value;
-  const email = document.getElementById('suEmail').value;
-  if (!name || !email) return toast('Nombre y email son requeridos', 'error');
+  const userType = document.querySelector('input[name="suUserType"]:checked').value;
+  let name, email, empresa;
+  if (userType === 'interno') {
+    name = document.getElementById('suName').value.trim();
+    email = document.getElementById('suEmail').value.trim();
+    if (!name || !email) return toast('Nombre y email son requeridos', 'error');
+  } else {
+    empresa = document.getElementById('suEmpresa').value.trim();
+    name = document.getElementById('suNameCliente').value.trim();
+    email = document.getElementById('suEmailCliente').value.trim();
+    if (!empresa || !name || !email) return toast('Empresa, nombre y email son requeridos', 'error');
+  }
+  const permissions = getSubUserPermissions();
+  const body = { userType, name, email, permissions };
+  if (userType === 'cliente') body.empresa = empresa;
   const res = await fetch('/api/subusers', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, email, empresa })
+    body: JSON.stringify(body)
   });
   if (res.ok) { closeModal(); toast('Solicitud de sub-usuario enviada. Pendiente de aprobacion.', 'success'); navigate('subusers'); }
 }
