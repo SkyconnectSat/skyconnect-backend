@@ -156,14 +156,12 @@ function createDefaultSim(overrides = {}) {
     serial: '',
     clientId: '',
     status: 'inactive',
-    iccid: '',
-    imei: '',
     msisdn: '',
     puk: '',
     pin: '',
     puk2: '',
     pin2: '',
-    network: '',
+    network: 'IRIDIUM',
     telephony: '',
     simData: '',
     balance: 0,
@@ -172,12 +170,10 @@ function createDefaultSim(overrides = {}) {
     lastLocation: '',
     expiryDate: '',
     activationDate: '',
-    lastConnection: '',
     planType: '',
-    serviceType: '',
-    cardType: '',
+    serviceType: 'Pre-Pago',
+    cardType: 'IRIDIUM',
     minutesActive: 0,
-    monthlyCharge: 0,
     name: '',
     reference: '',
     subClient: '',
@@ -467,39 +463,37 @@ function createDefaultDB() {
     sims: [
       {
         id: 'sim_001', serial: '8988169328001000001', clientId: 'usr_demo1',
-        status: 'inactive', iccid: '', imei: '', msisdn: '', puk: '', pin: '',
+        status: 'inactive', msisdn: '', puk: '', pin: '',
         puk2: '', pin2: '', network: '', telephony: '', simData: '',
         balance: 0, dataUsed: 0, dataTotal: 0, lastLocation: '',
-        expiryDate: '', activationDate: '', lastConnection: '',
+        expiryDate: '', activationDate: '',
         planType: '', serviceType: '', cardType: 'Iridium 9555',
-        minutesActive: 0, monthlyCharge: 0, name: '', reference: '',
+        minutesActive: 0, name: '', reference: '',
         subClient: '',
         lastUpdated: new Date().toISOString(), operations: []
       },
       {
         id: 'sim_002', serial: '8988169328001000002', clientId: 'usr_demo1',
-        status: 'inactive', iccid: '', imei: '', msisdn: '', puk: '', pin: '',
+        status: 'inactive', msisdn: '', puk: '', pin: '',
         puk2: '', pin2: '', network: '', telephony: '', simData: '',
         balance: 0, dataUsed: 0, dataTotal: 0, lastLocation: '',
-        expiryDate: '', activationDate: '', lastConnection: '',
+        expiryDate: '', activationDate: '',
         planType: '', serviceType: '', cardType: 'Iridium 9575',
-        minutesActive: 0, monthlyCharge: 0, name: '', reference: '',
+        minutesActive: 0, name: '', reference: '',
         subClient: '',
         lastUpdated: new Date().toISOString(), operations: []
       },
       {
         id: 'sim_003', serial: '8988169328001000003', clientId: 'usr_demo1',
         status: 'active',
-        iccid: '89881693280010000034F', imei: '300125060000030',
         msisdn: '+8816 2365 0003', puk: '12345678', pin: '1234',
         puk2: '', pin2: '', network: 'Iridium', telephony: '', simData: '',
         balance: 85, dataUsed: 12, dataTotal: 100,
-        lastLocation: 'Lat: 19.4326, Lon: -99.1332',
+        lastLocation: 'Mexico',
         expiryDate: '2026-09-15', activationDate: '2026-01-10',
-        lastConnection: '2026-04-29T18:30:00',
         planType: 'Voucher 100 minutes - Validity 30 days',
         serviceType: 'Pre-Pago', cardType: 'Iridium 9555',
-        minutesActive: 15, monthlyCharge: 0,
+        minutesActive: 15,
         name: 'Unidad Planta Norte', reference: 'PN-001',
         subClient: '',
         lastUpdated: new Date().toISOString(), operations: []
@@ -1673,7 +1667,7 @@ const server = http.createServer(async (req, res) => {
     const created = [];
     for (const item of body.sims) {
       const overrides = { clientId: '' };
-      const fields = ['serial','iccid','imei','msisdn','puk','pin','puk2','pin2','network','cardType','serviceType','planType','telephony','simData','name','reference','subClient','lastLocation','activationDate','expiryDate'];
+      const fields = ['serial','msisdn','puk','pin','puk2','pin2','network','cardType','serviceType','planType','telephony','simData','name','reference','subClient','lastLocation','activationDate','expiryDate'];
       fields.forEach(f => { if (item[f] !== undefined && item[f] !== '') overrides[f] = item[f]; });
       if (item.balance !== undefined && item.balance !== '') overrides.balance = parseFloat(item.balance) || 0;
       if (item.status && ['active','inactive','processing'].includes(item.status)) overrides.status = item.status;
