@@ -226,6 +226,7 @@ tr:hover td { background: var(--gray-50); }
   .form-row-3 { grid-template-columns: 1fr; }
   .template-grid { grid-template-columns: 1fr; }
   .template-editor { grid-template-columns: 1fr; }
+  #configGrid { grid-template-columns: 1fr !important; }
   .modal { max-width: 95vw; margin: 10px; padding: 20px; }
   .modal-wide { max-width: 95vw; }
   .perm-grid { grid-template-columns: 1fr; }
@@ -278,6 +279,10 @@ tr:hover td { background: var(--gray-50); }
       <div class="nav-item" data-page="airtime" onclick="navTo('airtime')">
         <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
         Airtime
+      </div>
+      <div class="nav-item" data-page="config" onclick="navTo('config')">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></span>
+        Configuraci&oacute;n
       </div>
       <div class="nav-item" data-page="activity" onclick="navTo('activity')">
         <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
@@ -563,6 +568,7 @@ async function render() {
     case 'users': await renderUsers(m); break;
     case 'subusers': await renderSubUsers(m); break;
     case 'airtime': await renderAirtime(m); break;
+    case 'config': await renderConfig(m); break;
     case 'branding': await renderBranding(m); break;
     case 'activity': await renderActivity(m); break;
     case 'notifications': await renderNotifications(m); break;
@@ -665,11 +671,27 @@ async function editSimThenCompleteBalanceUpdate(reqId, simId) {
   await editSim(simId, reqId);
 }
 
+// Helper: build dynamic select options from config
+async function fetchDropdownConfig() {
+  const config = await api('/api/admin/dropdown-config');
+  if (config && !config.error) return config;
+  return { cardTypes: ['IRIDIUM', 'INMARSAT', 'PTT'], networks: ['IRIDIUM', 'VIASAT', 'STARLINK'] };
+}
+
+function buildSelectOptions(items, selectedValue) {
+  return '<option value="">— Seleccionar —</option>' + items.map(item =>
+    `<option value="${item}" ${item === selectedValue ? 'selected' : ''}>${item}</option>`
+  ).join('');
+}
+
 // Edit SIM then complete activation request
 async function editSimThenComplete(reqId, simId) {
-  const sim = await api(`/api/sims/${simId}`);
+  const [sim, plansData, ddConfig] = await Promise.all([
+    api(`/api/sims/${simId}`),
+    fetchPlansData(),
+    fetchDropdownConfig()
+  ]);
   if (!sim) return;
-  const plansData = await fetchPlansData();
 
   // Build plan options grouped by service
   const plans = plansData?.plans || plansData || {};
@@ -710,25 +732,18 @@ async function editSimThenComplete(reqId, simId) {
         </div>
         <div class="form-row">
           <div class="form-group"><label>Network</label>
-            <select id="eNetwork">
-              <option value="">— Seleccionar —</option>
-              <option value="IRIDIUM" ${sim.network==='IRIDIUM'?'selected':''}>IRIDIUM</option>
-              <option value="VIASAT" ${sim.network==='VIASAT'?'selected':''}>VIASAT</option>
-              <option value="STARLINK" ${sim.network==='STARLINK'?'selected':''}>STARLINK</option>
-            </select>
+            <select id="eNetwork">${buildSelectOptions(ddConfig.networks, sim.network)}</select>
           </div>
           <div class="form-group"><label>Tipo Tarjeta</label>
-            <select id="eCard">
-              <option value="">-- Seleccionar --</option>
-              <option value="IRIDIUM" ${sim.cardType==='IRIDIUM'?'selected':''}>IRIDIUM</option>
-              <option value="INMARSAT" ${sim.cardType==='INMARSAT'?'selected':''}>INMARSAT</option>
-              <option value="PTT" ${sim.cardType==='PTT'?'selected':''}>PTT</option>
-            </select>
+            <select id="eCard">${buildSelectOptions(ddConfig.cardTypes, sim.cardType)}</select>
           </div>
         </div>
         <div class="form-row">
           <div class="form-group"><label>Servicio</label>
-            <select id="eService"><option value="">—</option><option value="Pre-Pago" ${sim.serviceType==='Pre-Pago'?'selected':''}>Pre-Pago</option><option value="Post-Pago" ${sim.serviceType==='Post-Pago'?'selected':''}>Post-Pago</option></select>
+            <select id="eService">
+              <option value="">—</option>
+              ${services.map(svc => `<option value="${svc}" ${sim.serviceType === svc ? 'selected' : ''}>${svc}</option>`).join('')}
+            </select>
           </div>
           <div class="form-group"><label>Plan</label>
             <select id="ePlan">${planOptions}</select>
@@ -936,10 +951,11 @@ async function processBulkUpload() {
 
 // editSim: optionally accepts pendingReqId for balance_update flow
 async function editSim(simId, pendingReqId) {
-  const [sim, users, plansData] = await Promise.all([
+  const [sim, users, plansData, ddConfig] = await Promise.all([
     api(`/api/sims/${simId}`),
     api('/api/admin/users'),
-    fetchPlansData()
+    fetchPlansData(),
+    fetchDropdownConfig()
   ]);
   if (!sim) return;
 
@@ -995,25 +1011,18 @@ async function editSim(simId, pendingReqId) {
         </div>
         <div class="form-row">
           <div class="form-group"><label>Servicio</label>
-            <select id="eService"><option value="">—</option><option value="Pre-Pago" ${sim.serviceType==='Pre-Pago'?'selected':''}>Pre-Pago</option><option value="Post-Pago" ${sim.serviceType==='Post-Pago'?'selected':''}>Post-Pago</option></select>
+            <select id="eService">
+              <option value="">—</option>
+              ${services.map(svc => `<option value="${svc}" ${sim.serviceType === svc ? 'selected' : ''}>${svc}</option>`).join('')}
+            </select>
           </div>
           <div class="form-group"><label>Tipo Tarjeta</label>
-            <select id="eCard">
-              <option value="">-- Seleccionar --</option>
-              <option value="IRIDIUM" ${sim.cardType==='IRIDIUM'?'selected':''}>IRIDIUM</option>
-              <option value="INMARSAT" ${sim.cardType==='INMARSAT'?'selected':''}>INMARSAT</option>
-              <option value="PTT" ${sim.cardType==='PTT'?'selected':''}>PTT</option>
-            </select>
+            <select id="eCard">${buildSelectOptions(ddConfig.cardTypes, sim.cardType)}</select>
           </div>
         </div>
         <div class="form-row">
           <div class="form-group"><label>Network</label>
-            <select id="eNetwork">
-              <option value="">— Seleccionar —</option>
-              <option value="IRIDIUM" ${sim.network==='IRIDIUM'?'selected':''}>IRIDIUM</option>
-              <option value="VIASAT" ${sim.network==='VIASAT'?'selected':''}>VIASAT</option>
-              <option value="STARLINK" ${sim.network==='STARLINK'?'selected':''}>STARLINK</option>
-            </select>
+            <select id="eNetwork">${buildSelectOptions(ddConfig.networks, sim.network)}</select>
           </div>
           <div class="form-group"><label>Plan</label>
             <select id="ePlan">${planOptions}</select>
@@ -1105,6 +1114,7 @@ async function saveSimAndCompleteBalanceUpdate(simId, reqId) {
 }
 
 async function showAddSim() {
+  const ddConfig = await fetchDropdownConfig();
   const mc = document.getElementById('modalContainer');
   mc.innerHTML = `
     <div class="modal-overlay">
@@ -1112,12 +1122,7 @@ async function showAddSim() {
         <h2>Nueva SIM</h2>
         <div class="form-group"><label>Serial</label><input id="nSerial" placeholder="8988169328..."></div>
         <div class="form-group"><label>Tipo de Tarjeta</label>
-          <select id="nCard">
-            <option value="">-- Seleccionar --</option>
-            <option value="IRIDIUM">IRIDIUM</option>
-            <option value="INMARSAT">INMARSAT</option>
-            <option value="PTT">PTT</option>
-          </select>
+          <select id="nCard">${buildSelectOptions(ddConfig.cardTypes, '')}</select>
         </div>
         <p style="color:var(--gray-500);font-size:12px;margin-bottom:12px">La SIM se creara sin cliente asignado. Podra asignarla despues desde la tabla.</p>
         <div class="modal-actions">
@@ -1151,17 +1156,38 @@ async function deleteSim(id) {
 
 // === ACCOUNTS (Cuentas) ===
 async function renderAccounts(el) {
-  const [accounts, users, deleteReqs] = await Promise.all([
+  const [accounts, users, deleteReqs, pendingAccounts] = await Promise.all([
     api('/api/accounts'),
     api('/api/admin/users'),
-    api('/api/admin/account-delete-requests')
+    api('/api/admin/account-delete-requests'),
+    api('/api/account-approvals')
   ]);
   if (!accounts) return;
   const clients = (users || []).filter(u => u.role === 'client');
   const pendingDeletes = (deleteReqs || []).filter(r => r.status === 'pending');
+  const pendingApprovals = (pendingAccounts || []).filter(a => a.status === 'pending');
 
   el.innerHTML = `
     <div class="page-header"><h1>Cuentas</h1><p>${accounts.length} cuentas de clientes</p></div>
+    ${pendingApprovals.length > 0 ? `
+    <div class="card">
+      <div class="card-header"><h2>Cuentas Pendientes de Aprobaci&oacute;n</h2></div>
+      ${pendingApprovals.map(a => `
+        <div class="request-card urgent">
+          <strong>${a.name || a.company || 'Nueva Cuenta'}</strong> — <span class="badge badge-pending">Pendiente</span>
+          <div class="request-meta">
+            <span>Solicitante: ${a.clientName || a.requestedBy || '—'}</span>
+            <span>Email: ${a.email || '—'}</span>
+            <span>Contacto: ${a.contact || a.phone || '—'}</span>
+            <span>${formatMadridDate(a.createdAt)}</span>
+          </div>
+          <div class="request-actions">
+            <button class="btn btn-green btn-sm" onclick="approveAccount('${a.id}')">Aprobar</button>
+            <button class="btn btn-red btn-sm" onclick="rejectAccount('${a.id}')">Rechazar</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>` : ''}
     ${pendingDeletes.length > 0 ? `
     <div class="card">
       <div class="card-header"><h2>Solicitudes de Eliminación</h2></div>
@@ -1368,6 +1394,27 @@ async function rejectDeleteAccount(reqId) {
   }
 }
 
+async function approveAccount(accountId) {
+  const r = await api('/api/admin/accounts/' + accountId + '/approve', { method: 'POST' });
+  if (r && r.ok) {
+    toast('Cuenta aprobada', 'success');
+    render();
+  } else {
+    toast(r?.error || 'Error al aprobar', 'error');
+  }
+}
+
+async function rejectAccount(accountId) {
+  if (!confirm('Rechazar esta cuenta?')) return;
+  const r = await api('/api/admin/accounts/' + accountId + '/reject', { method: 'POST' });
+  if (r && r.ok) {
+    toast('Cuenta rechazada', 'info');
+    render();
+  } else {
+    toast(r?.error || 'Error al rechazar', 'error');
+  }
+}
+
 // === USERS ===
 async function renderUsers(el) {
   const users = await api('/api/admin/users');
@@ -1534,11 +1581,13 @@ async function renderSubUsers(el) {
     <div class="card">
       <div class="card-header"><h2>Sub-Usuarios</h2><button class="btn btn-coral btn-sm" onclick="showAddSubUser()">+ Nuevo Sub-Usuario</button></div>
       <table>
-        <thead><tr><th>Nombre</th><th>Email</th><th>Empresa</th><th>Telefono</th><th>Estado</th><th>Fecha</th><th>Acciones</th></tr></thead>
+        <thead><tr><th>Nombre</th><th>Email</th><th>Tipo</th><th>Empresa</th><th>Telefono</th><th>Estado</th><th>Fecha</th><th>Acciones</th></tr></thead>
         <tbody>
           ${subs.map(s => `
             <tr>
-              <td>${s.name}</td><td>${s.email}</td><td>${s.company || '—'}</td><td>${s.phone||'—'}</td>
+              <td>${s.name}</td><td>${s.email}</td>
+              <td><span class="badge ${s.userType === 'interno' ? 'badge-processing' : 'badge-active'}">${s.userType === 'interno' ? 'Interno' : 'Cliente'}</span></td>
+              <td>${s.company || '—'}</td><td>${s.phone||'—'}</td>
               <td><span class="badge badge-${s.status}">${s.status}</span></td>
               <td>${formatMadridDate(s.createdAt)}</td>
               <td>
@@ -1564,11 +1613,29 @@ async function showEditSubUser(subId) {
     <div class="modal-overlay">
       <div class="modal">
         <h2>Editar Sub-Usuario — ${s.name}</h2>
+        <div style="margin-bottom:14px">
+          <label style="display:block;font-size:12px;font-weight:600;color:var(--gray-500);margin-bottom:6px;text-transform:uppercase;letter-spacing:.3px">Tipo de Usuario</label>
+          <div style="display:flex;gap:16px">
+            <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer;text-transform:none;letter-spacing:0">
+              <input type="radio" name="esuUserType" value="interno" ${s.userType === 'interno' ? 'checked' : ''} onchange="toggleEditSubUserFields()" style="accent-color:var(--coral)"> Interno
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer;text-transform:none;letter-spacing:0">
+              <input type="radio" name="esuUserType" value="cliente" ${s.userType !== 'interno' ? 'checked' : ''} onchange="toggleEditSubUserFields()" style="accent-color:var(--coral)"> Cliente
+            </label>
+          </div>
+        </div>
         <div class="form-row">
           <div class="form-group"><label>Nombre</label><input id="esuName" value="${s.name || ''}"></div>
-          <div class="form-group"><label>Empresa</label><input id="esuCompany" value="${s.company || ''}"></div>
+          <div class="form-group" id="esuCompanyGroup"><label>Empresa</label><input id="esuCompany" value="${s.company || ''}"></div>
         </div>
         <div class="form-group"><label>Email</label><input id="esuEmail" type="email" value="${s.email || ''}"></div>
+        <div class="form-group" id="esuPhoneGroup">
+          <label>Telefono</label>
+          <div class="phone-row">
+            ${renderCountryCodeDropdown('esuCountryCode', s.countryCode || '+1')}
+            <input id="esuPhone" value="${s.phone || ''}">
+          </div>
+        </div>
         <div class="form-group">
           <label>Contrasena (dejar vacio para mantener actual)</label>
           <input id="esuPass" type="text" placeholder="Nueva contrasena...">
@@ -1577,28 +1644,40 @@ async function showEditSubUser(subId) {
         <div style="margin-top:16px;margin-bottom:8px"><strong style="font-size:14px;color:var(--navy)">Permisos</strong></div>
         <div class="perm-grid">
           <div class="perm-item">
-            <input type="checkbox" id="perm_canViewSims" ${s.canViewSims ? 'checked' : ''}>
-            <label for="perm_canViewSims">Ver Dispositivos</label>
-          </div>
-          <div class="perm-item">
             <input type="checkbox" id="perm_canActivate" ${s.canActivate ? 'checked' : ''}>
-            <label for="perm_canActivate">Activar/Desactivar</label>
+            <label for="perm_canActivate">Activar</label>
           </div>
           <div class="perm-item">
             <input type="checkbox" id="perm_canRecharge" ${s.canRecharge ? 'checked' : ''}>
             <label for="perm_canRecharge">Recargar</label>
           </div>
           <div class="perm-item">
+            <input type="checkbox" id="perm_canRequestBalance" ${s.canRequestBalance ? 'checked' : ''}>
+            <label for="perm_canRequestBalance">Solicitud de Saldo</label>
+          </div>
+          <div class="perm-item">
+            <input type="checkbox" id="perm_canDeactivate" ${s.canDeactivate ? 'checked' : ''}>
+            <label for="perm_canDeactivate">Desactivar</label>
+          </div>
+          <div class="perm-item">
             <input type="checkbox" id="perm_canViewBilling" ${s.canViewBilling ? 'checked' : ''}>
-            <label for="perm_canViewBilling">Ver Facturacion</label>
+            <label for="perm_canViewBilling">Facturacion</label>
           </div>
           <div class="perm-item">
-            <input type="checkbox" id="perm_canViewReports" ${s.canViewReports ? 'checked' : ''}>
-            <label for="perm_canViewReports">Ver Reportes</label>
+            <input type="checkbox" id="perm_canViewHistory" ${s.canViewHistory ? 'checked' : ''}>
+            <label for="perm_canViewHistory">Historial de Consumo</label>
           </div>
           <div class="perm-item">
-            <input type="checkbox" id="perm_canManageAccounts" ${s.canManageAccounts ? 'checked' : ''}>
-            <label for="perm_canManageAccounts">Gestionar Cuentas</label>
+            <input type="checkbox" id="perm_canManageUsers" ${s.canManageUsers ? 'checked' : ''}>
+            <label for="perm_canManageUsers">Gestion de Usuarios</label>
+          </div>
+          <div class="perm-item">
+            <input type="checkbox" id="perm_canManageClients" ${s.canManageClients ? 'checked' : ''}>
+            <label for="perm_canManageClients">Gestion de Clientes</label>
+          </div>
+          <div class="perm-item">
+            <input type="checkbox" id="perm_canViewOperations" ${s.canViewOperations ? 'checked' : ''}>
+            <label for="perm_canViewOperations">Historial de Operaciones</label>
           </div>
         </div>
 
@@ -1609,19 +1688,40 @@ async function showEditSubUser(subId) {
       </div>
     </div>
   `;
+  toggleEditSubUserFields();
+}
+
+function toggleEditSubUserFields() {
+  const userType = document.querySelector('input[name="esuUserType"]:checked')?.value || 'cliente';
+  const companyGroup = document.getElementById('esuCompanyGroup');
+  const phoneGroup = document.getElementById('esuPhoneGroup');
+  if (userType === 'interno') {
+    if (companyGroup) companyGroup.style.display = 'none';
+    if (phoneGroup) phoneGroup.style.display = 'none';
+  } else {
+    if (companyGroup) companyGroup.style.display = '';
+    if (phoneGroup) phoneGroup.style.display = '';
+  }
 }
 
 async function saveSubUser(subId) {
+  const userType = document.querySelector('input[name="esuUserType"]:checked')?.value || 'cliente';
   const data = {
     name: document.getElementById('esuName').value,
     email: document.getElementById('esuEmail').value,
     company: document.getElementById('esuCompany').value,
-    canViewSims: document.getElementById('perm_canViewSims').checked,
+    phone: document.getElementById('esuPhone')?.value || '',
+    countryCode: document.getElementById('esuCountryCode')?.value || '',
+    userType: userType,
     canActivate: document.getElementById('perm_canActivate').checked,
     canRecharge: document.getElementById('perm_canRecharge').checked,
+    canRequestBalance: document.getElementById('perm_canRequestBalance').checked,
+    canDeactivate: document.getElementById('perm_canDeactivate').checked,
     canViewBilling: document.getElementById('perm_canViewBilling').checked,
-    canViewReports: document.getElementById('perm_canViewReports').checked,
-    canManageAccounts: document.getElementById('perm_canManageAccounts').checked
+    canViewHistory: document.getElementById('perm_canViewHistory').checked,
+    canManageUsers: document.getElementById('perm_canManageUsers').checked,
+    canManageClients: document.getElementById('perm_canManageClients').checked,
+    canViewOperations: document.getElementById('perm_canViewOperations').checked
   };
   const pass = document.getElementById('esuPass').value;
   if (pass) data.password = pass;
@@ -1661,13 +1761,24 @@ function showAddSubUser() {
     <div class="modal-overlay">
       <div class="modal">
         <h2>Nuevo Sub-Usuario</h2>
+        <div style="margin-bottom:14px">
+          <label style="display:block;font-size:12px;font-weight:600;color:var(--gray-500);margin-bottom:6px;text-transform:uppercase;letter-spacing:.3px">Tipo de Usuario</label>
+          <div style="display:flex;gap:16px">
+            <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer;text-transform:none;letter-spacing:0">
+              <input type="radio" name="nsuUserType" value="interno" onchange="toggleNewSubUserFields()" style="accent-color:var(--coral)"> Interno
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer;text-transform:none;letter-spacing:0">
+              <input type="radio" name="nsuUserType" value="cliente" checked onchange="toggleNewSubUserFields()" style="accent-color:var(--coral)"> Cliente
+            </label>
+          </div>
+        </div>
         <div class="form-row">
           <div class="form-group"><label>Nombre</label><input id="nsuName"></div>
-          <div class="form-group"><label>Empresa</label><input id="nsuCompany"></div>
+          <div class="form-group" id="nsuCompanyGroup"><label>Empresa</label><input id="nsuCompany"></div>
         </div>
         <div class="form-group"><label>Email</label><input id="nsuEmail" type="email"></div>
         <div class="form-group"><label>Contrasena</label><input id="nsuPass" type="text"></div>
-        <div class="form-group">
+        <div class="form-group" id="nsuPhoneGroup">
           <label>Telefono</label>
           <div class="phone-row">
             ${renderCountryCodeDropdown('nsuCountryCode', '+1')}
@@ -1676,12 +1787,15 @@ function showAddSubUser() {
         </div>
         <div style="margin-top:16px;margin-bottom:8px"><strong style="font-size:14px;color:var(--navy)">Permisos</strong></div>
         <div class="perm-grid">
-          <div class="perm-item"><input type="checkbox" id="nsu_canViewSims" checked><label for="nsu_canViewSims">Ver Dispositivos</label></div>
-          <div class="perm-item"><input type="checkbox" id="nsu_canActivate"><label for="nsu_canActivate">Activar/Desactivar</label></div>
+          <div class="perm-item"><input type="checkbox" id="nsu_canActivate"><label for="nsu_canActivate">Activar</label></div>
           <div class="perm-item"><input type="checkbox" id="nsu_canRecharge"><label for="nsu_canRecharge">Recargar</label></div>
-          <div class="perm-item"><input type="checkbox" id="nsu_canViewBilling"><label for="nsu_canViewBilling">Ver Facturacion</label></div>
-          <div class="perm-item"><input type="checkbox" id="nsu_canViewReports"><label for="nsu_canViewReports">Ver Reportes</label></div>
-          <div class="perm-item"><input type="checkbox" id="nsu_canManageAccounts"><label for="nsu_canManageAccounts">Gestionar Cuentas</label></div>
+          <div class="perm-item"><input type="checkbox" id="nsu_canRequestBalance"><label for="nsu_canRequestBalance">Solicitud de Saldo</label></div>
+          <div class="perm-item"><input type="checkbox" id="nsu_canDeactivate"><label for="nsu_canDeactivate">Desactivar</label></div>
+          <div class="perm-item"><input type="checkbox" id="nsu_canViewBilling"><label for="nsu_canViewBilling">Facturacion</label></div>
+          <div class="perm-item"><input type="checkbox" id="nsu_canViewHistory"><label for="nsu_canViewHistory">Historial de Consumo</label></div>
+          <div class="perm-item"><input type="checkbox" id="nsu_canManageUsers"><label for="nsu_canManageUsers">Gestion de Usuarios</label></div>
+          <div class="perm-item"><input type="checkbox" id="nsu_canManageClients"><label for="nsu_canManageClients">Gestion de Clientes</label></div>
+          <div class="perm-item"><input type="checkbox" id="nsu_canViewOperations"><label for="nsu_canViewOperations">Historial de Operaciones</label></div>
         </div>
         <div class="modal-actions">
           <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
@@ -1692,7 +1806,21 @@ function showAddSubUser() {
   `;
 }
 
+function toggleNewSubUserFields() {
+  const userType = document.querySelector('input[name="nsuUserType"]:checked')?.value || 'cliente';
+  const companyGroup = document.getElementById('nsuCompanyGroup');
+  const phoneGroup = document.getElementById('nsuPhoneGroup');
+  if (userType === 'interno') {
+    if (companyGroup) companyGroup.style.display = 'none';
+    if (phoneGroup) phoneGroup.style.display = 'none';
+  } else {
+    if (companyGroup) companyGroup.style.display = '';
+    if (phoneGroup) phoneGroup.style.display = '';
+  }
+}
+
 async function addSubUser() {
+  const userType = document.querySelector('input[name="nsuUserType"]:checked')?.value || 'cliente';
   const data = {
     name: document.getElementById('nsuName').value,
     email: document.getElementById('nsuEmail').value,
@@ -1700,12 +1828,16 @@ async function addSubUser() {
     password: document.getElementById('nsuPass').value,
     phone: document.getElementById('nsuPhone').value,
     countryCode: document.getElementById('nsuCountryCode').value,
-    canViewSims: document.getElementById('nsu_canViewSims').checked,
+    userType: userType,
     canActivate: document.getElementById('nsu_canActivate').checked,
     canRecharge: document.getElementById('nsu_canRecharge').checked,
+    canRequestBalance: document.getElementById('nsu_canRequestBalance').checked,
+    canDeactivate: document.getElementById('nsu_canDeactivate').checked,
     canViewBilling: document.getElementById('nsu_canViewBilling').checked,
-    canViewReports: document.getElementById('nsu_canViewReports').checked,
-    canManageAccounts: document.getElementById('nsu_canManageAccounts').checked,
+    canViewHistory: document.getElementById('nsu_canViewHistory').checked,
+    canManageUsers: document.getElementById('nsu_canManageUsers').checked,
+    canManageClients: document.getElementById('nsu_canManageClients').checked,
+    canViewOperations: document.getElementById('nsu_canViewOperations').checked,
     status: 'approved'
   };
   if (!data.name || !data.email) return toast('Nombre y email son requeridos', 'error');
@@ -1847,6 +1979,97 @@ async function saveAirtime() {
   // Refresh cached plans data
   cachedPlansData = null;
   toast('Planes guardados. Los cambios se reflejan en los dropdowns del cliente.', 'success');
+}
+
+// === CONFIGURACION (Dropdowns) ===
+let dropdownConfig = { cardTypes: [], networks: [] };
+
+async function renderConfig(el) {
+  const config = await api('/api/admin/dropdown-config');
+  if (config && !config.error) {
+    dropdownConfig = config;
+  } else {
+    dropdownConfig = { cardTypes: ['IRIDIUM', 'INMARSAT', 'PTT'], networks: ['IRIDIUM', 'VIASAT', 'STARLINK'] };
+  }
+
+  el.innerHTML = `
+    <div class="page-header"><h1>Configuraci&oacute;n</h1><p>Gestione los valores de los desplegables que aparecen en la ficha de cada SIM.</p></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px" id="configGrid">
+      <div class="card" style="margin-bottom:0">
+        <div class="card-header"><h2>Tipos de Tarjeta</h2></div>
+        <p style="color:var(--gray-500);font-size:13px;margin-bottom:12px">Opciones del campo "Tipo Tarjeta" al editar una SIM.</p>
+        <div id="cardTypesContainer"></div>
+        <div class="add-plan-row" style="margin-top:8px">
+          <input id="newCardType" placeholder="Nuevo tipo..." onkeydown="if(event.key==='Enter')addConfigItem('cardTypes')">
+          <button class="btn btn-green btn-sm" onclick="addConfigItem('cardTypes')">Agregar</button>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:0">
+        <div class="card-header"><h2>Networks</h2></div>
+        <p style="color:var(--gray-500);font-size:13px;margin-bottom:12px">Opciones del campo "Network" al editar una SIM.</p>
+        <div id="networksContainer"></div>
+        <div class="add-plan-row" style="margin-top:8px">
+          <input id="newNetwork" placeholder="Nuevo network..." onkeydown="if(event.key==='Enter')addConfigItem('networks')">
+          <button class="btn btn-green btn-sm" onclick="addConfigItem('networks')">Agregar</button>
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-coral" style="margin-top:20px" onclick="saveConfig()">Guardar Configuraci&oacute;n</button>
+  `;
+  renderConfigItems();
+}
+
+function renderConfigItems() {
+  ['cardTypes', 'networks'].forEach(key => {
+    const containerId = key === 'cardTypes' ? 'cardTypesContainer' : 'networksContainer';
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const items = dropdownConfig[key] || [];
+    container.innerHTML = items.length === 0
+      ? '<p style="color:var(--gray-300);font-size:13px;padding:8px">Sin opciones</p>'
+      : items.map((item, idx) => `
+        <div class="plan-item">
+          <span>${item}</span>
+          <div style="display:flex;gap:6px">
+            <button onclick="editConfigItem('${key}',${idx})" title="Editar" style="color:var(--blue)">&#9998;</button>
+            <button onclick="removeConfigItem('${key}',${idx})" title="Eliminar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          </div>
+        </div>
+      `).join('');
+  });
+}
+
+function addConfigItem(key) {
+  const inputId = key === 'cardTypes' ? 'newCardType' : 'newNetwork';
+  const input = document.getElementById(inputId);
+  const val = input.value.trim();
+  if (!val) return;
+  if (dropdownConfig[key].includes(val)) return toast('Ya existe', 'error');
+  dropdownConfig[key].push(val);
+  input.value = '';
+  renderConfigItems();
+}
+
+function editConfigItem(key, idx) {
+  const current = dropdownConfig[key][idx];
+  const newVal = prompt('Editar:', current);
+  if (!newVal || !newVal.trim() || newVal.trim() === current) return;
+  dropdownConfig[key][idx] = newVal.trim();
+  renderConfigItems();
+}
+
+function removeConfigItem(key, idx) {
+  dropdownConfig[key].splice(idx, 1);
+  renderConfigItems();
+}
+
+async function saveConfig() {
+  const res = await api('/api/admin/dropdown-config', {
+    method: 'PUT',
+    body: JSON.stringify(dropdownConfig)
+  });
+  if (res?.error) return toast(res.error, 'error');
+  toast('Configuracion guardada', 'success');
 }
 
 // === ACTIVITY ===
