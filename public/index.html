@@ -911,7 +911,7 @@ async function renderDashboard(el) {
     <div class="card">
       <div class="card-header"><h2>SIM CARDS</h2></div>
       <table class="desktop-table">
-        <thead><tr><th>Tipo</th><th>SIM / Dispositivo</th><th>Tel&eacute;fono</th><th>Nombre</th><th>Cuenta</th><th>Estado</th></tr></thead>
+        <thead><tr><th>Tipo</th><th>SIM / Dispositivo</th><th>Tel&eacute;fono</th><th>Nombre</th><th>Sub Cliente/Cuenta</th><th>Estado</th></tr></thead>
         <tbody>
           ${sims.map(s => `
             <tr onclick="navigate('simDetail','${s.id}')">
@@ -935,7 +935,7 @@ async function renderDashboard(el) {
             <div class="mobile-sim-card-serial">${s.serial}</div>
             <div class="mobile-sim-card-row"><span class="mobile-sim-card-label">Tipo</span><span>${s.cardType || '—'}</span></div>
             <div class="mobile-sim-card-row"><span class="mobile-sim-card-label">Tel&eacute;fono</span><span>${s.msisdn || '—'}</span></div>
-            <div class="mobile-sim-card-row"><span class="mobile-sim-card-label">Cuenta</span><span>${s.subClient || '—'}</span></div>
+            <div class="mobile-sim-card-row"><span class="mobile-sim-card-label">Sub Cliente/Cuenta</span><span>${s.subClient || '—'}</span></div>
           </div>
         `).join('')}
       </div>
@@ -962,7 +962,7 @@ async function renderSims(el) {
     </div>
     <div class="card">
       <table class="desktop-table">
-        <thead><tr><th>Tipo</th><th>SIM / Dispositivo</th><th>Tel&eacute;fono</th><th>Nombre</th><th>Cuenta</th><th>Estado</th></tr></thead>
+        <thead><tr><th>Tipo</th><th>SIM / Dispositivo</th><th>Tel&eacute;fono</th><th>Nombre</th><th>Sub Cliente/Cuenta</th><th>Estado</th></tr></thead>
         <tbody id="simsTableBody">
           ${sims.map(s => `
             <tr onclick="navigate('simDetail','${s.id}')" data-search="${(s.name||'').toLowerCase()} ${s.serial.toLowerCase()} ${(s.msisdn||'').toLowerCase()}" data-status="${s.status}">
@@ -986,7 +986,7 @@ async function renderSims(el) {
             <div class="mobile-sim-card-serial">${s.serial}</div>
             <div class="mobile-sim-card-row"><span class="mobile-sim-card-label">Tipo</span><span>${s.cardType || '—'}</span></div>
             <div class="mobile-sim-card-row"><span class="mobile-sim-card-label">Tel&eacute;fono</span><span>${s.msisdn || '—'}</span></div>
-            <div class="mobile-sim-card-row"><span class="mobile-sim-card-label">Cuenta</span><span>${s.subClient || '—'}</span></div>
+            <div class="mobile-sim-card-row"><span class="mobile-sim-card-label">Sub Cliente/Cuenta</span><span>${s.subClient || '—'}</span></div>
           </div>
         `).join('')}
       </div>
@@ -1090,8 +1090,7 @@ function renderSimDeviceSection(sim) {
       <div class="sim-detail-table">
         <div class="dt-row"><span class="dt-label">Network</span><span class="dt-value">${sim.network || '—'}</span></div>
         <div class="dt-row"><span class="dt-label">Tipo</span><span class="dt-value">${sim.cardType || '—'}</span></div>
-        <div class="dt-row"><span class="dt-label">ICCID</span><span class="dt-value mono">${sim.iccid || '—'}</span></div>
-        <div class="dt-row"><span class="dt-label">IMSI</span><span class="dt-value mono">${sim.imei || '—'}</span></div>
+        <div class="dt-row"><span class="dt-label">MSISDN / Serial</span><span class="dt-value mono">${sim.msisdn || '—'}</span></div>
         <div class="dt-row"><span class="dt-label">PIN 1</span><span class="dt-value">${sim.pin || '—'}</span></div>
         <div class="dt-row"><span class="dt-label">PIN 2</span><span class="dt-value">${sim.pin2 || '—'}</span></div>
         <div class="dt-row"><span class="dt-label">PUK 1</span><span class="dt-value">${sim.puk || '—'}</span></div>
@@ -1266,7 +1265,7 @@ async function renderSimDetail(el, simId) {
 
     <!-- Cuenta/Cliente as its own card -->
     <div class="sim-detail-card" style="margin-bottom:16px">
-      <div class="sim-detail-label">CUENTA / CLIENTE</div>
+      <div class="sim-detail-label">SUB CLIENTE / CUENTA</div>
       <p style="color:var(--gray-500);font-size:13px;margin-bottom:14px">Asigne esta SIM a una cuenta o cliente para organizar sus dispositivos.</p>
       <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
         <div class="form-group" style="margin-bottom:0;flex:1;min-width:200px">
