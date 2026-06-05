@@ -245,6 +245,7 @@ tr:hover td { background: var(--gray-50); }
   .stat-card .value { font-size: 22px; }
 }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 <div class="app-layout">
@@ -891,12 +892,13 @@ function showBulkUpload() {
   const mc = document.getElementById('modalContainer');
   mc.innerHTML = `
     <div class="modal-overlay">
-      <div class="modal">
+      <div class="modal modal-wide">
         <h2>Cargar SIMs desde archivo</h2>
-        <p style="color:var(--gray-500);font-size:13px;margin-bottom:16px">Suba un archivo CSV con una SIM por linea en formato: <code>serial,cardType</code></p>
+        <p style="color:var(--gray-500);font-size:13px;margin-bottom:8px">Suba un archivo CSV con encabezados en la primera fila. Columnas disponibles:</p>
+        <p style="color:var(--gray-500);font-size:12px;margin-bottom:16px;font-family:monospace;background:var(--gray-50);padding:10px;border-radius:8px;line-height:1.8;word-break:break-all">serial, iccid, imei, msisdn, puk, pin, puk2, pin2, network, cardType, serviceType, planType, telephony, data, balance, name, reference, subClient, lastLocation, activationDate, expiryDate, status</p>
         <div class="form-group">
-          <label>Archivo CSV / XLSX</label>
-          <input type="file" id="bulkFile" accept=".csv,.xlsx" style="padding:8px">
+          <label>Archivo CSV / Excel</label>
+          <input type="file" id="bulkFile" accept=".csv,.xlsx,.xls" style="padding:8px">
         </div>
         <div id="bulkPreview" style="margin-bottom:12px"></div>
         <div class="modal-actions">
@@ -912,41 +914,102 @@ function showBulkUpload() {
 function previewBulk(e) {
   const file = e.target.files[0];
   if (!file) return;
+  const isXlsx = file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls');
   const reader = new FileReader();
   reader.onload = function(ev) {
-    const text = ev.target.result;
-    const lines = text.trim().split('\n').filter(l => l.trim());
+    let count = 0;
+    if (isXlsx && typeof XLSX !== 'undefined') {
+      const data = new Uint8Array(ev.target.result);
+      const wb = XLSX.read(data, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+      count = rows.filter(r => r.serial).length;
+    } else {
+      const text = ev.target.result;
+      const lines = text.trim().split('\n').filter(l => l.trim());
+      count = lines.length > 1 ? lines.length - 1 : 0;
+    }
     document.getElementById('bulkPreview').innerHTML = `
-      <p style="font-size:13px;color:var(--gray-500)">${lines.length} SIMs detectadas en el archivo</p>
+      <p style="font-size:13px;color:var(--gray-500)">${count} SIMs detectadas</p>
     `;
   };
-  reader.readAsText(file);
+  if (isXlsx) reader.readAsArrayBuffer(file);
+  else reader.readAsText(file);
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') { inQuotes = !inQuotes; }
+    else if (ch === ',' && !inQuotes) { result.push(current.trim()); current = ''; }
+    else { current += ch; }
+  }
+  result.push(current.trim());
+  return result;
+}
+
+function parseFileToSims(file) {
+  return new Promise((resolve, reject) => {
+    const isXlsx = file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls');
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      let sims = [];
+      if (isXlsx && typeof XLSX !== 'undefined') {
+        const data = new Uint8Array(ev.target.result);
+        const wb = XLSX.read(data, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+        sims = rows.map(row => {
+          const obj = {};
+          Object.keys(row).forEach(h => {
+            const val = String(row[h] ?? '').trim();
+            if (val !== '') {
+              const key = h === 'data' ? 'simData' : h;
+              obj[key] = val;
+            }
+          });
+          return obj;
+        }).filter(s => s.serial);
+      } else {
+        const text = ev.target.result;
+        const lines = text.trim().split('\n').filter(l => l.trim());
+        if (lines.length < 2) { resolve([]); return; }
+        const headers = parseCSVLine(lines[0]).map(h => h.replace(/^["']|["']$/g, '').trim());
+        for (let i = 1; i < lines.length; i++) {
+          const values = parseCSVLine(lines[i]);
+          const obj = {};
+          headers.forEach((h, idx) => {
+            if (values[idx] !== undefined && values[idx] !== '') {
+              const key = h === 'data' ? 'simData' : h;
+              obj[key] = values[idx];
+            }
+          });
+          if (obj.serial) sims.push(obj);
+        }
+      }
+      resolve(sims);
+    };
+    if (isXlsx) reader.readAsArrayBuffer(file);
+    else reader.readAsText(file);
+  });
 }
 
 async function processBulkUpload() {
   const file = document.getElementById('bulkFile').files[0];
   if (!file) return toast('Seleccione un archivo', 'error');
-  const reader = new FileReader();
-  reader.onload = async function(ev) {
-    const text = ev.target.result;
-    const lines = text.trim().split('\n').filter(l => l.trim());
-    const sims = lines.map(line => {
-      const parts = line.split(',').map(p => p.trim());
-      return { serial: parts[0], cardType: parts[1] || '' };
-    }).filter(s => s.serial);
-
-    if (sims.length === 0) return toast('No se encontraron SIMs validas', 'error');
-
-    const res = await api('/api/admin/sims/bulk', {
-      method: 'POST',
-      body: JSON.stringify({ sims })
-    });
-    if (res?.error) return toast(res.error, 'error');
-    closeModal();
-    toast(`${sims.length} SIMs cargadas correctamente`, 'success');
-    render();
-  };
-  reader.readAsText(file);
+  const sims = await parseFileToSims(file);
+  if (sims.length === 0) return toast('No se encontraron SIMs validas (se requiere columna "serial")', 'error');
+  const res = await api('/api/admin/sims/bulk', {
+    method: 'POST',
+    body: JSON.stringify({ sims })
+  });
+  if (res?.error) return toast(res.error, 'error');
+  closeModal();
+  toast(`${sims.length} SIMs cargadas correctamente`, 'success');
+  render();
 }
 
 // editSim: optionally accepts pendingReqId for balance_update flow
@@ -1211,21 +1274,22 @@ async function renderAccounts(el) {
       <table>
         <thead><tr><th>Cuenta / Cliente</th><th>Contacto</th><th>Asignada a</th><th>Fecha</th><th>Acciones</th></tr></thead>
         <tbody>
-          ${accounts.map(a => {
-            const usr = (users || []).find(u => u.id === (a.userId || a.clientId));
-            return `
-            <tr>
-              <td><strong>${a.name || a.company || '—'}</strong></td>
-              <td>${a.contact || a.phone || '—'}</td>
-              <td>${usr ? usr.name + ' (' + (usr.company || '') + ')' : '<em style="color:var(--gray-300)">Sin asignar</em>'}</td>
-              <td>${formatMadridDate(a.createdAt)}</td>
-              <td>
-                <button class="btn btn-outline btn-sm" onclick="showEditAccountAdmin('${a.id}')">Editar</button>
-                <button class="btn btn-outline btn-sm" onclick="showAssignAccount('${a.id}')">Asignar</button>
-                <button class="btn btn-red btn-sm" onclick="deleteAccountAdmin('${a.id}','${(a.name||'').replace(/'/g,"\\'")}')">Eliminar</button>
-              </td>
-            </tr>`;
-          }).join('')}
+          ${(function buildAdminTree(parentId, depth) {
+            return accounts.filter(a => (a.parentAccountId || '') === parentId).map(a => {
+              const usr = (users || []).find(u => u.id === (a.userId || a.clientId));
+              const indent = depth > 0 ? '<span style="padding-left:' + (depth * 20) + 'px;color:var(--gray-300)">└ </span>' : '';
+              return '<tr>' +
+                '<td>' + indent + '<strong>' + (a.name || a.company || '—') + '</strong></td>' +
+                '<td>' + (a.contact || a.phone || '—') + '</td>' +
+                '<td>' + (usr ? usr.name + ' (' + (usr.company || '') + ')' : '<em style="color:var(--gray-300)">Sin asignar</em>') + '</td>' +
+                '<td>' + formatMadridDate(a.createdAt) + '</td>' +
+                '<td>' +
+                  '<button class="btn btn-outline btn-sm" onclick="showEditAccountAdmin(\'' + a.id + '\')">Editar</button> ' +
+                  '<button class="btn btn-outline btn-sm" onclick="showAssignAccount(\'' + a.id + '\')">Asignar</button> ' +
+                  '<button class="btn btn-red btn-sm" onclick="deleteAccountAdmin(\'' + a.id + '\',\'' + (a.name||'').replace(/'/g,"\\'") + '\')">Eliminar</button>' +
+                '</td></tr>' + buildAdminTree(a.id, depth + 1);
+            }).join('');
+          })('', 0)}
         </tbody>
       </table>`}
     </div>
@@ -1242,6 +1306,11 @@ function showCreateAccount() {
         <div class="form-group"><label>Contacto</label><input id="newAccContact" placeholder="Persona de contacto"></div>
         <div class="form-group"><label>Email</label><input id="newAccEmail" placeholder="email@empresa.com"></div>
         <div class="form-group"><label>Teléfono</label><input id="newAccPhone" placeholder="+1 234 567 890"></div>
+        <div class="form-group"><label>Cuenta Padre (opcional)</label>
+          <select id="newAccParent">
+            <option value="">— Sin cuenta padre (nivel principal) —</option>
+          </select>
+        </div>
         <div class="form-group"><label>Asignar a Cliente</label>
           <select id="newAccClient">
             <option value="">— Sin asignar —</option>
@@ -1254,11 +1323,15 @@ function showCreateAccount() {
       </div>
     </div>
   `;
-  // Load clients
-  api('/api/admin/users').then(users => {
+  // Load clients and existing accounts
+  Promise.all([api('/api/admin/users'), api('/api/accounts')]).then(([users, accts]) => {
     const sel = document.getElementById('newAccClient');
     (users || []).filter(u => u.role === 'client').forEach(u => {
       sel.innerHTML += '<option value="' + u.id + '">' + u.name + ' (' + (u.company || '') + ')</option>';
+    });
+    const parentSel = document.getElementById('newAccParent');
+    (accts || []).filter(a => a.status !== 'pending').forEach(a => {
+      parentSel.innerHTML += '<option value="' + a.id + '">' + a.name + '</option>';
     });
   });
 }
@@ -1271,7 +1344,8 @@ async function doCreateAccountAdmin() {
     contact: document.getElementById('newAccContact').value.trim(),
     email: document.getElementById('newAccEmail').value.trim(),
     phone: document.getElementById('newAccPhone').value.trim(),
-    userId: document.getElementById('newAccClient').value || undefined
+    userId: document.getElementById('newAccClient').value || undefined,
+    parentAccountId: document.getElementById('newAccParent').value || ''
   };
   const r = await api('/api/admin/accounts', { method: 'POST', body: JSON.stringify(data) });
   if (r && r.ok) {
@@ -1644,6 +1718,10 @@ async function showEditSubUser(subId) {
         <div style="margin-top:16px;margin-bottom:8px"><strong style="font-size:14px;color:var(--navy)">Permisos</strong></div>
         <div class="perm-grid">
           <div class="perm-item">
+            <input type="checkbox" id="perm_canRead" ${s.canRead ? 'checked' : ''}>
+            <label for="perm_canRead">Lectura</label>
+          </div>
+          <div class="perm-item">
             <input type="checkbox" id="perm_canActivate" ${s.canActivate ? 'checked' : ''}>
             <label for="perm_canActivate">Activar</label>
           </div>
@@ -1713,6 +1791,7 @@ async function saveSubUser(subId) {
     phone: document.getElementById('esuPhone')?.value || '',
     countryCode: document.getElementById('esuCountryCode')?.value || '',
     userType: userType,
+    canRead: document.getElementById('perm_canRead').checked,
     canActivate: document.getElementById('perm_canActivate').checked,
     canRecharge: document.getElementById('perm_canRecharge').checked,
     canRequestBalance: document.getElementById('perm_canRequestBalance').checked,
@@ -1777,7 +1856,7 @@ function showAddSubUser() {
           <div class="form-group" id="nsuCompanyGroup"><label>Empresa</label><input id="nsuCompany"></div>
         </div>
         <div class="form-group"><label>Email</label><input id="nsuEmail" type="email"></div>
-        <div class="form-group"><label>Contrasena</label><input id="nsuPass" type="text"></div>
+        <div class="form-group"><label>Contrase&ntilde;a *</label><input id="nsuPass" type="password" placeholder="Minimo 6 caracteres"></div>
         <div class="form-group" id="nsuPhoneGroup">
           <label>Telefono</label>
           <div class="phone-row">
@@ -1787,6 +1866,7 @@ function showAddSubUser() {
         </div>
         <div style="margin-top:16px;margin-bottom:8px"><strong style="font-size:14px;color:var(--navy)">Permisos</strong></div>
         <div class="perm-grid">
+          <div class="perm-item"><input type="checkbox" id="nsu_canRead"><label for="nsu_canRead">Lectura</label></div>
           <div class="perm-item"><input type="checkbox" id="nsu_canActivate"><label for="nsu_canActivate">Activar</label></div>
           <div class="perm-item"><input type="checkbox" id="nsu_canRecharge"><label for="nsu_canRecharge">Recargar</label></div>
           <div class="perm-item"><input type="checkbox" id="nsu_canRequestBalance"><label for="nsu_canRequestBalance">Solicitud de Saldo</label></div>
@@ -1829,6 +1909,7 @@ async function addSubUser() {
     phone: document.getElementById('nsuPhone').value,
     countryCode: document.getElementById('nsuCountryCode').value,
     userType: userType,
+    canRead: document.getElementById('nsu_canRead').checked,
     canActivate: document.getElementById('nsu_canActivate').checked,
     canRecharge: document.getElementById('nsu_canRecharge').checked,
     canRequestBalance: document.getElementById('nsu_canRequestBalance').checked,
@@ -1841,6 +1922,7 @@ async function addSubUser() {
     status: 'approved'
   };
   if (!data.name || !data.email) return toast('Nombre y email son requeridos', 'error');
+  if (!data.password || data.password.length < 6) return toast('La contrasena debe tener al menos 6 caracteres', 'error');
   const res = await api('/api/admin/subusers', {
     method: 'POST',
     body: JSON.stringify(data)
