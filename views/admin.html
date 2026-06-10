@@ -716,11 +716,7 @@ async function editSimThenComplete(reqId, simId) {
         <h2>Cargar Datos de SIM — Activacion</h2>
         <p style="color:var(--gray-500);margin-bottom:16px;font-size:13px">Complete los datos de la SIM antes de confirmar la activacion. El cliente recibira un email de confirmacion.</p>
         <div class="form-row">
-          <div class="form-group"><label>ICCID</label><input id="eIccid" value="${sim.iccid}"></div>
-          <div class="form-group"><label>IMEI</label><input id="eImei" value="${sim.imei}"></div>
-        </div>
-        <div class="form-row">
-          <div class="form-group"><label>Numero (MSISDN)</label><input id="eMsisdn" value="${sim.msisdn}" placeholder="+8816 ..."></div>
+          <div class="form-group"><label>MSISDN / Serial</label><input id="eMsisdn" value="${sim.msisdn}" placeholder="+8816 ..."></div>
           <div class="form-group"><label>IMSI</label><input id="eImsi" value="${sim.imsi || ''}"></div>
         </div>
         <div class="form-row">
@@ -778,8 +774,6 @@ async function saveSimAndComplete(simId, reqId) {
   await api(`/api/admin/sims/${simId}`, {
     method: 'PATCH',
     body: JSON.stringify({
-      iccid: document.getElementById('eIccid').value,
-      imei: document.getElementById('eImei').value,
       msisdn: document.getElementById('eMsisdn').value,
       imsi: document.getElementById('eImsi').value,
       cardType: document.getElementById('eCard').value,
@@ -895,7 +889,7 @@ function showBulkUpload() {
       <div class="modal modal-wide">
         <h2>Cargar SIMs desde archivo</h2>
         <p style="color:var(--gray-500);font-size:13px;margin-bottom:8px">Suba un archivo CSV con encabezados en la primera fila. Columnas disponibles:</p>
-        <p style="color:var(--gray-500);font-size:12px;margin-bottom:16px;font-family:monospace;background:var(--gray-50);padding:10px;border-radius:8px;line-height:1.8;word-break:break-all">serial, iccid, imei, msisdn, puk, pin, puk2, pin2, network, cardType, serviceType, planType, telephony, data, balance, name, reference, subClient, lastLocation, activationDate, expiryDate, status</p>
+        <p style="color:var(--gray-500);font-size:12px;margin-bottom:16px;font-family:monospace;background:var(--gray-50);padding:10px;border-radius:8px;line-height:1.8;word-break:break-all">serial, msisdn, puk, pin, puk2, pin2, network, cardType, serviceType, planType, telephony, data, balance, name, reference, subClient, lastLocation, activationDate, expiryDate, status</p>
         <div class="form-group">
           <label>Archivo CSV / Excel</label>
           <input type="file" id="bulkFile" accept=".csv,.xlsx,.xls" style="padding:8px">
@@ -951,6 +945,34 @@ function parseCSVLine(line) {
   return result;
 }
 
+// Header normalization map: common variations → canonical field name
+const HEADER_MAP = {
+  serial: 'serial', 'serial number': 'serial', 'sim serial': 'serial', número: 'serial', numero: 'serial',
+  msisdn: 'msisdn', 'msisdn / serial': 'msisdn', telefono: 'msisdn', teléfono: 'msisdn', phone: 'msisdn', number: 'msisdn',
+  puk: 'puk', puk1: 'puk', 'puk 1': 'puk',
+  pin: 'pin', pin1: 'pin', 'pin 1': 'pin',
+  puk2: 'puk2', 'puk 2': 'puk2',
+  pin2: 'pin2', 'pin 2': 'pin2',
+  network: 'network', red: 'network',
+  cardtype: 'cardType', 'card type': 'cardType', 'tipo de tarjeta': 'cardType', tipo: 'cardType',
+  servicetype: 'serviceType', 'service type': 'serviceType', 'tipo de servicio': 'serviceType', servicio: 'serviceType',
+  plantype: 'planType', 'plan type': 'planType', plan: 'planType',
+  telephony: 'telephony', telefonia: 'telephony', telefonía: 'telephony',
+  data: 'simData', simdata: 'simData', datos: 'simData',
+  balance: 'balance', saldo: 'balance',
+  name: 'name', nombre: 'name',
+  reference: 'reference', referencia: 'reference', ref: 'reference',
+  subclient: 'subClient', 'sub client': 'subClient', 'sub cliente': 'subClient', 'sub cliente/cuenta': 'subClient', cuenta: 'subClient',
+  lastlocation: 'lastLocation', 'last location': 'lastLocation', ubicación: 'lastLocation', ubicacion: 'lastLocation',
+  activationdate: 'activationDate', 'activation date': 'activationDate', 'fecha activación': 'activationDate', 'fecha activacion': 'activationDate',
+  expirydate: 'expiryDate', 'expiry date': 'expiryDate', 'fecha expiración': 'expiryDate', 'fecha expiracion': 'expiryDate', vencimiento: 'expiryDate',
+  status: 'status', estado: 'status'
+};
+function normalizeHeader(h) {
+  const lower = String(h).trim().toLowerCase().replace(/[_\-]/g, ' ');
+  return HEADER_MAP[lower] || HEADER_MAP[lower.replace(/\s+/g, '')] || h;
+}
+
 function parseFileToSims(file) {
   return new Promise((resolve, reject) => {
     const isXlsx = file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls');
@@ -967,7 +989,7 @@ function parseFileToSims(file) {
           Object.keys(row).forEach(h => {
             const val = String(row[h] ?? '').trim();
             if (val !== '') {
-              const key = h === 'data' ? 'simData' : h;
+              const key = normalizeHeader(h);
               obj[key] = val;
             }
           });
@@ -983,7 +1005,7 @@ function parseFileToSims(file) {
           const obj = {};
           headers.forEach((h, idx) => {
             if (values[idx] !== undefined && values[idx] !== '') {
-              const key = h === 'data' ? 'simData' : h;
+              const key = normalizeHeader(h);
               obj[key] = values[idx];
             }
           });
@@ -1058,11 +1080,7 @@ async function editSim(simId, pendingReqId) {
         </div>
         <div class="form-row">
           <div class="form-group"><label>Serial</label><input id="eSerial" value="${sim.serial}"></div>
-          <div class="form-group"><label>ICCID</label><input id="eIccid" value="${sim.iccid}"></div>
-        </div>
-        <div class="form-row">
-          <div class="form-group"><label>IMEI</label><input id="eImei" value="${sim.imei}"></div>
-          <div class="form-group"><label>MSISDN</label><input id="eMsisdn" value="${sim.msisdn}"></div>
+          <div class="form-group"><label>MSISDN / Serial</label><input id="eMsisdn" value="${sim.msisdn}"></div>
         </div>
         <div class="form-row">
           <div class="form-group"><label>PIN 1</label><input id="ePin" value="${sim.pin}"></div>
@@ -1098,12 +1116,10 @@ async function editSim(simId, pendingReqId) {
         <div class="form-row-3">
           <div class="form-group"><label>Saldo (min)</label><input type="number" id="eBal" value="${sim.balance}"></div>
           <div class="form-group"><label>Minutos Activos</label><input type="number" id="eMinAct" value="${sim.minutesActive}"></div>
-          <div class="form-group"><label>Cargo Mensual</label><input type="number" id="eMonthly" value="${sim.monthlyCharge}"></div>
-        </div>
-        <div class="form-row-3">
           <div class="form-group"><label>Fecha Activacion</label><input type="date" id="eActDate" value="${sim.activationDate}"></div>
+        </div>
+        <div class="form-row">
           <div class="form-group"><label>Fecha Vencimiento</label><input type="date" id="eExpDate" value="${sim.expiryDate}"></div>
-          <div class="form-group"><label>Ultima Conexion</label><input type="datetime-local" id="eLastConn" value="${sim.lastConnection ? sim.lastConnection.slice(0,16) : ''}"></div>
         </div>
         <div class="form-group"><label>Ultima Ubicacion</label>
           <select id="eLoc">
@@ -1129,8 +1145,6 @@ function collectSimFormData() {
     clientId: document.getElementById('eClient').value,
     status: document.getElementById('eStatus').value,
     serial: document.getElementById('eSerial').value,
-    iccid: document.getElementById('eIccid').value,
-    imei: document.getElementById('eImei').value,
     msisdn: document.getElementById('eMsisdn').value,
     puk: document.getElementById('ePuk').value,
     pin: document.getElementById('ePin').value,
@@ -1145,10 +1159,8 @@ function collectSimFormData() {
     planType: document.getElementById('ePlan').value,
     balance: parseFloat(document.getElementById('eBal').value) || 0,
     minutesActive: parseFloat(document.getElementById('eMinAct').value) || 0,
-    monthlyCharge: parseFloat(document.getElementById('eMonthly').value) || 0,
     activationDate: document.getElementById('eActDate').value,
     expiryDate: document.getElementById('eExpDate').value,
-    lastConnection: document.getElementById('eLastConn').value,
     lastLocation: document.getElementById('eLoc').value,
     name: document.getElementById('eName').value,
     reference: document.getElementById('eRef').value
