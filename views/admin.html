@@ -566,7 +566,7 @@ function formatMadridDate(dateStr) {
 
 async function api(url, opts) {
   const r = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...opts });
-  if (r.status === 401) { window.location.href = '/'; return null; }
+  if (r.status === 401 || r.status === 403) { window.location.href = '/'; return null; }
   return r.json();
 }
 
@@ -2525,8 +2525,10 @@ async function renderNotifications(el) {
         <div class="form-group"><label>SMTP Password</label><input id="smtpPass" type="password" value="${settings.smtpPassword || ''}" placeholder="********"></div>
       </div>
       <div class="form-group"><label>SMTP From (remitente por defecto)</label><input id="smtpFrom" value="${settings.smtpFrom || ''}" placeholder="SkyConnect <noreply@sudominio.com>"></div>
-      <div style="margin-top:16px">
+      <div style="margin-top:16px;display:flex;gap:12px;align-items:center">
         <button class="btn btn-coral" onclick="saveSmtpSettings()">Guardar SMTP</button>
+        <button class="btn" style="background:var(--navy);color:#fff" onclick="testSmtp()">Probar SMTP</button>
+        <span id="smtpTestResult" style="font-size:13px"></span>
       </div>
     </div>
     <div class="card">
@@ -2537,6 +2539,22 @@ async function renderNotifications(el) {
       </div>
     </div>
   `;
+}
+
+async function testSmtp() {
+  const el = document.getElementById('smtpTestResult');
+  el.textContent = 'Enviando...';
+  el.style.color = 'var(--gray-500)';
+  const res = await api('/api/admin/notifications/test', { method: 'POST' });
+  if (res?.ok) {
+    el.textContent = res.message;
+    el.style.color = 'green';
+    toast('Email de prueba enviado', 'success');
+  } else {
+    el.textContent = res?.error || 'Error desconocido';
+    el.style.color = 'var(--coral)';
+    toast(res?.error || 'Error SMTP', 'error');
+  }
 }
 
 async function saveSmtpSettings() {
