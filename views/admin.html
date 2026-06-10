@@ -119,6 +119,25 @@ tr:hover td { background: var(--gray-50); }
 .plan-item button { background: none; border: none; color: var(--red); cursor: pointer; font-size: 16px; font-weight: bold; }
 .btn-header-group { display: flex; gap: 8px; align-items: center; }
 
+/* Bulk action toolbar */
+.bulk-bar {
+  display: none; background: var(--navy); color: #fff; padding: 12px 20px; border-radius: 10px;
+  margin-bottom: 12px; align-items: center; gap: 12px; flex-wrap: wrap; animation: slideIn .2s;
+}
+.bulk-bar.active { display: flex; }
+.bulk-bar .bulk-count { font-weight: 600; font-size: 14px; white-space: nowrap; }
+.bulk-bar .bulk-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.bulk-bar .btn-bulk {
+  padding: 6px 14px; border-radius: 6px; border: 1px solid rgba(255,255,255,.25);
+  background: transparent; color: #fff; font-size: 12px; font-weight: 600; cursor: pointer;
+  transition: background .15s;
+}
+.bulk-bar .btn-bulk:hover { background: rgba(255,255,255,.15); }
+.bulk-bar .btn-bulk.danger { border-color: var(--coral); color: var(--coral); }
+.bulk-bar .btn-bulk.danger:hover { background: var(--coral); color: #fff; }
+.bulk-bar .btn-deselect { background: none; border: none; color: rgba(255,255,255,.6); cursor: pointer; font-size: 18px; margin-left: auto; }
+table input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--coral); }
+
 /* Country code dropdown */
 .cc-dropdown-wrapper { position: relative; }
 .cc-dropdown-trigger {
@@ -802,6 +821,7 @@ async function saveSimAndComplete(simId, reqId) {
 // === SIMS ===
 let allSimsCache = [];
 let allUsersCache = [];
+const selectedSims = new Set();
 
 async function renderSims(el) {
   const [sims, users] = await Promise.all([
@@ -814,6 +834,7 @@ async function renderSims(el) {
 
   const clientUsers = allUsersCache.filter(u => u.role === 'client');
 
+  selectedSims.clear();
   el.innerHTML = `
     <div class="page-header"><h1>SIM Cards</h1><p>${sims.length} SIMs en el sistema</p></div>
     <div class="card">
@@ -824,6 +845,17 @@ async function renderSims(el) {
           <button class="btn btn-coral btn-sm" onclick="showAddSim()">+ Nueva SIM</button>
         </div>
       </div>
+      <div id="bulkBar" class="bulk-bar">
+        <span class="bulk-count" id="bulkCount">0 seleccionadas</span>
+        <div class="bulk-actions">
+          <button class="btn-bulk" onclick="bulkAssign()">Asignar Cliente</button>
+          <button class="btn-bulk" onclick="bulkActivate()">Activar</button>
+          <button class="btn-bulk" onclick="bulkDeactivate()">Desactivar</button>
+          <button class="btn-bulk" onclick="bulkRecharge()">Recargar</button>
+          <button class="btn-bulk danger" onclick="bulkDeleteSims()">Eliminar</button>
+        </div>
+        <button class="btn-deselect" onclick="deselectAll()" title="Deseleccionar todo">&times;</button>
+      </div>
       <div class="filter-bar">
         <input id="simSearchInput" type="text" placeholder="Buscar por serial, numero o nombre..." oninput="filterSimsTable()">
         <select id="simClientFilter" onchange="filterSimsTable()">
@@ -832,7 +864,7 @@ async function renderSims(el) {
         </select>
       </div>
       <table>
-        <thead><tr><th>Serial</th><th>Numero</th><th>Cliente</th><th>Plan</th><th>Saldo</th><th>Estado</th><th>Ultima Actualizacion</th><th>Acciones</th></tr></thead>
+        <thead><tr><th style="width:36px"><input type="checkbox" id="selectAllSims" onchange="toggleSelectAll(this)"></th><th>Serial</th><th>Numero</th><th>Cliente</th><th>Plan</th><th>Saldo</th><th>Estado</th><th>Ultima Actualizacion</th><th>Acciones</th></tr></thead>
         <tbody id="simsTableBody">
         </tbody>
       </table>
@@ -867,8 +899,10 @@ function filterSimsTable() {
 
   tbody.innerHTML = filtered.map(s => {
     const usr = allUsersCache.find(u => u.id === s.clientId);
+    const checked = selectedSims.has(s.id) ? 'checked' : '';
     return `
     <tr>
+      <td><input type="checkbox" ${checked} onchange="toggleSimSelect('${s.id}', this)"></td>
       <td style="font-family:monospace;font-size:12px">${s.serial}</td>
       <td>${s.msisdn || '—'}</td>
       <td>${usr ? usr.name : (s.clientId ? s.clientId : '<span style="color:var(--gray-300)">Sin asignar</span>')}</td>
@@ -1030,7 +1064,15 @@ async function processBulkUpload() {
   });
   if (res?.error) return toast(res.error, 'error');
   closeModal();
-  toast(`${sims.length} SIMs cargadas correctamente`, 'success');
+  if (res?.created > 0 && res?.updated > 0) {
+    toast(`${res.created} nuevas + ${res.updated} actualizadas`, 'success');
+  } else if (res?.created > 0) {
+    toast(`${res.created} SIMs creadas`, 'success');
+  } else if (res?.updated > 0) {
+    toast(`${res.updated} SIMs actualizadas (ya existían)`, 'info');
+  } else {
+    toast(`${sims.length} SIMs procesadas`, 'success');
+  }
   render();
 }
 
@@ -1227,6 +1269,207 @@ async function deleteSim(id) {
   await api(`/api/admin/sims/${id}`, { method: 'DELETE' });
   toast('SIM eliminada', 'info');
   render();
+}
+
+// === BULK ACTIONS ===
+function toggleSelectAll(checkbox) {
+  const tbody = document.getElementById('simsTableBody');
+  if (!tbody) return;
+  const boxes = tbody.querySelectorAll('input[type="checkbox"]');
+  if (checkbox.checked) {
+    // Select all currently visible/filtered SIMs
+    boxes.forEach(b => { b.checked = true; });
+    // Get IDs from the filtered view
+    const searchVal = (document.getElementById('simSearchInput')?.value || '').toLowerCase();
+    const clientVal = document.getElementById('simClientFilter')?.value || '';
+    let filtered = allSimsCache;
+    if (clientVal) filtered = filtered.filter(s => s.clientId === clientVal);
+    if (searchVal) filtered = filtered.filter(s => {
+      const usr = allUsersCache.find(u => u.id === s.clientId);
+      const cn = usr ? usr.name.toLowerCase() : '';
+      return (s.serial||'').toLowerCase().includes(searchVal)||(s.msisdn||'').toLowerCase().includes(searchVal)||(s.name||'').toLowerCase().includes(searchVal)||cn.includes(searchVal);
+    });
+    filtered.forEach(s => selectedSims.add(s.id));
+  } else {
+    boxes.forEach(b => { b.checked = false; });
+    selectedSims.clear();
+  }
+  updateBulkBar();
+}
+
+function toggleSimSelect(simId, checkbox) {
+  if (checkbox.checked) selectedSims.add(simId);
+  else selectedSims.delete(simId);
+  // Update select-all state
+  const selAll = document.getElementById('selectAllSims');
+  if (selAll) {
+    const boxes = document.querySelectorAll('#simsTableBody input[type="checkbox"]');
+    const allChecked = Array.from(boxes).every(b => b.checked);
+    selAll.checked = allChecked && boxes.length > 0;
+  }
+  updateBulkBar();
+}
+
+function updateBulkBar() {
+  const bar = document.getElementById('bulkBar');
+  const count = document.getElementById('bulkCount');
+  if (!bar) return;
+  if (selectedSims.size > 0) {
+    bar.classList.add('active');
+    count.textContent = `${selectedSims.size} seleccionada${selectedSims.size > 1 ? 's' : ''}`;
+  } else {
+    bar.classList.remove('active');
+  }
+}
+
+function deselectAll() {
+  selectedSims.clear();
+  const selAll = document.getElementById('selectAllSims');
+  if (selAll) selAll.checked = false;
+  document.querySelectorAll('#simsTableBody input[type="checkbox"]').forEach(b => { b.checked = false; });
+  updateBulkBar();
+}
+
+async function bulkAssign() {
+  if (selectedSims.size === 0) return;
+  const users = allUsersCache.filter(u => u.role === 'client');
+  const mc = document.getElementById('modalContainer');
+  mc.innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal">
+        <h2>Asignar ${selectedSims.size} SIM${selectedSims.size > 1 ? 's' : ''} a Cliente</h2>
+        <div class="form-group"><label>Cliente</label>
+          <select id="bulkClientSelect">
+            <option value="">Sin asignar (quitar cliente)</option>
+            ${users.map(u => `<option value="${u.id}">${u.name} (${u.company || ''})</option>`).join('')}
+          </select>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+          <button class="btn btn-coral" onclick="executeBulkAssign()">Asignar</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function executeBulkAssign() {
+  const clientId = document.getElementById('bulkClientSelect').value;
+  const res = await api('/api/admin/sims/bulk-action', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'assign', simIds: Array.from(selectedSims), clientId })
+  });
+  closeModal();
+  if (res?.ok) {
+    toast(`${res.count} SIM${res.count > 1 ? 's' : ''} asignada${res.count > 1 ? 's' : ''}`, 'success');
+    selectedSims.clear();
+    render();
+  } else {
+    toast(res?.error || 'Error al asignar', 'error');
+  }
+}
+
+async function bulkActivate() {
+  if (selectedSims.size === 0) return;
+  if (!confirm(`¿Activar ${selectedSims.size} SIM${selectedSims.size > 1 ? 's' : ''}?`)) return;
+  const res = await api('/api/admin/sims/bulk-action', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'activate', simIds: Array.from(selectedSims) })
+  });
+  if (res?.ok) {
+    toast(`${res.count} SIM${res.count > 1 ? 's' : ''} activada${res.count > 1 ? 's' : ''}`, 'success');
+    selectedSims.clear();
+    render();
+  } else {
+    toast(res?.error || 'Error al activar', 'error');
+  }
+}
+
+async function bulkDeactivate() {
+  if (selectedSims.size === 0) return;
+  if (!confirm(`¿Desactivar ${selectedSims.size} SIM${selectedSims.size > 1 ? 's' : ''}?`)) return;
+  const res = await api('/api/admin/sims/bulk-action', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'deactivate', simIds: Array.from(selectedSims) })
+  });
+  if (res?.ok) {
+    toast(`${res.count} SIM${res.count > 1 ? 's' : ''} desactivada${res.count > 1 ? 's' : ''}`, 'success');
+    selectedSims.clear();
+    render();
+  } else {
+    toast(res?.error || 'Error al desactivar', 'error');
+  }
+}
+
+async function bulkRecharge() {
+  if (selectedSims.size === 0) return;
+  const plansData = await fetchPlansData();
+  const plans = plansData?.plans || plansData || {};
+  const services = plansData?.services || Object.keys(plans);
+  let planOptions = '<option value="">— No cambiar plan —</option>';
+  services.forEach(svc => {
+    const svcPlans = plans[svc] || [];
+    if (svcPlans.length > 0) {
+      planOptions += `<optgroup label="${svc}">`;
+      svcPlans.forEach(p => { planOptions += `<option value="${p}">${p}</option>`; });
+      planOptions += '</optgroup>';
+    }
+  });
+  const mc = document.getElementById('modalContainer');
+  mc.innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal">
+        <h2>Recargar ${selectedSims.size} SIM${selectedSims.size > 1 ? 's' : ''}</h2>
+        <div class="form-group"><label>Nuevo Saldo (minutos)</label>
+          <input type="number" id="bulkBalance" placeholder="Ej: 100" min="0">
+        </div>
+        <div class="form-group"><label>Plan (opcional)</label>
+          <select id="bulkPlan">${planOptions}</select>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+          <button class="btn btn-coral" onclick="executeBulkRecharge()">Recargar</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function executeBulkRecharge() {
+  const balance = document.getElementById('bulkBalance').value;
+  const planType = document.getElementById('bulkPlan').value;
+  if (!balance && !planType) { toast('Ingrese un saldo o seleccione un plan', 'error'); return; }
+  const payload = { action: 'recharge', simIds: Array.from(selectedSims) };
+  if (balance !== '') payload.balance = parseFloat(balance);
+  if (planType) payload.planType = planType;
+  const res = await api('/api/admin/sims/bulk-action', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+  closeModal();
+  if (res?.ok) {
+    toast(`${res.count} SIM${res.count > 1 ? 's' : ''} recargada${res.count > 1 ? 's' : ''}`, 'success');
+    selectedSims.clear();
+    render();
+  } else {
+    toast(res?.error || 'Error al recargar', 'error');
+  }
+}
+
+async function bulkDeleteSims() {
+  if (selectedSims.size === 0) return;
+  if (!confirm(`¿ELIMINAR ${selectedSims.size} SIM${selectedSims.size > 1 ? 's' : ''}? Esta acción no se puede deshacer.`)) return;
+  const res = await api('/api/admin/sims/bulk-action', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'delete', simIds: Array.from(selectedSims) })
+  });
+  if (res?.ok) {
+    toast(`${res.count} SIM${res.count > 1 ? 's' : ''} eliminada${res.count > 1 ? 's' : ''}`, 'success');
+    selectedSims.clear();
+    render();
+  } else {
+    toast(res?.error || 'Error al eliminar', 'error');
+  }
 }
 
 // === ACCOUNTS (Cuentas) ===
