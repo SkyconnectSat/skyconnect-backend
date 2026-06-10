@@ -1571,11 +1571,37 @@ const server = http.createServer(async (req, res) => {
       smtpHost: body.smtpHost !== undefined ? body.smtpHost : (prev.smtpHost || ''),
       smtpPort: body.smtpPort !== undefined ? body.smtpPort : (prev.smtpPort || 587),
       smtpUser: body.smtpUser !== undefined ? body.smtpUser : (prev.smtpUser || ''),
-      smtpPass: body.smtpPass !== undefined ? body.smtpPass : (prev.smtpPass || ''),
+      smtpPass: body.smtpPassword !== undefined ? body.smtpPassword : (body.smtpPass !== undefined ? body.smtpPass : (prev.smtpPass || prev.smtpPassword || '')),
+      smtpPassword: body.smtpPassword !== undefined ? body.smtpPassword : (body.smtpPass !== undefined ? body.smtpPass : (prev.smtpPassword || prev.smtpPass || '')),
       smtpFrom: body.smtpFrom !== undefined ? body.smtpFrom : (prev.smtpFrom || '')
     };
     saveDB(db);
     return json(res, { ok: true, notificationSettings: db.notificationSettings });
+  }
+
+  // POST /api/admin/notifications/test — send test email to verify SMTP
+  if (method === 'POST' && pathname === '/api/admin/notifications/test') {
+    if (!session || session.role !== 'admin') return json(res, { error: 'Acceso denegado' }, 403);
+    const db = loadDB();
+    const settings = db.notificationSettings || {};
+    const smtpHost = settings.smtpHost || process.env.SMTP_HOST;
+    if (!smtpHost) return json(res, { error: 'SMTP no configurado. Configure el host SMTP primero.' }, 400);
+    const smtpUser = settings.smtpUser || process.env.SMTP_USER;
+    const smtpPass = settings.smtpPassword || settings.smtpPass || process.env.SMTP_PASS;
+    if (!smtpUser || !smtpPass) return json(res, { error: 'Falta usuario o contraseña SMTP.' }, 400);
+    try {
+      const nodemailer = require('nodemailer');
+      const smtpPort = settings.smtpPort || parseInt(process.env.SMTP_PORT || '587', 10);
+      const smtpSecure = (smtpPort === 465) || process.env.SMTP_SECURE === 'true';
+      const fromEmail = settings.smtpFrom || smtpUser;
+      const testTo = settings.adminEmail || ADMIN_EMAIL;
+      const transporter = nodemailer.createTransport({ host: smtpHost, port: smtpPort, secure: smtpSecure, auth: { user: smtpUser, pass: smtpPass } });
+      const htmlBody = buildEmailHtml('Prueba SMTP — SkyConnect', '<p style="font-size:14px;color:#333">Este es un email de prueba. Si lo recibe, la configuración SMTP es correcta.</p>');
+      await transporter.sendMail({ from: fromEmail, to: testTo, subject: 'Prueba SMTP — SkyConnect', html: htmlBody });
+      return json(res, { ok: true, message: `Email de prueba enviado a ${testTo}` });
+    } catch (e) {
+      return json(res, { error: `Error SMTP: ${e.message}` }, 500);
+    }
   }
 
   // GET /api/admin/requests
@@ -1889,6 +1915,9 @@ const server = http.createServer(async (req, res) => {
     if (body.password) {
       user.password = hashPassword(body.password);
       invalidateUserSessions(user.id);
+      const pwAdminEmail = (db.notificationSettings || {}).adminEmail || ADMIN_EMAIL;
+      sendNotificationSimple(pwAdminEmail, 'Cambio de Contraseña — ' + user.name,
+        `La contraseña del usuario ${user.name} (${user.email}, rol: ${user.role}) fue cambiada por el administrador ${session.email}.`);
     }
     if (body.permissions !== undefined) {
       user.permissions = body.permissions;
@@ -2059,6 +2088,9 @@ const server = http.createServer(async (req, res) => {
     if (body.password) {
       su.password = hashPassword(body.password);
       invalidateUserSessions(su.id);
+      const pwAdminEmail2 = (db.notificationSettings || {}).adminEmail || ADMIN_EMAIL;
+      sendNotificationSimple(pwAdminEmail2, 'Cambio de Contraseña — ' + su.name,
+        `La contraseña del sub-usuario ${su.name} (${su.email}) fue cambiada por el administrador ${session.email}.`);
     }
     if (body.permissions !== undefined) {
       su.permissions = body.permissions;
