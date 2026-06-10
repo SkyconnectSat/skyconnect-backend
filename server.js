@@ -837,11 +837,28 @@ const server = http.createServer(async (req, res) => {
   const method = req.method;
 
   // Security headers
+  res.setHeader('Server', 'SkyConnect/2.1');
+  res.removeHeader('X-Powered-By');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'");
+
+  // Block sensitive paths
+  const blocked = ['/package.json','/package-lock.json','/.env','/.git','/node_modules','/data','/server.js','/Procfile','/railway.json','/.gitignore','/views','/src','/config','/db.json','/database'];
+  if (blocked.some(b => pathname === b || pathname.startsWith(b + '/'))) {
+    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    return res.end('Not found');
+  }
+
+  // Cache-Control for API responses
+  if (pathname.startsWith('/api/')) {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.setHeader('Pragma', 'no-cache');
+  }
 
   // --- API ROUTES ---
 
@@ -1459,7 +1476,7 @@ const server = http.createServer(async (req, res) => {
     const db = loadDB();
     // Check email uniqueness across users and subusers
     if (db.users.find(u => u.email === body.email) || db.subusers.find(s => s.email === body.email)) {
-      return json(res, { error: 'Email ya existe' }, 400);
+      return json(res, { error: 'No se pudo registrar. Verifique los datos e intente de nuevo.' }, 400);
     }
     const subuser = {
       id: uuid(), parentClientId: session.userId,
@@ -1742,6 +1759,58 @@ const server = http.createServer(async (req, res) => {
     }
     saveDB(db);
     return json(res, { ok: true, created: created.length, updated: updated.length, count: created.length + updated.length });
+  }
+
+  // POST /api/admin/sims/bulk-action
+  if (method === 'POST' && pathname === '/api/admin/sims/bulk-action') {
+    if (!session || session.role !== 'admin') return json(res, { error: 'Acceso denegado' }, 403);
+    const body = await parseBody(req);
+    const { action, simIds } = body;
+    if (!action || !Array.isArray(simIds) || simIds.length === 0) {
+      return json(res, { error: 'Se requiere action y simIds[]' }, 400);
+    }
+    const db = loadDB();
+    let count = 0;
+    for (const simId of simIds) {
+      const sim = db.sims.find(s => s.id === simId);
+      if (!sim) continue;
+      switch (action) {
+        case 'assign':
+          if (body.clientId !== undefined) {
+            const prevClient = sim.clientId;
+            sim.clientId = body.clientId;
+            sim.lastUpdated = new Date().toISOString();
+            const findName = (id) => { const u = db.users.find(x => x.id === id); return u ? u.name : (id || '—'); };
+            logActivity(db, sim.clientId || session.userId, 'Asignación Masiva', `SIM ${sim.serial}: ${findName(prevClient)} → ${findName(sim.clientId)}`);
+            count++;
+          }
+          break;
+        case 'activate':
+          sim.status = 'active';
+          sim.lastUpdated = new Date().toISOString();
+          count++;
+          break;
+        case 'deactivate':
+          sim.status = 'inactive';
+          sim.lastUpdated = new Date().toISOString();
+          count++;
+          break;
+        case 'recharge':
+          if (body.balance !== undefined) sim.balance = parseFloat(body.balance) || 0;
+          if (body.planType) sim.planType = body.planType;
+          sim.lastUpdated = new Date().toISOString();
+          count++;
+          break;
+        case 'delete':
+          db.sims = db.sims.filter(s => s.id !== simId);
+          count++;
+          break;
+        default:
+          return json(res, { error: 'Acción no válida' }, 400);
+      }
+    }
+    saveDB(db);
+    return json(res, { ok: true, count, action });
   }
 
   // DELETE /api/admin/sims/:id
@@ -2138,6 +2207,11 @@ const server = http.createServer(async (req, res) => {
     return json(res, { ok: true });
   }
 
+  // Catch-all for unmatched API routes — generic 404
+  if (pathname.startsWith('/api/')) {
+    return json(res, { error: 'Recurso no encontrado' }, 404);
+  }
+
   // =====================================================
   // SERVE STATIC FILES
   // =====================================================
@@ -2165,9 +2239,5 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`\n🛰️  SkyConnect Platform running on http://localhost:${PORT}`);
-  console.log(`📋 Client: http://localhost:${PORT}`);
-  console.log(`🔧 Admin:  http://localhost:${PORT}/admin`);
-  console.log(`\nDefault login: demo@cliente.com / demo123`);
-  console.log(`Admin login:   admin@skyconnectsat.com / admin2026\n`);
+  console.log(`SkyConnect Platform v2.1 — port ${PORT}`);
 });
