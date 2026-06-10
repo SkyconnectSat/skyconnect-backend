@@ -522,7 +522,7 @@ tr { cursor: pointer; }
         <text x="10" y="92" font-family="Arial" font-size="14" fill="#6b7a8d" letter-spacing="6">SATELLITE SERVICES</text>
       </svg>
     </div>
-    <p class="login-subtitle">Plataforma de Gesti&oacute;n de SIM Satelitales</p>
+    <p class="login-subtitle">Plataforma de Gesti&oacute;n de Dispositivos Satelitales</p>
     <form onsubmit="doLogin(event)">
       <div class="form-group">
         <label>USUARIO</label>
@@ -1412,7 +1412,6 @@ async function renderAccounts(el) {
     return `<tr style="cursor:default">
       <td>${indent}${a.name || '—'}</td>
       <td>${a.contact || '—'}</td>
-      <td>${formatDate(a.createdAt || a.date)}</td>
       <td>${statusBadge}</td>
       <td>${showDelete ? `<button class="btn btn-outline btn-sm" onclick="requestDeleteAccount('${a.id}','${(a.name||'').replace(/'/g,"\\'")}')">Eliminar</button>` : ''}</td>
     </tr>`;
@@ -1440,7 +1439,7 @@ async function renderAccounts(el) {
       </div>
       ${accounts.length === 0 ? '<p style="color:var(--gray-500);padding:20px 0">No hay clientes/cuentas registradas. Cree una nueva cuenta para organizar sus dispositivos.</p>' : `
       <table>
-        <thead><tr><th>Cliente/Cuenta</th><th>Contacto</th><th>Fecha</th><th>Estado</th><th></th></tr></thead>
+        <thead><tr><th>Cliente/Cuenta</th><th>Contacto</th><th>Estado</th><th></th></tr></thead>
         <tbody>${treeHtml}</tbody>
       </table>`}
     </div>
