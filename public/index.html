@@ -1270,7 +1270,7 @@ async function renderSimDetail(el, simId) {
       </div>
     </div>
 
-    <!-- Cuenta/Cliente as its own card -->
+    ${hasPerm('canManageClients') ? `<!-- Cuenta/Cliente as its own card -->
     <div class="sim-detail-card" style="margin-bottom:16px">
       <div class="sim-detail-label">SUB CLIENTE / CUENTA</div>
       <p style="color:var(--gray-500);font-size:13px;margin-bottom:14px">Asigne esta SIM a una cuenta o cliente para organizar sus dispositivos.</p>
@@ -1285,7 +1285,7 @@ async function renderSimDetail(el, simId) {
           <button class="btn btn-navy btn-sm" onclick="saveAssignment('${sim.id}')">Guardar Asignaci&oacute;n</button>
         </div>
       </div>
-    </div>
+    </div>` : ''}
 
     <!-- Recharge section for active -->
     ${hasPerm('canRecharge') ? `<div class="sim-detail-recharge">
@@ -1423,7 +1423,9 @@ async function renderAccounts(el) {
     return children.map(a => renderAccountRow(a, depth) + buildTree(a.id, depth + 1)).join('');
   }
 
-  const rootAccounts = accounts.filter(a => !a.parentAccountId);
+  // Render root accounts + orphaned accounts (whose parent is not in the list)
+  const accountIds = new Set(accounts.map(a => a.id));
+  const rootAccounts = accounts.filter(a => !a.parentAccountId || !accountIds.has(a.parentAccountId));
   const treeHtml = rootAccounts.map(a => renderAccountRow(a, 0) + buildTree(a.id, 1)).join('');
 
   el.innerHTML = `
@@ -1434,7 +1436,7 @@ async function renderAccounts(el) {
     <div class="card">
       <div class="card-header">
         <h2>Mis Clientes/Cuentas</h2>
-        <button class="btn btn-coral btn-sm" onclick="showNewAccountModal()">+ Nueva Cuenta</button>
+        ${hasPerm('canManageClients') ? '<button class="btn btn-coral btn-sm" onclick="showNewAccountModal()">+ Nueva Cuenta</button>' : ''}
       </div>
       ${accounts.length === 0 ? '<p style="color:var(--gray-500);padding:20px 0">No hay clientes/cuentas registradas. Cree una nueva cuenta para organizar sus dispositivos.</p>' : `
       <table>
