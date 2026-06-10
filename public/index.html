@@ -1051,6 +1051,13 @@ function renderOperationsTable(operations) {
   `;
 }
 
+// === Helper: check user permission ===
+function hasPerm(key) {
+  if (!currentUser) return false;
+  if (currentUser.role === 'admin' || currentUser.role === 'client') return true;
+  return (currentUser.permissions || {})[key] === true;
+}
+
 // === Helper: render SIM header (shared across all states) ===
 function renderSimHeader(sim) {
   const isdn = formatISDN(sim.msisdn);
@@ -1075,8 +1082,8 @@ function renderSimHeader(sim) {
       </div>
       <div class="sim-detail-header-right">
         ${statusBadge}
-        <button class="btn btn-outline btn-sm ${isActive ? 'btn-disabled' : ''}" ${isActive ? 'disabled' : ''} onclick="showActivateModal('${sim.id}')">Activar</button>
-        <button class="btn btn-outline btn-sm ${isInactive ? 'btn-disabled' : ''}" ${isInactive ? 'disabled' : ''} onclick="confirmDeactivate('${sim.id}')" style="border-color:var(--red);color:var(--red)">Desactivar</button>
+        ${hasPerm('canActivate') ? `<button class="btn btn-outline btn-sm ${isActive ? 'btn-disabled' : ''}" ${isActive ? 'disabled' : ''} onclick="showActivateModal('${sim.id}')">Activar</button>` : ''}
+        ${hasPerm('canDeactivate') ? `<button class="btn btn-outline btn-sm ${isInactive ? 'btn-disabled' : ''}" ${isInactive ? 'disabled' : ''} onclick="confirmDeactivate('${sim.id}')" style="border-color:var(--red);color:var(--red)">Desactivar</button>` : ''}
       </div>
     </div>
   `;
@@ -1157,10 +1164,10 @@ async function renderSimDetail(el, simId) {
         <p>Su solicitud est&aacute; siendo procesada</p>
         <p>Recibir&aacute; un correo de confirmaci&oacute;n cuando est&eacute; lista.</p>
       </div>
-      <div class="sim-detail-ops">
+      ${hasPerm('canViewOperations') ? `<div class="sim-detail-ops">
         <div class="sim-detail-label">OPERACIONES RECIENTES</div>
         ${renderOperationsTable(sim.operations)}
-      </div>
+      </div>` : ''}
     `;
     return;
   }
@@ -1186,7 +1193,7 @@ async function renderSimDetail(el, simId) {
       </div>
 
       <!-- Activation form for inactive -->
-      <div class="sim-detail-recharge">
+      ${hasPerm('canActivate') ? `<div class="sim-detail-recharge">
         <div class="sim-detail-label">ACTIVACI&Oacute;N</div>
         <div id="activationFormInline">
           <p style="color:var(--gray-500);font-size:14px;margin-bottom:16px">Esta SIM no est&aacute; activa. Complete los datos para solicitar la activaci&oacute;n.</p>
@@ -1210,12 +1217,12 @@ async function renderSimDetail(el, simId) {
           </div>
           <button class="btn btn-coral btn-disabled" id="inlineActBtn" disabled style="margin-top:4px" onclick="doInlineActivate('${sim.id}')">Activar</button>
         </div>
-      </div>
+      </div>` : ''}
 
-      <div class="sim-detail-ops">
+      ${hasPerm('canViewOperations') ? `<div class="sim-detail-ops">
         <div class="sim-detail-label">OPERACIONES RECIENTES</div>
         ${renderOperationsTable(sim.operations)}
-      </div>
+      </div>` : ''}
     `;
     // populate service options
     if (planData && planData.services) {
@@ -1250,7 +1257,7 @@ async function renderSimDetail(el, simId) {
             <span class="dt-value">
               <div class="sim-detail-balance">
                 <span class="balance-amount">${sim.balance} min</span>
-                <button class="refresh-balance-btn" onclick="requestBalanceUpdate('${sim.id}')" title="Actualizar saldo">${SVG_REFRESH}</button>
+                ${hasPerm('canRequestBalance') ? `<button class="refresh-balance-btn" onclick="requestBalanceUpdate('${sim.id}')" title="Actualizar saldo">${SVG_REFRESH}</button>` : ''}
               </div>
               <div class="sim-detail-balance-note">El saldo se actualiza cada 24h. Puedes solicitar una actualizaci&oacute;n manual.</div>
             </span>
@@ -1281,7 +1288,7 @@ async function renderSimDetail(el, simId) {
     </div>
 
     <!-- Recharge section for active -->
-    <div class="sim-detail-recharge">
+    ${hasPerm('canRecharge') ? `<div class="sim-detail-recharge">
       <div class="sim-detail-label">ACTIVACI&Oacute;N Y RECARGA</div>
       <div id="rechargeFormInline">
         <div class="recharge-row">
@@ -1298,12 +1305,12 @@ async function renderSimDetail(el, simId) {
           <label for="rechargeAccept">Acepto los cargos que ser&aacute;n reflejados en la siguiente factura</label>
         </div>
       </div>
-    </div>
+    </div>` : ''}
 
-    <div class="sim-detail-ops">
+    ${hasPerm('canViewOperations') ? `<div class="sim-detail-ops">
       <div class="sim-detail-label">OPERACIONES RECIENTES</div>
       ${renderOperationsTable(sim.operations)}
-    </div>
+    </div>` : ''}
   `;
 
   // Show save button only when Información Adicional is changed
@@ -1395,10 +1402,12 @@ async function renderAccounts(el) {
   function renderAccountRow(a, depth) {
     const isPendingDelete = pendingDeleteIds.includes(a.id);
     const isPending = a.status === 'pending';
+    const isOwnAccount = a.createdBy === (currentUser && currentUser.id || currentUser.userId);
+    const createdByAdmin = a.createdBy === 'admin';
     let statusBadge = '<span class="badge badge-active">Activa</span>';
     if (isPendingDelete) statusBadge = '<span class="badge badge-processing">Eliminaci&oacute;n pendiente</span>';
     else if (isPending) statusBadge = '<span class="badge badge-processing">Pendiente de aprobaci&oacute;n</span>';
-    const showDelete = !isPendingDelete && !isPending;
+    const showDelete = !isPendingDelete && !isPending && !createdByAdmin;
     const indent = depth > 0 ? `<span style="padding-left:${depth * 20}px;color:var(--gray-300)">${'└ '.repeat(1)}</span>` : '';
     return `<tr style="cursor:default">
       <td>${indent}${a.name || '—'}</td>
@@ -1437,8 +1446,6 @@ async function renderAccounts(el) {
 }
 
 function showNewAccountModal() {
-  const approvedAccounts = _accountsList.filter(a => a.status !== 'pending');
-  const parentOptions = approvedAccounts.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
   const mc = document.getElementById('modalContainer');
   mc.innerHTML = `
     <div class="modal-overlay" onclick="closeModal(event)">
@@ -1446,12 +1453,6 @@ function showNewAccountModal() {
         <h2>Nueva Cuenta / Cliente</h2>
         <div class="form-group"><label>CUENTA/CLIENTE *</label><input id="accName" required placeholder="Nombre de empresa o cliente"></div>
         <div class="form-group"><label>Contacto</label><input id="accContact" placeholder="Nombre del contacto (opcional)"></div>
-        <div class="form-group"><label>Cuenta Padre (opcional)</label>
-          <select id="accParent">
-            <option value="">— Sin cuenta padre (nivel principal) —</option>
-            ${parentOptions}
-          </select>
-        </div>
         <div class="modal-actions">
           <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
           <button class="btn btn-coral" onclick="doCreateAccount()">Crear</button>
@@ -1464,12 +1465,11 @@ function showNewAccountModal() {
 async function doCreateAccount() {
   const name = document.getElementById('accName').value.trim();
   const contact = document.getElementById('accContact').value.trim();
-  const parentAccountId = document.getElementById('accParent').value;
   if (!name) return toast('Cuenta/Cliente es requerido', 'error');
   try {
     const res = await fetch('/api/accounts', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, contact, parentAccountId })
+      body: JSON.stringify({ name, contact })
     });
     if (res.ok) {
       toast('Solicitud de cuenta enviada. Pendiente de aprobación.', 'success');
