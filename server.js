@@ -132,12 +132,42 @@ function verifyPassword(pwd, stored) {
 // =====================================================
 function loadDB() {
   try {
-    return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+    const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+    return migrateDB(data);
   } catch (e) {
     const db = createDefaultDB();
     saveDB(db);
     return db;
   }
+}
+
+function migrateDB(db) {
+  let changed = false;
+  // Ensure emailTemplates exist (migration for DBs created before templates)
+  if (!db.emailTemplates || Object.keys(db.emailTemplates).length === 0) {
+    const freshDB = createDefaultDB();
+    db.emailTemplates = freshDB.emailTemplates;
+    changed = true;
+  }
+  // Ensure notificationSettings exist
+  if (!db.notificationSettings) {
+    db.notificationSettings = {
+      adminEmail: 'vcarreno@esisgroup.com',
+      notifyAdmin: true, notifyClient: true,
+      clientNotifications: true, adminNotifications: true,
+      smtpHost: '', smtpPort: 587, smtpUser: '', smtpPass: '', smtpFrom: ''
+    };
+    changed = true;
+  }
+  // Ensure accounts array exists
+  if (!db.accounts) { db.accounts = []; changed = true; }
+  if (!db.subusers) { db.subusers = []; changed = true; }
+  if (!db.dropdownConfig) {
+    db.dropdownConfig = { cardTypes: ['IRIDIUM','INMARSAT','PTT'], networks: ['IRIDIUM','VIASAT','STARLINK'] };
+    changed = true;
+  }
+  if (changed) saveDB(db);
+  return db;
 }
 
 function saveDB(data) {
@@ -988,10 +1018,18 @@ const server = http.createServer(async (req, res) => {
     }
     const db = loadDB();
     if (!db.accounts) db.accounts = [];
+    // For non-admin users, auto-set parentAccountId to their main account (created by admin)
+    let parentId = body.parentAccountId || '';
+    const ownerUserId = session.parentClientId || session.userId;
+    if (session.role !== 'admin' && !parentId) {
+      const mainAccount = db.accounts.find(a => a.userId === ownerUserId && a.createdBy === 'admin' && a.status === 'approved');
+      if (mainAccount) parentId = mainAccount.id;
+    }
     const account = {
       id: uuid(),
-      userId: session.userId,
-      parentAccountId: body.parentAccountId || '',
+      userId: ownerUserId,
+      createdBy: session.userId,
+      parentAccountId: parentId,
       name: body.name,
       contact: body.contact || '',
       email: body.email || '',
@@ -1020,7 +1058,14 @@ const server = http.createServer(async (req, res) => {
     if (session.role === 'admin') {
       accounts = db.accounts;
     } else {
-      accounts = db.accounts.filter(a => a.userId === session.userId && (!a.status || a.status === 'approved'));
+      // Show accounts the user created OR accounts assigned to them/their parent, but only approved ones (or pending if creator)
+      const ownerUserId = session.parentClientId || session.userId;
+      accounts = db.accounts.filter(a => {
+        const isOwner = a.userId === ownerUserId || a.userId === session.userId;
+        const isCreator = a.createdBy === session.userId;
+        const statusOk = !a.status || a.status === 'approved' || (isCreator && a.status === 'pending');
+        return (isOwner || isCreator) && statusOk;
+      });
     }
     return json(res, accounts);
   }
@@ -1035,6 +1080,7 @@ const server = http.createServer(async (req, res) => {
     const account = {
       id: uuid(),
       userId: body.userId || '',
+      createdBy: 'admin',
       parentAccountId: body.parentAccountId || '',
       name: body.name,
       contact: body.contact || '',
@@ -1359,6 +1405,13 @@ const server = http.createServer(async (req, res) => {
   const assignMatch = pathname.match(/^\/api\/sims\/([^/]+)\/assign$/);
   if (method === 'PATCH' && assignMatch) {
     if (!session) return json(res, { error: 'No autorizado' }, 401);
+    // Sub-users need canManageClients permission to assign accounts
+    if (session.role === 'subuser') {
+      const perms = session.permissions || {};
+      if (!perms.canManageClients) {
+        return json(res, { error: 'No tiene permiso para asignar cuentas' }, 403);
+      }
+    }
     const db = loadDB();
     const sim = db.sims.find(s => s.id === assignMatch[1]);
     if (!sim || (session.role !== 'admin' && sim.clientId !== session.userId && (!session.parentClientId || sim.clientId !== session.parentClientId))) return json(res, { error: 'SIM no encontrada' }, 404);
@@ -1622,10 +1675,10 @@ const server = http.createServer(async (req, res) => {
     const sim = db.sims.find(s => s.id === adminSimMatch[1]);
     if (!sim) return json(res, { error: 'SIM no encontrada' }, 404);
     const body = await parseBody(req);
-    const fields = ['serial','iccid','imei','msisdn','puk','pin','puk2','pin2','network','telephony','simData',
-      'balance','dataUsed','dataTotal',
-      'lastLocation','expiryDate','activationDate','lastConnection','planType','serviceType',
-      'cardType','minutesActive','monthlyCharge','name','reference','subClient','status','clientId'];
+    const fields = ['serial','msisdn','puk','pin','puk2','pin2','network','telephony','simData',
+      'balance','dataUsed','dataTotal','imsi',
+      'lastLocation','expiryDate','activationDate','planType','serviceType',
+      'cardType','minutesActive','name','reference','subClient','status','clientId'];
     const previousClientId = sim.clientId;
     for (const f of fields) { if (body[f] !== undefined) sim[f] = body[f]; }
     sim.lastUpdated = new Date().toISOString();
@@ -1665,18 +1718,30 @@ const server = http.createServer(async (req, res) => {
     }
     const db = loadDB();
     const created = [];
+    const updated = [];
     for (const item of body.sims) {
       const overrides = { clientId: '' };
       const fields = ['serial','msisdn','puk','pin','puk2','pin2','network','cardType','serviceType','planType','telephony','simData','name','reference','subClient','lastLocation','activationDate','expiryDate'];
       fields.forEach(f => { if (item[f] !== undefined && item[f] !== '') overrides[f] = item[f]; });
       if (item.balance !== undefined && item.balance !== '') overrides.balance = parseFloat(item.balance) || 0;
       if (item.status && ['active','inactive','processing'].includes(item.status)) overrides.status = item.status;
-      const sim = createDefaultSim(overrides);
-      db.sims.push(sim);
-      created.push(sim);
+      // Check if SIM with same serial already exists — update instead of duplicate
+      const existing = overrides.serial ? db.sims.find(s => s.serial === overrides.serial) : null;
+      if (existing) {
+        // Update existing SIM fields (preserve id, clientId, operations)
+        fields.forEach(f => { if (overrides[f] !== undefined) existing[f] = overrides[f]; });
+        if (overrides.balance !== undefined) existing.balance = overrides.balance;
+        if (overrides.status) existing.status = overrides.status;
+        existing.lastUpdated = new Date().toISOString();
+        updated.push(existing);
+      } else {
+        const sim = createDefaultSim(overrides);
+        db.sims.push(sim);
+        created.push(sim);
+      }
     }
     saveDB(db);
-    return json(res, { ok: true, count: created.length, sims: created });
+    return json(res, { ok: true, created: created.length, updated: updated.length, count: created.length + updated.length });
   }
 
   // DELETE /api/admin/sims/:id
