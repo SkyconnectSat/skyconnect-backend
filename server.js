@@ -67,6 +67,12 @@ function destroySession(req) {
   if (match) delete sessions[match[1]];
 }
 
+function invalidateUserSessions(userId) {
+  for (const [sid, data] of Object.entries(sessions)) {
+    if (data.userId === userId) delete sessions[sid];
+  }
+}
+
 function sessionCookie(sid) {
   return `sid=${sid}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=86400`;
 }
@@ -1736,16 +1742,22 @@ const server = http.createServer(async (req, res) => {
     const db = loadDB();
     const created = [];
     const updated = [];
+    const statusMap = { active: 'active', activa: 'active', activo: 'active', inactive: 'inactive', inactiva: 'inactive', inactivo: 'inactive', processing: 'processing', procesando: 'processing', pendiente: 'processing' };
     for (const item of body.sims) {
       const overrides = { clientId: '' };
       const fields = ['serial','msisdn','puk','pin','puk2','pin2','network','cardType','serviceType','planType','telephony','simData','name','reference','subClient','lastLocation','activationDate','expiryDate'];
-      fields.forEach(f => { if (item[f] !== undefined && item[f] !== '') overrides[f] = item[f]; });
-      if (item.balance !== undefined && item.balance !== '') overrides.balance = parseFloat(item.balance) || 0;
-      if (item.status && ['active','inactive','processing'].includes(item.status)) overrides.status = item.status;
-      // Check if SIM with same serial already exists — update instead of duplicate
+      fields.forEach(f => { if (item[f] !== undefined && String(item[f]).trim() !== '') overrides[f] = String(item[f]).trim(); });
+      if (item.balance !== undefined && String(item.balance).trim() !== '') overrides.balance = parseFloat(item.balance) || 0;
+      if (item.status) {
+        const normalized = statusMap[String(item.status).trim().toLowerCase()];
+        if (normalized) overrides.status = normalized;
+      }
+      // Clean serial: remove any non-alphanumeric chars except dots/dashes
+      if (overrides.serial) overrides.serial = String(overrides.serial).trim();
+      // Check if SIM with same serial already exists — update/rewrite instead of duplicate
       const existing = overrides.serial ? db.sims.find(s => s.serial === overrides.serial) : null;
       if (existing) {
-        // Update existing SIM fields (preserve id, clientId, operations)
+        // Rewrite: overwrite all fields from Excel
         fields.forEach(f => { if (overrides[f] !== undefined) existing[f] = overrides[f]; });
         if (overrides.balance !== undefined) existing.balance = overrides.balance;
         if (overrides.status) existing.status = overrides.status;
@@ -1876,6 +1888,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (body.password) {
       user.password = hashPassword(body.password);
+      invalidateUserSessions(user.id);
     }
     if (body.permissions !== undefined) {
       user.permissions = body.permissions;
@@ -2045,6 +2058,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (body.password) {
       su.password = hashPassword(body.password);
+      invalidateUserSessions(su.id);
     }
     if (body.permissions !== undefined) {
       su.permissions = body.permissions;
