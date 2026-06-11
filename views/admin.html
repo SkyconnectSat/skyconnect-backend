@@ -1959,6 +1959,29 @@ async function showEditSubUser(subId) {
   const s = (subs || []).find(x => x.id === subId);
   if (!s) return toast('Sub-usuario no encontrado', 'error');
 
+  // Load accounts — get all accounts to allow assignment
+  let allAccounts = [];
+  try { allAccounts = await api('/api/accounts') || []; } catch(e) {}
+  // Filter to accounts belonging to the sub-user's parent client if possible
+  const parentAccounts = s.parentClientId ? allAccounts.filter(a => a.userId === s.parentClientId) : allAccounts;
+  const assignedAccounts = s.assignedAccounts || [];
+
+  // Build accounts checkboxes HTML
+  let accountsHtml = '';
+  if (parentAccounts.length > 0) {
+    accountsHtml = '<div style="margin-top:16px;margin-bottom:8px"><strong style="font-size:14px;color:var(--navy)">Cuentas / Clientes Asignados</strong></div>';
+    accountsHtml += '<p style="font-size:12px;color:#888;margin-bottom:8px">Seleccione las cuentas que podr&aacute; ver. Sin selecci&oacute;n = ve todas las SIM del cliente padre.</p>';
+    accountsHtml += '<div class="perm-grid">';
+    parentAccounts.forEach(a => {
+      const eName = (a.name || '').replace(/"/g, '&quot;');
+      const isChecked = assignedAccounts.includes(a.name) ? 'checked' : '';
+      accountsHtml += '<div class="perm-item"><input type="checkbox" class="esuAccountCheck" value="' + eName + '" ' + isChecked + '><label>' + (a.name || 'Sin nombre') + '</label></div>';
+    });
+    accountsHtml += '</div>';
+  } else {
+    accountsHtml = '<p style="font-size:12px;color:#888;margin-top:12px">No hay cuentas creadas para el cliente padre.</p>';
+  }
+
   const mc = document.getElementById('modalContainer');
   mc.innerHTML = `
     <div class="modal-overlay">
@@ -1991,6 +2014,8 @@ async function showEditSubUser(subId) {
           <label>Contrasena (dejar vacio para mantener actual)</label>
           <input id="esuPass" type="text" placeholder="Nueva contrasena...">
         </div>
+
+        ${accountsHtml}
 
         <div style="margin-top:16px;margin-bottom:8px"><strong style="font-size:14px;color:var(--navy)">Permisos</strong></div>
         <div class="perm-grid">
@@ -2081,6 +2106,9 @@ async function saveSubUser(subId) {
   };
   const pass = document.getElementById('esuPass').value;
   if (pass) data.password = pass;
+
+  // Collect assigned accounts
+  data.assignedAccounts = Array.from(document.querySelectorAll('.esuAccountCheck:checked')).map(cb => cb.value);
 
   const res = await api(`/api/admin/subusers/${subId}`, {
     method: 'PATCH',
