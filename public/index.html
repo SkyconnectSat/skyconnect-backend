@@ -1209,23 +1209,21 @@ async function renderSimDetail(el, simId) {
         </div>
       </div>` : ''}
 
-      <!-- Activation form for inactive — auto-detects Pre/Post-Pago -->
+      <!-- Activation form for inactive -->
       ${!isReadOnly() && hasPerm('canActivate') ? `<div class="sim-detail-recharge">
         <div class="sim-detail-label">ACTIVACI&Oacute;N</div>
         <div id="activationFormInline">
           <p style="color:var(--gray-500);font-size:14px;margin-bottom:16px">Esta SIM no est&aacute; activa. Complete los datos para solicitar la activaci&oacute;n.</p>
-          <input type="hidden" id="inlineActService" value="${sim.serviceType || ''}">
-          ${sim.serviceType ? `<p style="font-size:13px;color:var(--gray-500);margin-bottom:12px">Tipo de servicio: <strong>${sim.serviceType}</strong></p>` : `
           <div class="form-group">
             <label>Servicio</label>
-            <select id="inlineActServiceSelect" onchange="document.getElementById('inlineActService').value=this.value; updateInlinePlanOptions()">
+            <select id="inlineActService" onchange="updateInlinePlanOptions()">
               <option value="">— Seleccionar —</option>
             </select>
-          </div>`}
+          </div>
           <div class="form-group">
             <label>Plan de Minutos</label>
-            <select id="inlineActPlan">
-              <option value="">— Seleccionar plan —</option>
+            <select id="inlineActPlan" disabled>
+              <option value="">— Seleccione servicio primero —</option>
             </select>
           </div>
           <div class="accept-charges-row">
@@ -1241,18 +1239,16 @@ async function renderSimDetail(el, simId) {
         ${renderOperationsTable(sim.operations)}
       </div>` : ''}
     `;
-    // Auto-populate plan options if serviceType is known, otherwise show service selector
-    if (planData) {
-      if (sim.serviceType) {
-        // Auto-load plans for the SIM's service type
-        const planSel = document.getElementById('inlineActPlan');
-        if (planSel) {
-          const plans = planData.plans[sim.serviceType] || [];
-          planSel.innerHTML = '<option value="">— Seleccionar plan —</option>' + plans.map(p => `<option value="${p}">${p}</option>`).join('');
+    // Populate service options and auto-select if SIM has serviceType
+    if (planData && planData.services) {
+      const sel = document.getElementById('inlineActService');
+      if (sel) {
+        planData.services.forEach(s => { sel.innerHTML += `<option value="${s}">${s}</option>`; });
+        // Auto-select the SIM's service type if set
+        if (sim.serviceType && planData.plans[sim.serviceType]) {
+          sel.value = sim.serviceType;
+          updateInlinePlanOptions();
         }
-      } else if (planData.services) {
-        const sel = document.getElementById('inlineActServiceSelect');
-        if (sel) planData.services.forEach(s => { sel.innerHTML += `<option value="${s}">${s}</option>`; });
       }
     }
     return;
@@ -1848,17 +1844,13 @@ async function showActivateModal(simId) {
           <label>Fecha y Hora</label>
           <input type="datetime-local" id="actDate">
         </div>
-        ${simSvc ? `
-          <input type="hidden" id="actService" value="${simSvc}">
-          <p style="font-size:13px;color:var(--gray-500);margin-bottom:12px">Tipo de servicio: <strong>${simSvc}</strong></p>
-        ` : `
         <div class="form-group">
           <label>Servicio</label>
           <select id="actService" onchange="updatePlanOptions()">
             <option value="">— Seleccionar —</option>
-            ${planData.services.map(s => `<option value="${s}">${s}</option>`).join('')}
+            ${planData.services.map(s => `<option value="${s}" ${s === simSvc ? 'selected' : ''}>${s}</option>`).join('')}
           </select>
-        </div>`}
+        </div>
         <div class="form-group">
           <label>Plan de Minutos</label>
           <select id="actPlan" ${simSvc ? '' : 'disabled'}>
@@ -2116,30 +2108,40 @@ function getSubUserPermissions() {
 }
 
 async function doCreateSubUser() {
-  const userType = document.querySelector('input[name="suUserType"]:checked').value;
-  let name, email, empresa, password;
-  if (userType === 'interno') {
-    name = document.getElementById('suName').value.trim();
-    email = document.getElementById('suEmail').value.trim();
-    password = document.getElementById('suPass').value;
-    if (!name || !email) return toast('Nombre y email son requeridos', 'error');
-    if (!password || password.length < 6) return toast('La contrasena debe tener al menos 6 caracteres', 'error');
-  } else {
-    empresa = document.getElementById('suEmpresa').value.trim();
-    name = document.getElementById('suNameCliente').value.trim();
-    email = document.getElementById('suEmailCliente').value.trim();
-    password = document.getElementById('suPassCliente').value;
-    if (!empresa || !name || !email) return toast('Empresa, nombre y email son requeridos', 'error');
-    if (!password || password.length < 6) return toast('La contrasena debe tener al menos 6 caracteres', 'error');
+  try {
+    const radioEl = document.querySelector('input[name="suUserType"]:checked');
+    if (!radioEl) return toast('Seleccione tipo de usuario', 'error');
+    const userType = radioEl.value;
+    let name, email, empresa, password;
+    if (userType === 'interno') {
+      name = (document.getElementById('suName') || {}).value || '';
+      email = (document.getElementById('suEmail') || {}).value || '';
+      password = (document.getElementById('suPass') || {}).value || '';
+      name = name.trim(); email = email.trim();
+      if (!name || !email) return toast('Nombre y email son requeridos', 'error');
+      if (!password || password.length < 6) return toast('La contrasena debe tener al menos 6 caracteres', 'error');
+    } else {
+      empresa = (document.getElementById('suEmpresa') || {}).value || '';
+      name = (document.getElementById('suNameCliente') || {}).value || '';
+      email = (document.getElementById('suEmailCliente') || {}).value || '';
+      password = (document.getElementById('suPassCliente') || {}).value || '';
+      empresa = empresa.trim(); name = name.trim(); email = email.trim();
+      if (!empresa || !name || !email) return toast('Empresa, nombre y email son requeridos', 'error');
+      if (!password || password.length < 6) return toast('La contrasena debe tener al menos 6 caracteres', 'error');
+    }
+    const permissions = getSubUserPermissions();
+    const body = { userType, name, email, password, permissions };
+    if (userType === 'cliente') body.empresa = empresa;
+    const res = await fetch('/api/subusers', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (res.ok) { closeModal(); toast('Solicitud de sub-usuario enviada. Pendiente de aprobacion.', 'success'); navigate('subusers'); }
+    else { const d = await res.json().catch(() => ({})); toast(d.error || 'Error al crear sub-usuario', 'error'); }
+  } catch(err) {
+    console.error('doCreateSubUser error:', err);
+    toast('Error: ' + err.message, 'error');
   }
-  const permissions = getSubUserPermissions();
-  const body = { userType, name, email, password, permissions };
-  if (userType === 'cliente') body.empresa = empresa;
-  const res = await fetch('/api/subusers', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
-  if (res.ok) { closeModal(); toast('Solicitud de sub-usuario enviada. Pendiente de aprobacion.', 'success'); navigate('subusers'); }
 }
 
 // === Helpers ===
