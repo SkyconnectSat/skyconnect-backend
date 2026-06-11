@@ -948,10 +948,13 @@ function previewBulk(e) {
     let count = 0;
     if (isXlsx && typeof XLSX !== 'undefined') {
       const data = new Uint8Array(ev.target.result);
-      const wb = XLSX.read(data, { type: 'array' });
+      const wb = XLSX.read(data, { type: 'array', cellText: true, cellDates: true });
       const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
-      count = rows.filter(r => r.serial).length;
+      const rows = XLSX.utils.sheet_to_json(ws, { defval: '', raw: false });
+      count = rows.filter(r => {
+        const keys = Object.keys(r).map(k => normalizeHeader(k));
+        return keys.includes('serial') && r[Object.keys(r)[keys.indexOf('serial')]];
+      }).length;
     } else {
       const text = ev.target.result;
       const lines = text.trim().split('\n').filter(l => l.trim());
@@ -981,7 +984,7 @@ function parseCSVLine(line) {
 
 // Header normalization map: common variations → canonical field name
 const HEADER_MAP = {
-  serial: 'serial', 'serial number': 'serial', 'sim serial': 'serial', número: 'serial', numero: 'serial',
+  serial: 'serial', 'serial number': 'serial', 'sim serial': 'serial', número: 'serial', numero: 'serial', iccid: 'serial', 'no serie': 'serial', 'no. serie': 'serial', 'numero serie': 'serial', 'número serie': 'serial', 'número de serie': 'serial', 'numero de serie': 'serial', serie: 'serial', sim: 'serial', 'sim number': 'serial',
   msisdn: 'msisdn', 'msisdn / serial': 'msisdn', telefono: 'msisdn', teléfono: 'msisdn', phone: 'msisdn', number: 'msisdn',
   puk: 'puk', puk1: 'puk', 'puk 1': 'puk',
   pin: 'pin', pin1: 'pin', 'pin 1': 'pin',
@@ -1015,9 +1018,9 @@ function parseFileToSims(file) {
       let sims = [];
       if (isXlsx && typeof XLSX !== 'undefined') {
         const data = new Uint8Array(ev.target.result);
-        const wb = XLSX.read(data, { type: 'array' });
+        const wb = XLSX.read(data, { type: 'array', cellText: true, cellDates: true });
         const ws = wb.Sheets[wb.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+        const rows = XLSX.utils.sheet_to_json(ws, { defval: '', raw: false });
         sims = rows.map(row => {
           const obj = {};
           Object.keys(row).forEach(h => {
@@ -2512,10 +2515,23 @@ async function renderNotifications(el) {
   }).join('');
 
   el.innerHTML = `
-    <div class="page-header"><h1>Notificaciones</h1><p>Configuracion SMTP y plantillas de email</p></div>
+    <div class="page-header"><h1>Notificaciones</h1><p>Configuracion de email y plantillas</p></div>
     <div class="card">
-      <div class="card-header"><h2>Configuracion SMTP</h2></div>
-      <p style="color:var(--gray-500);font-size:13px;margin-bottom:16px">Configure SMTP para enviar emails. Por defecto configurado para IONOS.</p>
+      <div class="card-header"><h2>Resend (Recomendado)</h2></div>
+      <p style="color:var(--gray-500);font-size:13px;margin-bottom:16px">Servicio de email por API HTTP — funciona en Railway sin problemas de puertos. Gratis hasta 100 emails/dia. <a href="https://resend.com" target="_blank" style="color:var(--coral)">resend.com</a></p>
+      <div class="form-row">
+        <div class="form-group" style="flex:2"><label>Resend API Key</label><input id="resendApiKey" type="password" value="${settings.resendApiKey || ''}" placeholder="re_xxxxxxxxx..."></div>
+        <div class="form-group" style="flex:1"><label>From (remitente)</label><input id="smtpFrom" value="${settings.smtpFrom || ''}" placeholder="SkyConnect <noreply@sudominio.com>"></div>
+      </div>
+      <div style="margin-top:16px;display:flex;gap:12px;align-items:center">
+        <button class="btn btn-coral" onclick="saveSmtpSettings()">Guardar</button>
+        <button class="btn" style="background:var(--navy);color:#fff" onclick="testSmtp()">Probar Email</button>
+        <span id="smtpTestResult" style="font-size:13px"></span>
+      </div>
+    </div>
+    <div class="card" style="opacity:0.7">
+      <div class="card-header"><h2>SMTP (Alternativo)</h2></div>
+      <p style="color:var(--gray-500);font-size:13px;margin-bottom:16px">Solo si no usa Resend. Railway puede bloquear puertos SMTP.</p>
       <div class="form-row">
         <div class="form-group"><label>SMTP Host</label><input id="smtpHost" value="${settings.smtpHost || ''}" placeholder="smtp.ionos.es"></div>
         <div class="form-group"><label>SMTP Port</label><input id="smtpPort" type="number" value="${settings.smtpPort || ''}" placeholder="587"></div>
@@ -2523,12 +2539,6 @@ async function renderNotifications(el) {
       <div class="form-row">
         <div class="form-group"><label>SMTP User</label><input id="smtpUser" value="${settings.smtpUser || ''}" placeholder="user@sudominio.com"></div>
         <div class="form-group"><label>SMTP Password</label><input id="smtpPass" type="password" value="${settings.smtpPassword || ''}" placeholder="********"></div>
-      </div>
-      <div class="form-group"><label>SMTP From (remitente por defecto)</label><input id="smtpFrom" value="${settings.smtpFrom || ''}" placeholder="SkyConnect <noreply@sudominio.com>"></div>
-      <div style="margin-top:16px;display:flex;gap:12px;align-items:center">
-        <button class="btn btn-coral" onclick="saveSmtpSettings()">Guardar SMTP</button>
-        <button class="btn" style="background:var(--navy);color:#fff" onclick="testSmtp()">Probar SMTP</button>
-        <span id="smtpTestResult" style="font-size:13px"></span>
       </div>
     </div>
     <div class="card">
@@ -2559,6 +2569,7 @@ async function testSmtp() {
 
 async function saveSmtpSettings() {
   const data = {
+    resendApiKey: document.getElementById('resendApiKey').value,
     smtpHost: document.getElementById('smtpHost').value,
     smtpPort: parseInt(document.getElementById('smtpPort').value) || null,
     smtpUser: document.getElementById('smtpUser').value,
@@ -2570,7 +2581,7 @@ async function saveSmtpSettings() {
     body: JSON.stringify(data)
   });
   if (res?.error) return toast(res.error, 'error');
-  toast('Configuracion SMTP guardada', 'success');
+  toast('Configuracion guardada', 'success');
 }
 
 let _previewDebounce = null;
