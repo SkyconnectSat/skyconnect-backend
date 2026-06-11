@@ -1876,6 +1876,19 @@ const server = http.createServer(async (req, res) => {
     return json(res, { ok: true });
   }
 
+  // DELETE /api/admin/sims/:id/operations — Clear operation history for a SIM
+  const opsMatch = pathname.match(/^\/api\/admin\/sims\/([^/]+)\/operations$/);
+  if (method === 'DELETE' && opsMatch) {
+    if (!session || session.role !== 'admin') return json(res, { error: 'Acceso denegado' }, 403);
+    const db = loadDB();
+    const sim = db.sims.find(s => s.id === opsMatch[1]);
+    if (!sim) return json(res, { error: 'SIM no encontrada' }, 404);
+    sim.operations = [];
+    sim.lastUpdated = new Date().toISOString();
+    saveDB(db);
+    return json(res, { ok: true });
+  }
+
   // GET /api/admin/users
   if (method === 'GET' && pathname === '/api/admin/users') {
     if (!session || session.role !== 'admin') return json(res, { error: 'Acceso denegado' }, 403);
