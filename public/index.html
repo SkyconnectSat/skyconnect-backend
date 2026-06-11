@@ -1209,21 +1209,17 @@ async function renderSimDetail(el, simId) {
         </div>
       </div>` : ''}
 
-      <!-- Activation form for inactive -->
+      <!-- Activation form for inactive — auto-detect service type, no selector -->
       ${!isReadOnly() && hasPerm('canActivate') ? `<div class="sim-detail-recharge">
         <div class="sim-detail-label">ACTIVACI&Oacute;N</div>
         <div id="activationFormInline">
           <p style="color:var(--gray-500);font-size:14px;margin-bottom:16px">Esta SIM no est&aacute; activa. Complete los datos para solicitar la activaci&oacute;n.</p>
-          <div class="form-group">
-            <label>Servicio</label>
-            <select id="inlineActService" onchange="updateInlinePlanOptions()">
-              <option value="">— Seleccionar —</option>
-            </select>
-          </div>
+          <input type="hidden" id="inlineActService" value="${sim.serviceType || 'Pre-Pago'}">
+          <p style="font-size:13px;color:var(--gray-500);margin-bottom:12px">Tipo de servicio: <strong>${sim.serviceType || 'Pre-Pago'}</strong></p>
           <div class="form-group">
             <label>Plan de Minutos</label>
-            <select id="inlineActPlan" disabled>
-              <option value="">— Seleccione servicio primero —</option>
+            <select id="inlineActPlan">
+              <option value="">— Seleccionar plan —</option>
             </select>
           </div>
           <div class="accept-charges-row">
@@ -1239,16 +1235,13 @@ async function renderSimDetail(el, simId) {
         ${renderOperationsTable(sim.operations)}
       </div>` : ''}
     `;
-    // Populate service options and auto-select if SIM has serviceType
-    if (planData && planData.services) {
-      const sel = document.getElementById('inlineActService');
-      if (sel) {
-        planData.services.forEach(s => { sel.innerHTML += `<option value="${s}">${s}</option>`; });
-        // Auto-select the SIM's service type if set
-        if (sim.serviceType && planData.plans[sim.serviceType]) {
-          sel.value = sim.serviceType;
-          updateInlinePlanOptions();
-        }
+    // Auto-populate plan options based on service type (no user selection needed)
+    if (planData) {
+      const svcType = sim.serviceType || 'Pre-Pago';
+      const planSel = document.getElementById('inlineActPlan');
+      if (planSel) {
+        const plans = planData.plans[svcType] || [];
+        planSel.innerHTML = '<option value="">— Seleccionar plan —</option>' + plans.map(p => `<option value="${p}">${p}</option>`).join('');
       }
     }
     return;
@@ -1817,18 +1810,17 @@ async function requestDeleteSubUser(id) {
 
 async function showActivateModal(simId) {
   if (!planData) return toast('Cargando opciones...', 'info');
-  // Fetch sim to get its serviceType
-  let simSvc = '';
+  // Fetch sim to get its serviceType — auto-detect, default Pre-Pago
+  let simSvc = 'Pre-Pago';
   try {
     const simData = await fetch(`/api/sims/${simId}`).then(r => r.json());
-    simSvc = simData.serviceType || '';
+    simSvc = simData.serviceType || 'Pre-Pago';
   } catch(e) {}
   const mc = document.getElementById('modalContainer');
-  // Build plan options if serviceType known
+  // Build plan options directly from auto-detected service type
   let modalPlanOpts = '<option value="">— Seleccionar plan —</option>';
-  if (simSvc && planData.plans[simSvc]) {
-    planData.plans[simSvc].forEach(p => { modalPlanOpts += `<option value="${p}">${p}</option>`; });
-  }
+  const plans = planData.plans[simSvc] || [];
+  plans.forEach(p => { modalPlanOpts += `<option value="${p}">${p}</option>`; });
   mc.innerHTML = `
     <div class="modal-overlay" onclick="closeModal(event)">
       <div class="modal" onclick="event.stopPropagation()">
@@ -1844,17 +1836,12 @@ async function showActivateModal(simId) {
           <label>Fecha y Hora</label>
           <input type="datetime-local" id="actDate">
         </div>
-        <div class="form-group">
-          <label>Servicio</label>
-          <select id="actService" onchange="updatePlanOptions()">
-            <option value="">— Seleccionar —</option>
-            ${planData.services.map(s => `<option value="${s}" ${s === simSvc ? 'selected' : ''}>${s}</option>`).join('')}
-          </select>
-        </div>
+        <input type="hidden" id="actService" value="${simSvc}">
+        <p style="font-size:13px;color:var(--gray-500);margin-bottom:12px">Tipo de servicio: <strong>${simSvc}</strong></p>
         <div class="form-group">
           <label>Plan de Minutos</label>
-          <select id="actPlan" ${simSvc ? '' : 'disabled'}>
-            ${simSvc ? modalPlanOpts : '<option value="">— Seleccione servicio primero —</option>'}
+          <select id="actPlan">
+            ${modalPlanOpts}
           </select>
         </div>
         <div class="accept-charges-row">
