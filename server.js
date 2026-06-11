@@ -671,36 +671,7 @@ function sendTemplateEmail(templateId, variables, recipientEmail) {
 
   console.log(`\n📧 EMAIL [${templateId}] → ${recipientEmail}\n   From: ${fromEmail}\n   Subject: ${subject}\n`);
 
-  // Send via nodemailer if configured
-  const smtpHost = settings.smtpHost || process.env.SMTP_HOST;
-  const smtpPort = settings.smtpPort || parseInt(process.env.SMTP_PORT || '587', 10);
-  const smtpUser = settings.smtpUser || process.env.SMTP_USER;
-  const smtpPass = settings.smtpPassword || settings.smtpPass || process.env.SMTP_PASS;
-  const smtpSecure = (settings.smtpPort === 465) || process.env.SMTP_SECURE === 'true';
-
-  try {
-    const nodemailer = require('nodemailer');
-    if (smtpHost && smtpUser) {
-      const transporter = nodemailer.createTransport({
-        host: smtpHost,
-        port: smtpPort,
-        secure: smtpSecure,
-        auth: { user: smtpUser, pass: smtpPass }
-      });
-      transporter.sendMail({
-        from: fromEmail || `"SkyConnect" <${smtpUser}>`,
-        to: recipientEmail,
-        subject,
-        html: htmlBody
-      }).then(() => {
-        console.log(`   ✅ Email sent successfully to ${recipientEmail}`);
-      }).catch((err) => {
-        console.log(`   ⚠️ Email send failed: ${err.message}`);
-      });
-    }
-  } catch (e) {
-    // nodemailer not installed
-  }
+  sendEmail(recipientEmail, subject, htmlBody, fromEmail).catch(e => console.error('sendTemplateEmail error:', e.message));
 }
 
 // Deprecated: kept for reference but no longer called
@@ -709,23 +680,64 @@ function sendNotification(subject, details, toClient) {
   console.log(`   Subject: ${subject} | To: ${toClient || 'admin'}`);
 }
 
-// Simple email notification (for actions without a dedicated template)
-function sendNotificationSimple(toEmail, subject, bodyText) {
+// Core email send: tries Resend API first, then SMTP fallback
+async function sendEmail(toEmail, subject, htmlBody, fromEmail) {
   const db = loadDB();
   const settings = db.notificationSettings || {};
+  const resendKey = settings.resendApiKey || process.env.RESEND_API_KEY;
   const smtpHost = settings.smtpHost || process.env.SMTP_HOST;
-  if (!smtpHost) { console.log(`[Email] ${subject} → ${toEmail}: ${bodyText}`); return; }
+
+  if (!resendKey && !smtpHost) {
+    console.log(`[Email no enviado — sin config] ${subject} → ${toEmail}`);
+    return { ok: false, error: 'No hay SMTP ni Resend configurado' };
+  }
+
+  const from = fromEmail || settings.smtpFrom || settings.smtpUser || process.env.SMTP_USER || 'SkyConnect <onboarding@resend.dev>';
+
+  // Try Resend API (HTTP — no port issues)
+  if (resendKey) {
+    try {
+      const payload = JSON.stringify({ from, to: [toEmail], subject, html: htmlBody });
+      const resp = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + resendKey, 'Content-Type': 'application/json' },
+        body: payload
+      });
+      const result = await resp.json();
+      if (resp.ok) {
+        console.log(`✅ Email (Resend) → ${toEmail}: ${subject}`);
+        return { ok: true };
+      } else {
+        console.error(`⚠️ Resend error: ${JSON.stringify(result)}`);
+        return { ok: false, error: result.message || 'Error Resend' };
+      }
+    } catch (e) {
+      console.error('Resend fetch error:', e.message);
+      return { ok: false, error: e.message };
+    }
+  }
+
+  // Fallback: SMTP via nodemailer
   try {
     const nodemailer = require('nodemailer');
     const smtpPort = settings.smtpPort || parseInt(process.env.SMTP_PORT || '587', 10);
     const smtpUser = settings.smtpUser || process.env.SMTP_USER;
     const smtpPass = settings.smtpPassword || settings.smtpPass || process.env.SMTP_PASS;
     const smtpSecure = (smtpPort === 465) || process.env.SMTP_SECURE === 'true';
-    const fromEmail = settings.smtpFrom || smtpUser || '';
     const transporter = nodemailer.createTransport({ host: smtpHost, port: smtpPort, secure: smtpSecure, auth: { user: smtpUser, pass: smtpPass } });
-    const htmlBody = buildEmailHtml('Notificación SkyConnect', `<p style="font-size:14px;color:#333">${bodyText}</p>`);
-    transporter.sendMail({ from: fromEmail, to: toEmail, subject, html: htmlBody }).catch(e => console.error('Email error:', e.message));
-  } catch (e) { console.log(`[Email not sent] ${subject} → ${toEmail}`); }
+    await transporter.sendMail({ from, to: toEmail, subject, html: htmlBody });
+    console.log(`✅ Email (SMTP) → ${toEmail}: ${subject}`);
+    return { ok: true };
+  } catch (e) {
+    console.error('SMTP error:', e.message);
+    return { ok: false, error: e.message };
+  }
+}
+
+// Simple email notification (for actions without a dedicated template)
+function sendNotificationSimple(toEmail, subject, bodyText) {
+  const htmlBody = buildEmailHtml('Notificación SkyConnect', `<p style="font-size:14px;color:#333">${bodyText}</p>`);
+  sendEmail(toEmail, subject, htmlBody).catch(e => console.error('sendNotificationSimple error:', e.message));
 }
 
 function logActivity(db, clientId, action, details) {
@@ -1573,34 +1585,28 @@ const server = http.createServer(async (req, res) => {
       smtpUser: body.smtpUser !== undefined ? body.smtpUser : (prev.smtpUser || ''),
       smtpPass: body.smtpPassword !== undefined ? body.smtpPassword : (body.smtpPass !== undefined ? body.smtpPass : (prev.smtpPass || prev.smtpPassword || '')),
       smtpPassword: body.smtpPassword !== undefined ? body.smtpPassword : (body.smtpPass !== undefined ? body.smtpPass : (prev.smtpPassword || prev.smtpPass || '')),
-      smtpFrom: body.smtpFrom !== undefined ? body.smtpFrom : (prev.smtpFrom || '')
+      smtpFrom: body.smtpFrom !== undefined ? body.smtpFrom : (prev.smtpFrom || ''),
+      resendApiKey: body.resendApiKey !== undefined ? body.resendApiKey : (prev.resendApiKey || '')
     };
     saveDB(db);
     return json(res, { ok: true, notificationSettings: db.notificationSettings });
   }
 
-  // POST /api/admin/notifications/test — send test email to verify SMTP
+  // POST /api/admin/notifications/test — send test email to verify email config
   if (method === 'POST' && pathname === '/api/admin/notifications/test') {
     if (!session || session.role !== 'admin') return json(res, { error: 'Acceso denegado' }, 403);
     const db = loadDB();
     const settings = db.notificationSettings || {};
+    const resendKey = settings.resendApiKey || process.env.RESEND_API_KEY;
     const smtpHost = settings.smtpHost || process.env.SMTP_HOST;
-    if (!smtpHost) return json(res, { error: 'SMTP no configurado. Configure el host SMTP primero.' }, 400);
-    const smtpUser = settings.smtpUser || process.env.SMTP_USER;
-    const smtpPass = settings.smtpPassword || settings.smtpPass || process.env.SMTP_PASS;
-    if (!smtpUser || !smtpPass) return json(res, { error: 'Falta usuario o contraseña SMTP.' }, 400);
-    try {
-      const nodemailer = require('nodemailer');
-      const smtpPort = settings.smtpPort || parseInt(process.env.SMTP_PORT || '587', 10);
-      const smtpSecure = (smtpPort === 465) || process.env.SMTP_SECURE === 'true';
-      const fromEmail = settings.smtpFrom || smtpUser;
-      const testTo = settings.adminEmail || ADMIN_EMAIL;
-      const transporter = nodemailer.createTransport({ host: smtpHost, port: smtpPort, secure: smtpSecure, auth: { user: smtpUser, pass: smtpPass } });
-      const htmlBody = buildEmailHtml('Prueba SMTP — SkyConnect', '<p style="font-size:14px;color:#333">Este es un email de prueba. Si lo recibe, la configuración SMTP es correcta.</p>');
-      await transporter.sendMail({ from: fromEmail, to: testTo, subject: 'Prueba SMTP — SkyConnect', html: htmlBody });
+    if (!resendKey && !smtpHost) return json(res, { error: 'Configure Resend API Key o SMTP primero.' }, 400);
+    const testTo = settings.adminEmail || ADMIN_EMAIL;
+    const htmlBody = buildEmailHtml('Prueba Email — SkyConnect', '<p style="font-size:14px;color:#333">Este es un email de prueba. Si lo recibe, la configuración es correcta.</p>');
+    const result = await sendEmail(testTo, 'Prueba Email — SkyConnect', htmlBody);
+    if (result.ok) {
       return json(res, { ok: true, message: `Email de prueba enviado a ${testTo}` });
-    } catch (e) {
-      return json(res, { error: `Error SMTP: ${e.message}` }, 500);
+    } else {
+      return json(res, { error: result.error || 'Error al enviar email' }, 500);
     }
   }
 
@@ -1778,15 +1784,23 @@ const server = http.createServer(async (req, res) => {
         const normalized = statusMap[String(item.status).trim().toLowerCase()];
         if (normalized) overrides.status = normalized;
       }
-      // Clean serial: remove any non-alphanumeric chars except dots/dashes
-      if (overrides.serial) overrides.serial = String(overrides.serial).trim();
+      // Clean serial: handle scientific notation from Excel, ensure string
+      if (overrides.serial) {
+        let s = String(overrides.serial).trim();
+        // If it looks like scientific notation (e.g. 8.9445E+18), try to convert
+        if (/^\d+\.?\d*[eE][+\-]?\d+$/.test(s)) {
+          try { s = BigInt(Math.round(parseFloat(s))).toString(); } catch(e) { /* keep as-is */ }
+        }
+        // Remove any non-alphanumeric except dots/dashes
+        overrides.serial = s;
+      }
       // Check if SIM with same serial already exists — update/rewrite instead of duplicate
       const existing = overrides.serial ? db.sims.find(s => s.serial === overrides.serial) : null;
       if (existing) {
-        // Rewrite: overwrite all fields from Excel
-        fields.forEach(f => { if (overrides[f] !== undefined) existing[f] = overrides[f]; });
-        if (overrides.balance !== undefined) existing.balance = overrides.balance;
-        if (overrides.status) existing.status = overrides.status;
+        // ALWAYS rewrite: overwrite ALL fields from Excel, clear fields not in Excel
+        fields.forEach(f => { existing[f] = overrides[f] !== undefined ? overrides[f] : existing[f]; });
+        existing.balance = overrides.balance !== undefined ? overrides.balance : existing.balance;
+        existing.status = overrides.status || existing.status;
         existing.lastUpdated = new Date().toISOString();
         updated.push(existing);
       } else {
