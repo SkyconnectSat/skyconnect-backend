@@ -1770,10 +1770,15 @@ async function rejectAccount(accountId) {
 async function renderUsers(el) {
   const users = await api('/api/admin/users');
   if (!users) return;
-  // Sort: admins first, then clients
+  // Build a lookup of user id -> name/company for parent references
+  const userMap = {};
+  users.forEach(u => { userMap[u.id] = u; });
+  // Sort: admins first, then clients, then subusers
+  const roleOrder = { admin: 0, client: 1, subuser: 2 };
   users.sort((a, b) => {
-    if (a.role === 'admin' && b.role !== 'admin') return -1;
-    if (a.role !== 'admin' && b.role === 'admin') return 1;
+    const ra = roleOrder[a.role] ?? 1;
+    const rb = roleOrder[b.role] ?? 1;
+    if (ra !== rb) return ra - rb;
     return (a.name || '').localeCompare(b.name || '');
   });
   el.innerHTML = `
@@ -1783,16 +1788,27 @@ async function renderUsers(el) {
       <table>
         <thead><tr><th>Nombre</th><th>Email</th><th>Empresa</th><th>Telefono</th><th>Rol</th><th>Acciones</th></tr></thead>
         <tbody>
-          ${users.map(u => `
-            <tr>
-              <td>${u.name}</td>
-              <td>${u.email}</td>
-              <td>${u.company}</td>
-              <td>${u.countryCode ? u.countryCode + ' ' : ''}${u.phone || '—'}</td>
-              <td><span class="badge badge-${u.role==='admin'?'processing':'active'}">${u.role}</span></td>
-              <td><button class="btn btn-outline btn-sm" onclick="showEditUser('${u.id}')">Editar</button></td>
-            </tr>
-          `).join('')}
+          ${users.map(u => {
+            let roleBadge = '';
+            if (u.role === 'admin') {
+              roleBadge = '<span class="badge badge-processing">Admin</span>';
+            } else if (u.role === 'subuser') {
+              const parent = userMap[u.parentClientId];
+              const parentName = parent ? (parent.company || parent.name) : '';
+              roleBadge = '<span class="badge" style="background:#fff3e0;color:#e65100;border:1px solid #ffcc02">Sub-usuario</span>'
+                + (parentName ? '<br><span style="font-size:11px;color:#888">de ' + parentName + '</span>' : '');
+            } else {
+              roleBadge = '<span class="badge badge-active">Cliente</span>';
+            }
+            return '<tr>'
+              + '<td>' + (u.name || '') + '</td>'
+              + '<td>' + (u.email || '') + '</td>'
+              + '<td>' + (u.company || '') + '</td>'
+              + '<td>' + (u.countryCode ? u.countryCode + ' ' : '') + (u.phone || '—') + '</td>'
+              + '<td>' + roleBadge + '</td>'
+              + '<td><button class="btn btn-outline btn-sm" onclick="showEditUser(\'' + u.id + '\')">Editar</button></td>'
+              + '</tr>';
+          }).join('')}
         </tbody>
       </table>
     </div>
@@ -1962,8 +1978,12 @@ async function showEditSubUser(subId) {
   // Load accounts — get all accounts to allow assignment
   let allAccounts = [];
   try { allAccounts = await api('/api/accounts') || []; } catch(e) {}
-  // Filter to accounts belonging to the sub-user's parent client if possible
-  const parentAccounts = s.parentClientId ? allAccounts.filter(a => a.userId === s.parentClientId) : allAccounts;
+  // Filter to accounts belonging to the sub-user's parent client; fall back to all if none match
+  let parentAccounts = allAccounts;
+  if (s.parentClientId) {
+    const filtered = allAccounts.filter(a => a.userId === s.parentClientId || a.clientId === s.parentClientId);
+    if (filtered.length > 0) parentAccounts = filtered;
+  }
   const assignedAccounts = s.assignedAccounts || [];
 
   // Build accounts checkboxes HTML
