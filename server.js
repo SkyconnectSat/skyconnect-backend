@@ -696,8 +696,10 @@ async function sendEmail(toEmail, subject, htmlBody, fromEmail) {
 
   // Try Resend API (HTTP — no port issues)
   if (resendKey) {
+    // Use onboarding@resend.dev unless a verified domain is configured in resendFrom
+    const resendFrom = settings.resendFrom || 'SkyConnect <onboarding@resend.dev>';
     try {
-      const payload = JSON.stringify({ from, to: [toEmail], subject, html: htmlBody });
+      const payload = JSON.stringify({ from: resendFrom, to: [toEmail], subject, html: htmlBody });
       const resp = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + resendKey, 'Content-Type': 'application/json' },
