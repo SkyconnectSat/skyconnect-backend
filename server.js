@@ -2197,6 +2197,8 @@ const server = http.createServer(async (req, res) => {
     db.subusers = db.subusers.filter(s => s.id !== adminDeleteSubMatch[1]);
     // Also remove from users array if they were promoted
     db.users = db.users.filter(u => u.id !== adminDeleteSubMatch[1]);
+    // Revoke all active sessions for deleted user
+    invalidateUserSessions(adminDeleteSubMatch[1]);
     logActivity(db, su.parentClientId, 'Sub-usuario Eliminado por Admin', su.name);
     saveDB(db);
     return json(res, { ok: true });
