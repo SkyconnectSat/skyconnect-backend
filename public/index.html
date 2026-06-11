@@ -2031,8 +2031,20 @@ async function saveAssignment(simId) {
   if (res.ok) toast('Informacion guardada', 'success');
 }
 
-function showNewSubUserModal() {
+async function showNewSubUserModal() {
+  // Fetch accounts for account assignment
+  let accountsList = [];
+  try { accountsList = await fetch('/api/accounts').then(r => r.json()); } catch(e) {}
   const mc = document.getElementById('modalContainer');
+  const accountCheckboxes = accountsList.length > 0 ? `
+    <div style="margin-top:12px">
+      <label style="font-size:13px;font-weight:600;color:var(--gray-500);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:8px">Cuentas / Clientes Asignados</label>
+      <p style="font-size:12px;color:var(--gray-400);margin-bottom:8px">Seleccione las cuentas que podr&aacute; ver este sub-usuario. Si no selecciona ninguna, ver&aacute; todas las SIM.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        ${accountsList.map((a, i) => `<label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" class="suAccountCheck" value="${(a.name || '').replace(/"/g, '&quot;')}"> ${a.name || 'Sin nombre'}</label>`).join('')}
+      </div>
+    </div>
+  ` : '';
   const permCheckboxes = `
     <div style="margin-top:12px">
       <label style="font-size:13px;font-weight:600;color:var(--gray-500);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:8px">Permisos</label>
@@ -2076,6 +2088,7 @@ function showNewSubUserModal() {
           <div class="form-group"><label>Email *</label><input id="suEmailCliente" type="email" required placeholder="email@empresa.com"></div>
           <div class="form-group"><label>Contrase&ntilde;a *</label><input id="suPassCliente" type="password" placeholder="Minimo 6 caracteres"></div>
         </div>
+        ${accountCheckboxes}
         ${permCheckboxes}
         <div class="modal-actions">
           <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
@@ -2130,7 +2143,8 @@ async function doCreateSubUser() {
       if (!password || password.length < 6) return toast('La contrasena debe tener al menos 6 caracteres', 'error');
     }
     const permissions = getSubUserPermissions();
-    const body = { userType, name, email, password, permissions };
+    const assignedAccounts = Array.from(document.querySelectorAll('.suAccountCheck:checked')).map(cb => cb.value);
+    const body = { userType, name, email, password, permissions, assignedAccounts };
     if (userType === 'cliente') body.empresa = empresa;
     const res = await fetch('/api/subusers', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
