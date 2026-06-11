@@ -911,7 +911,8 @@ const server = http.createServer(async (req, res) => {
             name: subuser.name,
             company: subuser.company || '',
             parentClientId: subuser.parentClientId,
-            permissions: subuser.permissions || defaultPermissions()
+            permissions: subuser.permissions || defaultPermissions(),
+            assignedAccounts: subuser.assignedAccounts || []
           });
           return json(res, {
             id: subuser.id,
@@ -938,10 +939,13 @@ const server = http.createServer(async (req, res) => {
     const sessionData = {
       userId: user.id, role: user.role, email: user.email, name: user.name, company: user.company
     };
-    // If this is a subuser in the users array, include permissions and parentClientId
+    // If this is a subuser in the users array, include permissions, parentClientId and assignedAccounts
     if (user.role === 'subuser') {
       sessionData.parentClientId = user.parentClientId;
       sessionData.permissions = user.permissions || defaultPermissions();
+      // Look up assignedAccounts from subusers table if not on user object
+      const suRecord = db.subusers.find(s => s.id === user.id);
+      sessionData.assignedAccounts = user.assignedAccounts || (suRecord ? suRecord.assignedAccounts : []) || [];
     }
     const sid = createSession(sessionData);
     const responseData = { id: user.id, name: user.name, email: user.email, company: user.company, role: user.role };
@@ -1289,8 +1293,16 @@ const server = http.createServer(async (req, res) => {
     if (session.role === 'admin') {
       sims = db.sims;
     } else if (session.role === 'subuser') {
-      // Sub-users see the same SIMs as their parent client
-      sims = db.sims.filter(s => s.clientId === session.parentClientId || s.clientId === session.userId);
+      // Sub-users: filter by parent client, then by assignedAccounts if set
+      const parentSims = db.sims.filter(s => s.clientId === session.parentClientId || s.clientId === session.userId);
+      const assigned = session.assignedAccounts || [];
+      if (assigned.length > 0) {
+        // Only show SIMs whose subClient matches one of the assigned accounts
+        sims = parentSims.filter(s => assigned.includes(s.subClient));
+      } else {
+        // No account restriction — see all parent's SIMs
+        sims = parentSims;
+      }
     } else {
       sims = db.sims.filter(s => s.clientId === session.userId);
     }
@@ -1306,6 +1318,12 @@ const server = http.createServer(async (req, res) => {
     if (!sim) return json(res, { error: 'SIM no encontrada' }, 404);
     if (session.role !== 'admin' && sim.clientId !== session.userId && (!session.parentClientId || sim.clientId !== session.parentClientId)) {
       return json(res, { error: 'Acceso denegado' }, 403);
+    }
+    // Sub-users with assignedAccounts can only view SIMs from their assigned accounts
+    if (session.role === 'subuser' && session.assignedAccounts && session.assignedAccounts.length > 0) {
+      if (!session.assignedAccounts.includes(sim.subClient)) {
+        return json(res, { error: 'Acceso denegado' }, 403);
+      }
     }
     return json(res, sim);
   }
@@ -1494,9 +1512,21 @@ const server = http.createServer(async (req, res) => {
       return json(res, { error: 'Campo requerido para tipo cliente: name (nombre y apellido contacto)' }, 400);
     }
     const db = loadDB();
-    // Check email uniqueness across users and subusers
-    if (db.users.find(u => u.email === body.email) || db.subusers.find(s => s.email === body.email)) {
-      return json(res, { error: 'No se pudo registrar. Verifique los datos e intente de nuevo.' }, 400);
+    // Check email uniqueness across users
+    if (db.users.find(u => u.email === body.email)) {
+      return json(res, { error: 'Este email ya está registrado como usuario principal.' }, 400);
+    }
+    // Check existing subusers with same email
+    const existingSub = db.subusers.find(s => s.email === body.email);
+    if (existingSub) {
+      if (existingSub.status === 'rejected') {
+        // Remove rejected sub-user so they can re-register
+        db.subusers = db.subusers.filter(s => s.id !== existingSub.id);
+      } else if (existingSub.status === 'pending') {
+        return json(res, { error: 'Ya existe una solicitud pendiente para este email. Espere a que sea aprobada o rechazada.' }, 400);
+      } else {
+        return json(res, { error: 'Este email ya está registrado como sub-usuario.' }, 400);
+      }
     }
     const subuser = {
       id: uuid(), parentClientId: session.userId,
@@ -1506,6 +1536,7 @@ const server = http.createServer(async (req, res) => {
       company: body.company || session.company || '',
       password: body.password ? hashPassword(body.password) : '',
       permissions: body.permissions || defaultPermissions(),
+      assignedAccounts: Array.isArray(body.assignedAccounts) ? body.assignedAccounts : [],
       status: 'pending', createdAt: new Date().toISOString(), approvedAt: null
     };
     db.subusers.push(subuser);
@@ -2091,6 +2122,7 @@ const server = http.createServer(async (req, res) => {
       company: body.company || '',
       password: body.password ? hashPassword(body.password) : '',
       permissions: body.permissions || defaultPermissions(),
+      assignedAccounts: Array.isArray(body.assignedAccounts) ? body.assignedAccounts : [],
       status: body.status || 'approved',
       createdAt: new Date().toISOString(),
       approvedAt: new Date().toISOString()
@@ -2124,6 +2156,9 @@ const server = http.createServer(async (req, res) => {
     if (body.permissions !== undefined) {
       su.permissions = body.permissions;
     }
+    if (body.assignedAccounts !== undefined) {
+      su.assignedAccounts = Array.isArray(body.assignedAccounts) ? body.assignedAccounts : [];
+    }
 
     // Also update the corresponding user in the users array if it exists
     const correspondingUser = db.users.find(u => u.id === su.id);
@@ -2137,6 +2172,14 @@ const server = http.createServer(async (req, res) => {
       if (body.permissions !== undefined) {
         correspondingUser.permissions = body.permissions;
       }
+      if (body.assignedAccounts !== undefined) {
+        correspondingUser.assignedAccounts = Array.isArray(body.assignedAccounts) ? body.assignedAccounts : [];
+      }
+    }
+
+    // Invalidate sessions so new assignedAccounts take effect on next login
+    if (body.assignedAccounts !== undefined) {
+      invalidateUserSessions(su.id);
     }
 
     logActivity(db, su.parentClientId, 'Sub-usuario Editado por Admin', `${su.name} (${su.email})`);
