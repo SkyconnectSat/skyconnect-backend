@@ -1058,6 +1058,13 @@ function hasPerm(key) {
   return (currentUser.permissions || {})[key] === true;
 }
 
+// === Helper: check if user is read-only (only canRead, nothing else) ===
+function isReadOnly() {
+  if (!currentUser || currentUser.role !== 'subuser') return false;
+  const perms = currentUser.permissions || {};
+  return perms.canRead && !perms.canActivate && !perms.canDeactivate && !perms.canRecharge && !perms.canRequestBalance;
+}
+
 // === Helper: render SIM header (shared across all states) ===
 function renderSimHeader(sim) {
   const isdn = formatISDN(sim.msisdn);
@@ -1082,8 +1089,8 @@ function renderSimHeader(sim) {
       </div>
       <div class="sim-detail-header-right">
         ${statusBadge}
-        ${hasPerm('canActivate') ? `<button class="btn btn-outline btn-sm ${isActive ? 'btn-disabled' : ''}" ${isActive ? 'disabled' : ''} onclick="showActivateModal('${sim.id}')">Activar</button>` : ''}
-        ${hasPerm('canDeactivate') ? `<button class="btn btn-outline btn-sm ${isInactive ? 'btn-disabled' : ''}" ${isInactive ? 'disabled' : ''} onclick="confirmDeactivate('${sim.id}')" style="border-color:var(--red);color:var(--red)">Desactivar</button>` : ''}
+        ${!isReadOnly() && hasPerm('canActivate') ? `<button class="btn btn-outline btn-sm ${isActive ? 'btn-disabled' : ''}" ${isActive ? 'disabled' : ''} onclick="showActivateModal('${sim.id}')">Activar</button>` : ''}
+        ${!isReadOnly() && hasPerm('canDeactivate') ? `<button class="btn btn-outline btn-sm ${isInactive ? 'btn-disabled' : ''}" ${isInactive ? 'disabled' : ''} onclick="confirmDeactivate('${sim.id}')" style="border-color:var(--red);color:var(--red)">Desactivar</button>` : ''}
       </div>
     </div>
   `;
@@ -1192,24 +1199,34 @@ async function renderSimDetail(el, simId) {
         </div>
       </div>
 
-      <!-- Activation form for inactive -->
-      ${hasPerm('canActivate') ? `<div class="sim-detail-recharge">
+      <!-- Read-only users: GESTION DEL DISPOSITIVO for inactive SIMs -->
+      ${isReadOnly() ? `<div class="sim-detail-card" style="margin-top:16px">
+        <div class="sim-detail-label">GESTI&Oacute;N DEL DISPOSITIVO</div>
+        <p style="color:var(--gray-500);font-size:13px;margin-bottom:16px">Solicite un cambio de estado para este dispositivo.</p>
+        <div style="display:flex;gap:12px">
+          <button class="btn btn-outline btn-disabled" disabled>Suspender Temporalmente</button>
+          <button class="btn btn-coral" onclick="requestDeviceAction('${sim.id}', 'activate')">Activar</button>
+        </div>
+      </div>` : ''}
+
+      <!-- Activation form for inactive — auto-detects Pre/Post-Pago -->
+      ${!isReadOnly() && hasPerm('canActivate') ? `<div class="sim-detail-recharge">
         <div class="sim-detail-label">ACTIVACI&Oacute;N</div>
         <div id="activationFormInline">
           <p style="color:var(--gray-500);font-size:14px;margin-bottom:16px">Esta SIM no est&aacute; activa. Complete los datos para solicitar la activaci&oacute;n.</p>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:end">
-            <div class="form-group">
-              <label>Servicio</label>
-              <select id="inlineActService" onchange="updateInlinePlanOptions()">
-                <option value="">— Seleccionar —</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Plan de Minutos</label>
-              <select id="inlineActPlan" disabled>
-                <option value="">— Seleccione servicio primero —</option>
-              </select>
-            </div>
+          <input type="hidden" id="inlineActService" value="${sim.serviceType || ''}">
+          ${sim.serviceType ? `<p style="font-size:13px;color:var(--gray-500);margin-bottom:12px">Tipo de servicio: <strong>${sim.serviceType}</strong></p>` : `
+          <div class="form-group">
+            <label>Servicio</label>
+            <select id="inlineActServiceSelect" onchange="document.getElementById('inlineActService').value=this.value; updateInlinePlanOptions()">
+              <option value="">— Seleccionar —</option>
+            </select>
+          </div>`}
+          <div class="form-group">
+            <label>Plan de Minutos</label>
+            <select id="inlineActPlan">
+              <option value="">— Seleccionar plan —</option>
+            </select>
           </div>
           <div class="accept-charges-row">
             <input type="checkbox" id="inlineActAccept" onchange="toggleActivateBtn()">
@@ -1219,25 +1236,59 @@ async function renderSimDetail(el, simId) {
         </div>
       </div>` : ''}
 
-      ${hasPerm('canViewOperations') ? `<div class="sim-detail-ops">
+      ${!isReadOnly() && hasPerm('canViewOperations') ? `<div class="sim-detail-ops">
         <div class="sim-detail-label">OPERACIONES RECIENTES</div>
         ${renderOperationsTable(sim.operations)}
       </div>` : ''}
     `;
-    // populate service options
-    if (planData && planData.services) {
-      const sel = document.getElementById('inlineActService');
-      planData.services.forEach(s => { sel.innerHTML += `<option value="${s}">${s}</option>`; });
+    // Auto-populate plan options if serviceType is known, otherwise show service selector
+    if (planData) {
+      if (sim.serviceType) {
+        // Auto-load plans for the SIM's service type
+        const planSel = document.getElementById('inlineActPlan');
+        if (planSel) {
+          const plans = planData.plans[sim.serviceType] || [];
+          planSel.innerHTML = '<option value="">— Seleccionar plan —</option>' + plans.map(p => `<option value="${p}">${p}</option>`).join('');
+        }
+      } else if (planData.services) {
+        const sel = document.getElementById('inlineActServiceSelect');
+        if (sel) planData.services.forEach(s => { sel.innerHTML += `<option value="${s}">${s}</option>`; });
+      }
     }
     return;
   }
 
   // === ACTIVE SIM — full profile ===
-  // Build recharge plan options
+  // Build recharge plan options — auto-detect service type from SIM
+  const simServiceType = sim.serviceType || 'Pre-Pago';
   let rechargePlanOptions = '<option value="">— Seleccionar plan —</option>';
   if (planData) {
-    const plans = planData.plans[sim.serviceType] || planData.plans['Pre-Pago'] || [];
+    const plans = planData.plans[simServiceType] || [];
     plans.forEach(p => { rechargePlanOptions += `<option value="${p}">${p}</option>`; });
+  }
+
+  // Read-only users: only DISPOSITIVO + GESTION DEL DISPOSITIVO
+  if (isReadOnly()) {
+    el.innerHTML = `
+      <div class="back-link" onclick="navigate('sims')">&#8592; Volver a Dispositivos</div>
+      ${renderSimHeader(sim)}
+      <div class="sim-detail-grid">
+        ${renderSimDeviceSection(sim)}
+      </div>
+      <div class="sim-detail-card" style="margin-top:16px">
+        <div class="sim-detail-label">GESTI&Oacute;N DEL DISPOSITIVO</div>
+        <p style="color:var(--gray-500);font-size:13px;margin-bottom:16px">Solicite un cambio de estado para este dispositivo.</p>
+        <div style="display:flex;gap:12px">
+          ${sim.status === 'active'
+            ? `<button class="btn btn-coral" onclick="requestDeviceAction('${sim.id}', 'suspend')">Suspender Temporalmente</button>
+               <button class="btn btn-outline btn-disabled" disabled>Activar</button>`
+            : `<button class="btn btn-outline btn-disabled" disabled>Suspender Temporalmente</button>
+               <button class="btn btn-coral" onclick="requestDeviceAction('${sim.id}', 'activate')">Activar</button>`
+          }
+        </div>
+      </div>
+    `;
+    return;
   }
 
   el.innerHTML = `
@@ -1287,9 +1338,10 @@ async function renderSimDetail(el, simId) {
       </div>
     </div>` : ''}
 
-    <!-- Recharge section for active -->
+    <!-- Recharge section for active — auto-detects Pre/Post-Pago -->
     ${hasPerm('canRecharge') ? `<div class="sim-detail-recharge">
-      <div class="sim-detail-label">ACTIVACI&Oacute;N Y RECARGA</div>
+      <div class="sim-detail-label">RECARGA</div>
+      <p style="color:var(--gray-500);font-size:13px;margin-bottom:12px">Tipo de servicio: <strong>${simServiceType}</strong></p>
       <div id="rechargeFormInline">
         <div class="recharge-row">
           <div class="form-group">
@@ -1767,9 +1819,20 @@ async function requestDeleteSubUser(id) {
 
 // === Actions ===
 
-function showActivateModal(simId) {
+async function showActivateModal(simId) {
   if (!planData) return toast('Cargando opciones...', 'info');
+  // Fetch sim to get its serviceType
+  let simSvc = '';
+  try {
+    const simData = await fetch(`/api/sims/${simId}`).then(r => r.json());
+    simSvc = simData.serviceType || '';
+  } catch(e) {}
   const mc = document.getElementById('modalContainer');
+  // Build plan options if serviceType known
+  let modalPlanOpts = '<option value="">— Seleccionar plan —</option>';
+  if (simSvc && planData.plans[simSvc]) {
+    planData.plans[simSvc].forEach(p => { modalPlanOpts += `<option value="${p}">${p}</option>`; });
+  }
   mc.innerHTML = `
     <div class="modal-overlay" onclick="closeModal(event)">
       <div class="modal" onclick="event.stopPropagation()">
@@ -1785,17 +1848,21 @@ function showActivateModal(simId) {
           <label>Fecha y Hora</label>
           <input type="datetime-local" id="actDate">
         </div>
+        ${simSvc ? `
+          <input type="hidden" id="actService" value="${simSvc}">
+          <p style="font-size:13px;color:var(--gray-500);margin-bottom:12px">Tipo de servicio: <strong>${simSvc}</strong></p>
+        ` : `
         <div class="form-group">
           <label>Servicio</label>
           <select id="actService" onchange="updatePlanOptions()">
             <option value="">— Seleccionar —</option>
             ${planData.services.map(s => `<option value="${s}">${s}</option>`).join('')}
           </select>
-        </div>
+        </div>`}
         <div class="form-group">
           <label>Plan de Minutos</label>
-          <select id="actPlan" disabled>
-            <option value="">— Seleccione servicio primero —</option>
+          <select id="actPlan" ${simSvc ? '' : 'disabled'}>
+            ${simSvc ? modalPlanOpts : '<option value="">— Seleccione servicio primero —</option>'}
           </select>
         </div>
         <div class="accept-charges-row">
@@ -1822,6 +1889,59 @@ function toggleModalActivateBtn() {
 
 function toggleSchedule() {
   document.getElementById('scheduleGroup').style.display = document.getElementById('actType').value === 'scheduled' ? 'block' : 'none';
+}
+
+// === Read-only user: request device action (suspend/activate) ===
+function requestDeviceAction(simId, action) {
+  const actionLabel = action === 'suspend' ? 'Suspender Temporalmente' : 'Activar';
+  const mc = document.getElementById('modalContainer');
+  mc.innerHTML = `
+    <div class="modal-overlay" onclick="closeModal(event)">
+      <div class="modal" onclick="event.stopPropagation()">
+        <h2>${actionLabel}</h2>
+        <p style="color:var(--gray-500);margin-bottom:20px">&iquest;Est&aacute; seguro de que desea ${action === 'suspend' ? 'suspender temporalmente' : 'activar'} este dispositivo?</p>
+        <div class="modal-actions">
+          <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+          <button class="btn btn-coral" onclick="doDeviceAction('${simId}','${action}')">Confirmar</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function doDeviceAction(simId, action) {
+  let endpoint, method, body;
+  if (action === 'activate') {
+    endpoint = '/api/sims/' + simId + '/activate';
+    method = 'POST';
+    body = JSON.stringify({ serviceType: 'Pre-Pago', planType: '', activationType: 'immediate', readOnlyRequest: true });
+  } else {
+    endpoint = '/api/sims/' + simId + '/deactivate';
+    method = 'POST';
+    body = JSON.stringify({ readOnlyRequest: true });
+  }
+  try {
+    const res = await fetch(endpoint, { method, headers: { 'Content-Type': 'application/json' }, body });
+    if (res.ok) {
+      closeModal();
+      const mc = document.getElementById('modalContainer');
+      mc.innerHTML = `
+        <div class="modal-overlay" onclick="closeModal(event)">
+          <div class="modal" onclick="event.stopPropagation()" style="text-align:center">
+            <div style="font-size:48px;margin-bottom:16px">&#9989;</div>
+            <h2>Solicitud Procesada</h2>
+            <p style="color:var(--gray-500);margin:16px 0">Su solicitud ha sido enviada y est&aacute; pendiente de aprobaci&oacute;n. Recibir&aacute; una notificaci&oacute;n cuando sea procesada.</p>
+            <button class="btn btn-coral" onclick="closeModal(); navigate('simDetail','${simId}')">Aceptar</button>
+          </div>
+        </div>
+      `;
+    } else {
+      const d = await res.json();
+      toast(d.error || 'Error al procesar solicitud', 'error');
+    }
+  } catch(e) {
+    toast('Error de conexion', 'error');
+  }
 }
 
 function updatePlanOptions() {
