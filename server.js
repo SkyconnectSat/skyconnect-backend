@@ -961,7 +961,7 @@ const server = http.createServer(async (req, res) => {
   // POST /api/logout
   if (method === 'POST' && pathname === '/api/logout') {
     destroySession(req);
-    return json(res, { ok: true }, 200, { 'Set-Cookie': 'sid=; Path=/; Max-Age=0' });
+    return json(res, { ok: true }, 200, { 'Set-Cookie': 'sid=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT' });
   }
 
   // GET /api/me
@@ -1109,6 +1109,24 @@ const server = http.createServer(async (req, res) => {
       });
     }
     return json(res, accounts);
+  }
+
+  // PATCH /api/accounts/:id — client edits their own account (not admin-created)
+  const clientAccountPatchMatch = pathname.match(/^\/api\/accounts\/([^/]+)$/);
+  if (method === 'PATCH' && clientAccountPatchMatch) {
+    if (!session) return json(res, { error: 'No autorizado' }, 401);
+    const db = loadDB();
+    if (!db.accounts) db.accounts = [];
+    const account = db.accounts.find(a => a.id === clientAccountPatchMatch[1]);
+    if (!account) return json(res, { error: 'Cuenta no encontrada' }, 404);
+    // Only allow editing if user created it (not admin-created)
+    if (account.createdBy === 'admin') return json(res, { error: 'No puede editar cuentas creadas por el administrador' }, 403);
+    if (account.createdBy !== session.userId) return json(res, { error: 'No tiene permisos para editar esta cuenta' }, 403);
+    const body = await parseBody(req);
+    if (body.name !== undefined) account.name = body.name;
+    if (body.contact !== undefined) account.contact = body.contact;
+    saveDB(db);
+    return json(res, { ok: true, account });
   }
 
   // POST /api/admin/accounts — admin creates and optionally assigns account
@@ -1552,7 +1570,9 @@ const server = http.createServer(async (req, res) => {
   if (method === 'DELETE' && deleteSubuserMatch) {
     if (!session) return json(res, { error: 'No autorizado' }, 401);
     const db = loadDB();
-    const su = db.subusers.find(s => s.id === deleteSubuserMatch[1] && s.parentClientId === session.userId);
+    // Allow parent client OR sub-user with canManageUsers under same parent
+    const ownerId = session.parentClientId || session.userId;
+    const su = db.subusers.find(s => s.id === deleteSubuserMatch[1] && s.parentClientId === ownerId);
     if (!su) return json(res, { error: 'Sub-usuario no encontrado' }, 404);
     // Create a deletion request (pending admin approval)
     const request = {
@@ -1567,6 +1587,41 @@ const server = http.createServer(async (req, res) => {
     saveDB(db);
     // No specific template for subuser deletion — admin sees it in the requests panel
     return json(res, { ok: true, message: 'Solicitud de eliminación enviada' });
+  }
+
+  // PATCH /api/subusers/:id — client edits their own sub-user (permissions + assignedAccounts)
+  const clientPatchSubMatch = pathname.match(/^\/api\/subusers\/([^/]+)$/);
+  if (method === 'PATCH' && clientPatchSubMatch) {
+    if (!session) return json(res, { error: 'No autorizado' }, 401);
+    const db = loadDB();
+    const su = db.subusers.find(s => s.id === clientPatchSubMatch[1] && s.parentClientId === session.userId);
+    if (!su) return json(res, { error: 'Sub-usuario no encontrado' }, 404);
+    const body = await parseBody(req);
+    // Update permissions
+    if (body.permissions) {
+      su.permissions = body.permissions;
+      // Flatten permissions to top-level for admin compatibility
+      Object.keys(body.permissions).forEach(k => { su[k] = body.permissions[k]; });
+    }
+    // Update assigned accounts
+    if (body.assignedAccounts !== undefined) {
+      su.assignedAccounts = Array.isArray(body.assignedAccounts) ? body.assignedAccounts : [];
+    }
+    // Also update corresponding user record
+    const correspondingUser = db.users.find(u => u.id === su.id);
+    if (correspondingUser) {
+      if (body.permissions) {
+        correspondingUser.permissions = body.permissions;
+        Object.keys(body.permissions).forEach(k => { correspondingUser[k] = body.permissions[k]; });
+      }
+      if (body.assignedAccounts !== undefined) {
+        correspondingUser.assignedAccounts = su.assignedAccounts;
+      }
+    }
+    // Invalidate sessions so new permissions/accounts take effect
+    invalidateUserSessions(su.id);
+    saveDB(db);
+    return json(res, { ok: true });
   }
 
   // GET /api/activity
@@ -1886,6 +1941,13 @@ const server = http.createServer(async (req, res) => {
           sim.lastUpdated = new Date().toISOString();
           count++;
           break;
+        case 'assign_subclient':
+          if (body.subClient !== undefined) {
+            sim.subClient = body.subClient;
+            sim.lastUpdated = new Date().toISOString();
+            count++;
+          }
+          break;
         case 'delete':
           db.sims = db.sims.filter(s => s.id !== simId);
           count++;
@@ -1987,6 +2049,24 @@ const server = http.createServer(async (req, res) => {
     }
     saveDB(db);
     return json(res, { ok: true, user: { ...user, password: undefined } });
+  }
+
+  // DELETE /api/admin/users/:id — admin deletes a user
+  if (method === 'DELETE' && adminUserMatch) {
+    if (!session || session.role !== 'admin') return json(res, { error: 'Acceso denegado' }, 403);
+    const db = loadDB();
+    const user = db.users.find(u => u.id === adminUserMatch[1]);
+    if (!user) return json(res, { error: 'Usuario no encontrado' }, 404);
+    if (user.role === 'admin') return json(res, { error: 'No se puede eliminar un administrador' }, 400);
+    // Remove user
+    db.users = db.users.filter(u => u.id !== adminUserMatch[1]);
+    // Also remove from subusers if they're a sub-user
+    db.subusers = db.subusers.filter(s => s.id !== adminUserMatch[1]);
+    // Revoke active sessions
+    invalidateUserSessions(adminUserMatch[1]);
+    logActivity(db, session.userId, 'Usuario Eliminado', `${user.name} (${user.email})`);
+    saveDB(db);
+    return json(res, { ok: true });
   }
 
   // =====================================================
