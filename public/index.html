@@ -729,6 +729,14 @@ let currentUser = null;
 let currentPage = 'dashboard';
 let planData = null;
 
+// Helper: find plans for a service type (case-insensitive to handle PRE-PAGO vs Pre-Pago)
+function getPlansForService(svcType) {
+  if (!planData || !planData.plans) return [];
+  if (planData.plans[svcType]) return planData.plans[svcType];
+  const key = Object.keys(planData.plans).find(k => k.toLowerCase() === (svcType || '').toLowerCase());
+  return key ? planData.plans[key] : [];
+}
+
 // === HTML escaping (prevents XSS when user-controlled values are interpolated) ===
 function escapeHtml(v) {
   if (v === null || v === undefined) return '';
@@ -1240,7 +1248,7 @@ async function renderSimDetail(el, simId) {
       const svcType = sim.serviceType || 'Pre-Pago';
       const planSel = document.getElementById('inlineActPlan');
       if (planSel) {
-        const plans = planData.plans[svcType] || [];
+        const plans = getPlansForService(svcType);
         planSel.innerHTML = '<option value="">— Seleccionar plan —</option>' + plans.map(p => `<option value="${p}">${p}</option>`).join('');
       }
     }
@@ -1252,7 +1260,7 @@ async function renderSimDetail(el, simId) {
   const simServiceType = sim.serviceType || 'Pre-Pago';
   let rechargePlanOptions = '<option value="">— Seleccionar plan —</option>';
   if (planData) {
-    const plans = planData.plans[simServiceType] || [];
+    const plans = getPlansForService(simServiceType);
     plans.forEach(p => { rechargePlanOptions += `<option value="${p}">${p}</option>`; });
   }
 
@@ -1388,7 +1396,7 @@ function updateInlinePlanOptions() {
   const service = document.getElementById('inlineActService').value;
   const planSel = document.getElementById('inlineActPlan');
   if (!service || !planData) { planSel.innerHTML = '<option value="">— Seleccione servicio primero —</option>'; planSel.disabled = true; return; }
-  const plans = planData.plans[service] || [];
+  const plans = getPlansForService(service);
   planSel.innerHTML = '<option value="">— Seleccionar plan —</option>' + plans.map(p => `<option value="${p}">${p}</option>`).join('');
   planSel.disabled = false;
 }
@@ -1449,12 +1457,13 @@ async function renderAccounts(el) {
     if (isPendingDelete) statusBadge = '<span class="badge badge-processing">Eliminaci&oacute;n pendiente</span>';
     else if (isPending) statusBadge = '<span class="badge badge-processing">Pendiente de aprobaci&oacute;n</span>';
     const showDelete = !isPendingDelete && !isPending && !createdByAdmin;
+    const showEdit = !isPending && !createdByAdmin && isOwnAccount;
     const indent = depth > 0 ? `<span style="padding-left:${depth * 20}px;color:var(--gray-300)">${'└ '.repeat(1)}</span>` : '';
     return `<tr style="cursor:default">
       <td>${indent}${a.name || '—'}</td>
       <td>${a.contact || '—'}</td>
       <td>${statusBadge}</td>
-      <td>${showDelete ? `<button class="btn btn-outline btn-sm" onclick="requestDeleteAccount('${a.id}','${(a.name||'').replace(/'/g,"\\'")}')">Eliminar</button>` : ''}</td>
+      <td>${showEdit ? `<button class="btn btn-outline btn-sm" onclick="showEditAccountModal('${a.id}','${(a.name||'').replace(/'/g,"\\'")}','${(a.contact||'').replace(/'/g,"\\'")}')">Editar</button> ` : ''}${showDelete ? `<button class="btn btn-outline btn-sm" style="color:#e63956" onclick="requestDeleteAccount('${a.id}','${(a.name||'').replace(/'/g,"\\'")}')">Eliminar</button>` : ''}</td>
     </tr>`;
   }
 
@@ -1524,6 +1533,37 @@ async function doCreateAccount() {
   } catch (e) {
     toast('Error de conexion', 'error');
   }
+}
+
+function showEditAccountModal(accountId, name, contact) {
+  const mc = document.getElementById('modalContainer');
+  mc.innerHTML = `
+    <div class="modal-overlay" onclick="closeModal(event)">
+      <div class="modal" onclick="event.stopPropagation()">
+        <h2>Editar Cuenta</h2>
+        <div class="form-group"><label>CUENTA/CLIENTE</label><input id="editAccName" value="${escapeHtml(name)}"></div>
+        <div class="form-group"><label>Contacto</label><input id="editAccContact" value="${escapeHtml(contact)}"></div>
+        <div class="modal-actions">
+          <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+          <button class="btn btn-coral" onclick="doEditAccount('${accountId}')">Guardar</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function doEditAccount(accountId) {
+  const name = document.getElementById('editAccName').value.trim();
+  const contact = document.getElementById('editAccContact').value.trim();
+  if (!name) return toast('Cuenta/Cliente es requerido', 'error');
+  try {
+    const res = await fetch('/api/accounts/' + accountId, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, contact })
+    });
+    if (res.ok) { closeModal(); toast('Cuenta actualizada', 'success'); navigate('accounts'); }
+    else { const d = await res.json().catch(() => ({})); toast(d.error || 'Error al actualizar', 'error'); }
+  } catch (e) { toast('Error de conexión', 'error'); }
 }
 
 async function requestDeleteAccount(accountId, accountName) {
@@ -1738,35 +1778,53 @@ async function renderSubUsers(el) {
   `;
 }
 
-function showEditSubUserModal(id, cacheKey) {
+async function showEditSubUserModal(id, cacheKey) {
   const su = _subUserCache[cacheKey];
   if (!su) return toast('Error al cargar datos del sub-usuario', 'error');
   const perms = su.permissions || {};
+  const assignedAccounts = su.assignedAccounts || [];
+
+  // Load accounts for assignment
+  let accounts = [];
+  try { accounts = await fetch('/api/accounts').then(r => r.json()); } catch(e) {}
+
+  // Build account checkboxes
+  let accountsHtml = '';
+  if (accounts.length > 0) {
+    accountsHtml = '<div style="margin-top:14px;margin-bottom:6px"><strong style="font-size:13px;color:var(--navy)">Cuentas / Clientes Asignados</strong></div>';
+    accountsHtml += '<p style="font-size:11px;color:#888;margin-bottom:8px">Sin selecci&oacute;n = ve todas las SIM.</p>';
+    accountsHtml += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">';
+    accounts.forEach(function(a) {
+      var eName = (a.name || '').replace(/"/g, '&quot;');
+      var isChecked = assignedAccounts.includes(a.name) ? 'checked' : '';
+      accountsHtml += '<label style="font-size:12px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" class="editSubAcctCheck" value="' + eName + '" ' + isChecked + '> ' + (a.name || 'Sin nombre') + '</label>';
+    });
+    accountsHtml += '</div>';
+  }
+
   const mc = document.getElementById('modalContainer');
-  mc.innerHTML = `
-    <div class="modal-overlay" onclick="closeModal(event)">
-      <div class="modal" onclick="event.stopPropagation()">
-        <h2>Editar Permisos - ${escapeHtml(su.name)}</h2>
-        <p style="color:var(--gray-500);font-size:13px;margin-bottom:16px">${escapeHtml(su.email)}</p>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-          <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="editPermRead" ${perms.canRead ? 'checked' : ''}> Lectura</label>
-          <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="editPermActivate" ${perms.canActivate ? 'checked' : ''}> Activar</label>
-          <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="editPermRecharge" ${perms.canRecharge ? 'checked' : ''}> Recargar</label>
-          <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="editPermBalance" ${perms.canRequestBalance ? 'checked' : ''}> Solicitud de Saldo</label>
-          <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="editPermDeactivate" ${perms.canDeactivate ? 'checked' : ''}> Desactivar</label>
-          <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="editPermBilling" ${perms.canViewBilling ? 'checked' : ''}> Facturaci&oacute;n</label>
-          <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="editPermHistory" ${perms.canViewHistory ? 'checked' : ''}> Historial de Consumo</label>
-          <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="editPermManageUsers" ${perms.canManageUsers ? 'checked' : ''}> Gesti&oacute;n de Usuarios</label>
-          <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="editPermManageClients" ${perms.canManageClients ? 'checked' : ''}> Gesti&oacute;n de Clientes</label>
-          <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="editPermOperations" ${perms.canViewOperations ? 'checked' : ''}> Historial de Operaciones</label>
-        </div>
-        <div class="modal-actions">
-          <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
-          <button class="btn btn-coral" onclick="doEditSubUser('${id}')">Guardar</button>
-        </div>
-      </div>
-    </div>
-  `;
+  mc.innerHTML = '<div class="modal-overlay" onclick="closeModal(event)">'
+    + '<div class="modal" onclick="event.stopPropagation()">'
+    + '<h2>Editar Sub-Usuario - ' + escapeHtml(su.name) + '</h2>'
+    + '<p style="color:var(--gray-500);font-size:13px;margin-bottom:16px">' + escapeHtml(su.email) + '</p>'
+    + '<div style="margin-bottom:6px"><strong style="font-size:13px;color:var(--navy)">Permisos</strong></div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">'
+    + '<label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="editPermRead" ' + (perms.canRead ? 'checked' : '') + '> Lectura</label>'
+    + '<label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="editPermActivate" ' + (perms.canActivate ? 'checked' : '') + '> Activar</label>'
+    + '<label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="editPermRecharge" ' + (perms.canRecharge ? 'checked' : '') + '> Recargar</label>'
+    + '<label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="editPermBalance" ' + (perms.canRequestBalance ? 'checked' : '') + '> Solicitud de Saldo</label>'
+    + '<label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="editPermDeactivate" ' + (perms.canDeactivate ? 'checked' : '') + '> Desactivar</label>'
+    + '<label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="editPermBilling" ' + (perms.canViewBilling ? 'checked' : '') + '> Facturaci&oacute;n</label>'
+    + '<label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="editPermHistory" ' + (perms.canViewHistory ? 'checked' : '') + '> Historial de Consumo</label>'
+    + '<label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="editPermManageUsers" ' + (perms.canManageUsers ? 'checked' : '') + '> Gesti&oacute;n de Usuarios</label>'
+    + '<label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="editPermManageClients" ' + (perms.canManageClients ? 'checked' : '') + '> Gesti&oacute;n de Clientes</label>'
+    + '<label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="editPermOperations" ' + (perms.canViewOperations ? 'checked' : '') + '> Historial de Operaciones</label>'
+    + '</div>'
+    + accountsHtml
+    + '<div class="modal-actions">'
+    + '<button class="btn btn-outline" onclick="closeModal()">Cancelar</button>'
+    + '<button class="btn btn-coral" onclick="doEditSubUser(\'' + id + '\')">Guardar</button>'
+    + '</div></div></div>';
 }
 
 async function doEditSubUser(id) {
@@ -1782,23 +1840,26 @@ async function doEditSubUser(id) {
     canManageClients: document.getElementById('editPermManageClients')?.checked || false,
     canViewOperations: document.getElementById('editPermOperations')?.checked || false
   };
+  const assignedAccounts = Array.from(document.querySelectorAll('.editSubAcctCheck:checked')).map(cb => cb.value);
   try {
     const res = await fetch(`/api/subusers/${id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ permissions })
+      body: JSON.stringify({ permissions, assignedAccounts })
     });
-    if (res.ok) { closeModal(); toast('Permisos actualizados', 'success'); navigate('subusers'); }
-    else { toast('Error al actualizar permisos', 'error'); }
+    if (res.ok) { closeModal(); toast('Sub-usuario actualizado', 'success'); navigate('subusers'); }
+    else { const d = await res.json().catch(() => ({})); toast(d.error || 'Error al actualizar', 'error'); }
   } catch (e) { toast('Error de conexion', 'error'); }
 }
 
 async function requestDeleteSubUser(id) {
+  if (!confirm('¿Solicitar eliminación de este sub-usuario? El admin deberá aprobar.')) return;
   try {
-    const res = await fetch(`/api/subusers/${id}/delete-request`, { method: 'POST' });
+    const res = await fetch(`/api/subusers/${id}`, { method: 'DELETE' });
     if (res.ok) {
       toast('Solicitud de eliminacion enviada', 'success');
     } else {
-      toast('Error al enviar solicitud', 'error');
+      const d = await res.json().catch(() => ({}));
+      toast(d.error || 'Error al enviar solicitud', 'error');
     }
   } catch (e) {
     toast('Error de conexion', 'error');
@@ -1817,9 +1878,9 @@ async function showActivateModal(simId) {
     simSvc = simData.serviceType || 'Pre-Pago';
   } catch(e) {}
   const mc = document.getElementById('modalContainer');
-  // Build plan options directly from auto-detected service type
+  // Build plan options directly from auto-detected service type (case-insensitive)
   let modalPlanOpts = '<option value="">— Seleccionar plan —</option>';
-  const plans = planData.plans[simSvc] || [];
+  const plans = getPlansForService(simSvc);
   plans.forEach(p => { modalPlanOpts += `<option value="${p}">${p}</option>`; });
   mc.innerHTML = `
     <div class="modal-overlay" onclick="closeModal(event)">
@@ -1927,7 +1988,7 @@ function updatePlanOptions() {
   const service = document.getElementById('actService').value;
   const planSel = document.getElementById('actPlan');
   if (!service) { planSel.innerHTML = '<option value="">— Seleccione servicio primero —</option>'; planSel.disabled = true; return; }
-  const plans = planData.plans[service] || [];
+  const plans = getPlansForService(service);
   planSel.innerHTML = '<option value="">— Seleccionar plan —</option>' + plans.map(p => `<option value="${p}">${p}</option>`).join('');
   planSel.disabled = false;
 }
@@ -1976,7 +2037,7 @@ async function requestBalanceUpdate(simId) {
 
 function showRechargeModal(simId, serviceType) {
   if (!planData) return toast('Cargando...', 'info');
-  const plans = planData.plans[serviceType] || planData.plans['Pre-Pago'];
+  const plans = getPlansForService(serviceType) || getPlansForService('Pre-Pago');
   const mc = document.getElementById('modalContainer');
   mc.innerHTML = `
     <div class="modal-overlay" onclick="closeModal(event)">
