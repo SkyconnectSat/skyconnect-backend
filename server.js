@@ -1982,6 +1982,27 @@ const server = http.createServer(async (req, res) => {
     return json(res, { ok: true });
   }
 
+  // DELETE /api/admin/users/:id/operations — Clear ALL operation history for a user's SIMs
+  const userOpsMatch = pathname.match(/^\/api\/admin\/users\/([^/]+)\/operations$/);
+  if (method === 'DELETE' && userOpsMatch) {
+    if (!session || session.role !== 'admin') return json(res, { error: 'Acceso denegado' }, 403);
+    const db = loadDB();
+    const user = db.users.find(u => u.id === userOpsMatch[1]);
+    if (!user) return json(res, { error: 'Usuario no encontrado' }, 404);
+    let count = 0;
+    const userSims = db.sims.filter(s => s.clientId === user.id);
+    userSims.forEach(sim => {
+      if (sim.operations && sim.operations.length > 0) {
+        count += sim.operations.length;
+        sim.operations = [];
+        sim.lastUpdated = new Date().toISOString();
+      }
+    });
+    saveDB(db);
+    logActivity(db, session.userId, 'Historial Borrado', `${count} operaciones de ${user.name || user.email} (${userSims.length} SIMs)`);
+    return json(res, { ok: true, cleared: count, sims: userSims.length });
+  }
+
   // GET /api/admin/users
   if (method === 'GET' && pathname === '/api/admin/users') {
     if (!session || session.role !== 'admin') return json(res, { error: 'Acceso denegado' }, 403);
