@@ -1841,6 +1841,7 @@ async function renderUsers(el) {
               + '<td>' + (u.countryCode ? u.countryCode + ' ' : '') + (u.phone || '—') + '</td>'
               + '<td>' + roleBadge + '</td>'
               + '<td><button class="btn btn-outline btn-sm" onclick="showEditUser(\'' + u.id + '\')">Editar</button>'
+              + (u.role !== 'admin' ? ' <button class="btn btn-outline btn-sm" style="color:#e65100;border-color:#e65100" onclick="clearUserOperations(\'' + u.id + '\',\'' + (u.name || '').replace(/'/g, "\\'") + '\')" title="Borrar historial de operaciones de todas sus SIMs">Borrar Historial</button>' : '')
               + (u.role !== 'admin' ? ' <button class="btn btn-outline btn-sm" style="color:#e63956;border-color:#e63956" onclick="deleteUser(\'' + u.id + '\',\'' + (u.name || '').replace(/'/g, "\\'") + '\')">Eliminar</button>' : '')
               + '</td>'
               + '</tr>';
@@ -1888,6 +1889,14 @@ async function deleteUser(userId, userName) {
   const res = await api('/api/admin/users/' + userId, { method: 'DELETE' });
   if (res?.error) return toast(res.error, 'error');
   toast('Usuario eliminado', 'success');
+  render();
+}
+
+async function clearUserOperations(userId, userName) {
+  if (!confirm('¿Borrar todo el historial de operaciones de todas las SIMs de "' + userName + '"? Esta acción no se puede deshacer.')) return;
+  const res = await api('/api/admin/users/' + userId + '/operations', { method: 'DELETE' });
+  if (res?.error) return toast(res.error, 'error');
+  toast('Historial borrado: ' + (res.cleared || 0) + ' operaciones de ' + (res.sims || 0) + ' SIMs', 'success');
   render();
 }
 
