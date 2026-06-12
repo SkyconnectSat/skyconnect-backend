@@ -849,6 +849,7 @@ async function renderSims(el) {
         <span class="bulk-count" id="bulkCount">0 seleccionadas</span>
         <div class="bulk-actions">
           <button class="btn-bulk" onclick="bulkAssign()">Asignar Cliente</button>
+          <button class="btn-bulk" onclick="bulkAssignSubClient()">Asignar Cuenta</button>
           <button class="btn-bulk" onclick="bulkActivate()">Activar</button>
           <button class="btn-bulk" onclick="bulkDeactivate()">Desactivar</button>
           <button class="btn-bulk" onclick="bulkRecharge()">Recargar</button>
@@ -1391,6 +1392,39 @@ async function executeBulkAssign() {
   }
 }
 
+async function bulkAssignSubClient() {
+  if (selectedSims.size === 0) return;
+  const allAccounts = await api('/api/accounts') || [];
+  const mc = document.getElementById('modalContainer');
+  let acctOpts = '<option value="">Sin cuenta (quitar)</option>';
+  allAccounts.forEach(function(a) { acctOpts += '<option value="' + (a.name || '').replace(/"/g, '&quot;') + '">' + (a.name || 'Sin nombre') + '</option>'; });
+  mc.innerHTML = '<div class="modal-overlay" onclick="if(event.target===this)closeModal()">'
+    + '<div class="modal">'
+    + '<h2>Asignar Cuenta a ' + selectedSims.size + ' SIM' + (selectedSims.size > 1 ? 's' : '') + '</h2>'
+    + '<div class="form-group"><label>Cuenta / Cliente</label>'
+    + '<select id="bulkSubClientSelect">' + acctOpts + '</select></div>'
+    + '<div class="modal-actions">'
+    + '<button class="btn btn-outline" onclick="closeModal()">Cancelar</button>'
+    + '<button class="btn btn-coral" onclick="executeBulkAssignSubClient()">Asignar</button>'
+    + '</div></div></div>';
+}
+
+async function executeBulkAssignSubClient() {
+  const subClient = document.getElementById('bulkSubClientSelect').value;
+  const res = await api('/api/admin/sims/bulk-action', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'assign_subclient', simIds: Array.from(selectedSims), subClient })
+  });
+  closeModal();
+  if (res?.ok) {
+    toast((res.count || 0) + ' SIM' + ((res.count || 0) > 1 ? 's' : '') + ' actualizadas', 'success');
+    selectedSims.clear();
+    render();
+  } else {
+    toast(res?.error || 'Error al asignar cuenta', 'error');
+  }
+}
+
 async function bulkActivate() {
   if (selectedSims.size === 0) return;
   if (!confirm(`¿Activar ${selectedSims.size} SIM${selectedSims.size > 1 ? 's' : ''}?`)) return;
@@ -1806,7 +1840,9 @@ async function renderUsers(el) {
               + '<td>' + (u.company || '') + '</td>'
               + '<td>' + (u.countryCode ? u.countryCode + ' ' : '') + (u.phone || '—') + '</td>'
               + '<td>' + roleBadge + '</td>'
-              + '<td><button class="btn btn-outline btn-sm" onclick="showEditUser(\'' + u.id + '\')">Editar</button></td>'
+              + '<td><button class="btn btn-outline btn-sm" onclick="showEditUser(\'' + u.id + '\')">Editar</button>'
+              + (u.role !== 'admin' ? ' <button class="btn btn-outline btn-sm" style="color:#e63956;border-color:#e63956" onclick="deleteUser(\'' + u.id + '\',\'' + (u.name || '').replace(/'/g, "\\'") + '\')">Eliminar</button>' : '')
+              + '</td>'
               + '</tr>';
           }).join('')}
         </tbody>
@@ -1845,6 +1881,14 @@ function showAddUser() {
       </div>
     </div>
   `;
+}
+
+async function deleteUser(userId, userName) {
+  if (!confirm('¿Eliminar al usuario "' + userName + '"? Esta acción no se puede deshacer.')) return;
+  const res = await api('/api/admin/users/' + userId, { method: 'DELETE' });
+  if (res?.error) return toast(res.error, 'error');
+  toast('Usuario eliminado', 'success');
+  render();
 }
 
 async function addUser() {
